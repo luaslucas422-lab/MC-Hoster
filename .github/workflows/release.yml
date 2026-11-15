@@ -1,9 +1,16 @@
-# Push a tag like v1.0.0 and this makes the GitHub release with dist/MC-Hoster.exe attached.
+# Makes the GitHub release with dist/MC-Hoster.exe attached.
+# Either push a tag like v1.0.0, or open Actions > Release > Run workflow and type the version.
 # Notes come from .github/release-notes/<tag>.md if it exists.
 name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to release
+        default: v1.0.0
+        required: true
 permissions:
   contents: write
 jobs:
@@ -14,8 +21,8 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           notes=".github/release-notes/$TAG.md"
           [ -f "$notes" ] || { echo "MC Hoster $TAG" > /tmp/n.md; notes=/tmp/n.md; }
-          gh release create "$TAG" dist/MC-Hoster.exe --title "MC Hoster ${TAG#v}" --notes-file "$notes" --latest
+          gh release create "$TAG" dist/MC-Hoster.exe --title "MC Hoster ${TAG#v}" --notes-file "$notes" --latest --target "$GITHUB_SHA"
