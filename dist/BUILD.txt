@@ -1,2 +1,2 @@
-selftest: failure
-commit: 097a2bde5e313cf1acb4e10f2bc57eeaf2c8769b
+selftest: success
+commit: b2e509f33a76a148613f12fa77cb7d00cc83730a
