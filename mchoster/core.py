@@ -28,10 +28,13 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
+BEDROCK_PORT = 19132
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+MAX_PLAYERS = 500
 WINDOWS = os.name == "nt"
 NO_WINDOW = 0x08000000 if WINDOWS else 0  # CREATE_NO_WINDOW, so java never pops a console
 
@@ -83,11 +86,13 @@ def http_json(url: str, timeout: float = 30):
     return json.loads(http_get(url, timeout).decode("utf-8"))
 
 
-def download(url: str, dest: Path, progress=None, timeout: float = 60) -> Path:
+def download(url: str, dest: Path, progress=None, timeout: float = 60, headers: dict | None = None) -> Path:
     """Download to dest (through a .part file). progress(done_bytes, total_bytes_or_0)."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    h = {"User-Agent": UA}
+    h.update(headers or {})
+    req = urllib.request.Request(url, headers=h)
     with urllib.request.urlopen(req, timeout=timeout) as r, open(part, "wb") as f:
         total = int(r.headers.get("Content-Length") or 0)
         done = 0
@@ -113,7 +118,7 @@ def vtuple(v: str) -> tuple:
 
 
 def is_release(v: str) -> bool:
-    return re.fullmatch(r"\d+(\.\d+){1,2}", v) is not None
+    return re.fullmatch(r"\d+(\.\d+){1,3}", v) is not None
 
 
 def sort_versions(vs) -> list[str]:
@@ -125,13 +130,17 @@ def sort_versions(vs) -> list[str]:
 class Provider:
     id: str
     name: str
-    kind: str          # "fabric" (mods/) or "bukkit" (plugins/)
+    kind: str          # "fabric" (mods/), "bukkit" (plugins/) or "bedrock"
     blurb: str
     slow: bool = False
 
     @property
     def addon_folder(self) -> str:
-        return "mods" if self.kind == "fabric" else "plugins"
+        return {"fabric": "mods", "bukkit": "plugins"}.get(self.kind, "")
+
+    @property
+    def bedrock(self) -> bool:
+        return self.kind == "bedrock"
 
 
 PROVIDERS = [
@@ -140,6 +149,8 @@ PROVIDERS = [
     Provider("purpur", "Purpur", "bukkit", "Paper with lots of extra options. Runs every Paper plugin."),
     Provider("pufferfish", "Pufferfish", "bukkit", "Paper fork tuned for big servers. Only its newest 1.21 build is offered."),
     Provider("spigot", "Spigot", "bukkit", "The original plugin server. It has to be compiled on your PC first, which takes 5 to 10 minutes.", slow=True),
+    Provider("bedrock", "Bedrock", "bedrock", "Mojang's official Bedrock Dedicated Server, for phone, console and Windows 10/11 players. "
+             "No plugins, mods or Gh0st AC (those are Java only). Want both? Pick Paper and add Geyser in tab 5."),
 ]
 PROVIDER_BY_NAME = {p.name: p for p in PROVIDERS}
 PROVIDER_BY_ID = {p.id: p for p in PROVIDERS}
@@ -172,8 +183,25 @@ def _pufferfish_latest() -> tuple[str, str]:
     return (m.group(1) if m else "1.21"), base + "artifact/" + a["relativePath"]
 
 
+BEDROCK_LINKS = "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links"
+
+
+def _bedrock_latest() -> tuple[str, str]:
+    """(version, zip url) of the newest Bedrock Dedicated Server for this OS."""
+    j = json.loads(http_get(BEDROCK_LINKS, 20, {"User-Agent": BROWSER_UA}).decode("utf-8"))
+    want = "serverBedrockWindows" if WINDOWS else "serverBedrockLinux"
+    for link in j["result"]["links"]:
+        if link.get("downloadType") == want:
+            url = link["downloadUrl"]
+            m = re.search(r"bedrock-server-([\d.]+)\.zip", url)
+            return (m.group(1) if m else "latest"), url
+    raise IOError("Mojang's download list has no Bedrock server for this PC")
+
+
 def list_versions(provider: Provider) -> list[str]:
     """Versions shown for a provider: the ones Gh0st AC has a build for, newest first."""
+    if provider.bedrock:
+        return [_bedrock_latest()[0]]
     if provider.id == "fabric":
         return list(GH0ST_FABRIC_VERSIONS)
     if provider.id == "pufferfish":
@@ -189,7 +217,7 @@ def list_versions(provider: Provider) -> list[str]:
 
 
 def gh0st_supported(provider: Provider, version: str) -> bool:
-    if not is_release(version):
+    if not is_release(version) or provider.bedrock:
         return False
     if provider.kind == "fabric":
         return version in GH0ST_FABRIC_VERSIONS
@@ -530,21 +558,21 @@ class UPnP:
         return http_get(self.control_url, 6, {"Content-Type": 'text/xml; charset="utf-8"',
                                                "SOAPAction": f'"{self.service}#{action}"'}, env.encode()).decode("utf-8", "replace")
 
-    def open(self, port: int, ip: str, desc: str = "MC Hoster") -> bool:
+    def open(self, port: int, ip: str, desc: str = "MC Hoster", proto: str = "TCP") -> bool:
         if not self.control_url and not self.discover():
             return False
         try:
-            self._soap("AddPortMapping", {"NewRemoteHost": "", "NewExternalPort": port, "NewProtocol": "TCP",
+            self._soap("AddPortMapping", {"NewRemoteHost": "", "NewExternalPort": port, "NewProtocol": proto,
                                           "NewInternalPort": port, "NewInternalClient": ip, "NewEnabled": 1,
                                           "NewPortMappingDescription": desc, "NewLeaseDuration": 0})
             return True
         except Exception:
             return False
 
-    def close(self, port: int) -> None:
+    def close(self, port: int, proto: str = "TCP") -> None:
         if self.control_url:
             try:
-                self._soap("DeletePortMapping", {"NewRemoteHost": "", "NewExternalPort": port, "NewProtocol": "TCP"})
+                self._soap("DeletePortMapping", {"NewRemoteHost": "", "NewExternalPort": port, "NewProtocol": proto})
             except Exception:
                 pass
 
@@ -673,7 +701,9 @@ def add_to_server_list(mc_dir: Path, name: str, address: str, icon_png: bytes | 
 
 # --------------------------------------------------------------------------- server folder
 
+
 GAMEMODES = ["Survival", "Creative", "Adventure", "Spectator"]
+BEDROCK_GAMEMODES = ["Survival", "Creative", "Adventure"]
 DIFFICULTIES = ["Peaceful", "Easy", "Normal", "Hard"]
 
 
@@ -688,23 +718,34 @@ class ServerConfig:
     hardcore: bool = False
     gh0stac: bool = True
     icon_path: str = ""
-    minecraft_dir: str = ""
+    minecraft_dir: str = ""      # .minecraft for Java, the minecraftpe folder for Bedrock
     add_to_list: bool = True
     eula: bool = False
+    addons: list = field(default_factory=list)        # ids of preset plugins/mods (tab 5)
+    addon_files: dict = field(default_factory=dict)   # id -> file names in plugins/ or mods/
+    schedule: dict = field(default_factory=dict)      # auto-start, see schedule.py
+    domain: dict = field(default_factory=dict)        # custom IP (play.yourdomain.com), see domain.py
     # filled in by setup
     folder: str = ""
     java: str = ""
     ram_mb: int = 2048
     port: int = PORT
+    installed_version: str = ""
+
+    @property
+    def prov(self) -> Provider:
+        return PROVIDER_BY_ID[self.provider]
 
     def save(self):
         Path(self.folder, "mchoster.json").write_text(json.dumps(asdict(self), indent=2), encoding="utf-8")
 
     @staticmethod
     def load(folder: Path) -> "ServerConfig":
-        d = json.loads((folder / "mchoster.json").read_text(encoding="utf-8"))
+        d = json.loads((Path(folder) / "mchoster.json").read_text(encoding="utf-8"))
         c = ServerConfig(**{k: v for k, v in d.items() if k in ServerConfig.__dataclass_fields__})
         c.folder = str(folder)
+        if not c.installed_version:
+            c.installed_version = c.version
         return c
 
 
@@ -745,6 +786,35 @@ def _prop_escape(s: str) -> str:
     return "".join(out)
 
 
+def update_properties(f: Path, props: dict, header: str = "") -> None:
+    """Sets these keys in a .properties file and keeps every other line (and comment) as it was."""
+    lines = f.read_text(encoding="utf-8", errors="replace").splitlines() if f.exists() else ([header] if header else [])
+    out, seen = [], set()
+    for line in lines:
+        t = line.strip()
+        if t and not t.startswith("#") and "=" in t:
+            k = t.split("=", 1)[0].strip()
+            if k in props:
+                if k not in seen:
+                    out.append(f"{k}={props[k]}")
+                    seen.add(k)
+                continue
+        out.append(line)
+    out += [f"{k}={v}" for k, v in props.items() if k not in seen]
+    f.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def read_properties(f: Path) -> dict:
+    d = {}
+    if f.exists():
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            t = line.strip()
+            if t and not t.startswith("#") and "=" in t:
+                k, v = t.split("=", 1)
+                d[k.strip()] = v.strip()
+    return d
+
+
 def check_icon(path: str) -> tuple[bool, str, tuple[int, int] | None]:
     """(ok, message, size). The icon has to be a 64x64 PNG."""
     try:
@@ -771,43 +841,138 @@ def resize_icon(src: str, dest: Path) -> Path:
     return dest
 
 
+# --------------------------------------------------------------------------- Bedrock
+
+BEDROCK_KEEP = {"server.properties", "allowlist.json", "permissions.json", "whitelist.json"}
+
+
+def bedrock_exe(d: Path) -> Path:
+    return d / ("bedrock_server.exe" if WINDOWS else "bedrock_server")
+
+
+def install_bedrock(d: Path, log=print, progress=None) -> str:
+    """Downloads the newest Bedrock Dedicated Server into d. On an update, worlds and settings are kept."""
+    version, url = _bedrock_latest()
+    z = app_dir() / "bedrock-server.zip"
+    log(f"Downloading the Bedrock server {version} from Mojang...")
+    download(url, z, progress, timeout=180, headers={"User-Agent": BROWSER_UA})
+    updating = bedrock_exe(d).exists()
+    with zipfile.ZipFile(z) as zf:
+        for info in zf.infolist():
+            name = info.filename.replace("\\", "/")
+            if name.startswith("worlds/") or ".." in name:
+                continue
+            target = d / name
+            if updating and name in BEDROCK_KEEP and target.exists():
+                continue
+            if info.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info) as src, open(target, "wb") as out:
+                shutil.copyfileobj(src, out)
+    z.unlink(missing_ok=True)
+    if not WINDOWS:
+        os.chmod(bedrock_exe(d), 0o755)
+    return version
+
+
+def bedrock_dirs() -> list[Path]:
+    """minecraftpe folders of Minecraft Bedrock on this PC (new launcher first, then the old Store one)."""
+    if not WINDOWS:
+        return [p for p in [Path.home() / ".local/share/mcpelauncher/games/com.mojang/minecraftpe"] if p.is_dir()]
+    out = []
+    appdata = Path(os.environ.get("APPDATA", ""))
+    users = sorted(glob.glob(str(appdata / "Minecraft Bedrock" / "Users" / "*" / "games" / "com.mojang" / "minecraftpe")),
+                   key=lambda p: "Shared" in p)
+    out += [Path(p) for p in users]
+    local = os.environ.get("LOCALAPPDATA", "")
+    out.append(Path(local) / "Packages" / "Microsoft.MinecraftUWP_8wekyb3d8bbwe" / "LocalState" / "games" / "com.mojang" / "minecraftpe")
+    return [p for p in out if p.is_dir()]
+
+
+def default_bedrock_dir() -> Path:
+    if WINDOWS:
+        return Path(os.environ.get("APPDATA", "")) / "Minecraft Bedrock"
+    return Path.home() / ".local/share/mcpelauncher"
+
+
+def looks_like_bedrock_dir(p: Path) -> bool:
+    return p.is_dir() and (p.name == "minecraftpe" or any((p / x).exists() for x in ("options.txt", "external_servers.txt")))
+
+
+def find_bedrock_dir() -> Path | None:
+    for p in bedrock_dirs():
+        if (p / "external_servers.txt").exists() or (p / "options.txt").exists():
+            return p
+    ds = bedrock_dirs()
+    return ds[0] if ds else None
+
+
+def add_bedrock_server(pe_dir: Path, name: str, address: str, port: int) -> bool:
+    """Adds the server to Bedrock's Servers tab (external_servers.txt: index:name:address:port:timestamp)."""
+    f = pe_dir / "external_servers.txt"
+    lines = [l for l in f.read_text(encoding="utf-8", errors="replace").splitlines() if l.strip()] if f.exists() else []
+    if f.exists():
+        shutil.copy2(f, f.with_name("external_servers.txt.mchoster-backup"))
+    name = name.replace(":", " ")
+    keep, idx = [], 0
+    for l in lines:
+        parts = l.split(":")
+        if len(parts) >= 4 and parts[2] == address and parts[3] == str(port):
+            continue  # replaced below
+        keep.append(l)
+        if parts[0].isdigit():
+            idx = max(idx, int(parts[0]))
+    keep.append(f"{idx + 1}:{name}:{address}:{port}:{int(time.time())}")
+    f.write_text("\n".join(keep) + "\n", encoding="utf-8")
+    return True
+
+
+# --------------------------------------------------------------------------- server folder
+
 def write_server_files(cfg: ServerConfig) -> None:
     d = Path(cfg.folder)
-    provider = PROVIDER_BY_ID[cfg.provider]
+    provider = cfg.prov
+    view = view_distance(cfg.players)
+    if provider.bedrock:
+        update_properties(d / "server.properties", {
+            "server-name": cfg.name.replace(";", " ")[:60],
+            "gamemode": cfg.gamemode.lower() if cfg.gamemode in BEDROCK_GAMEMODES else "survival",
+            "difficulty": cfg.difficulty.lower(),
+            "max-players": str(cfg.players),
+            "server-port": str(cfg.port),
+            "server-portv6": str(cfg.port + 1),
+            "online-mode": "true",
+            "view-distance": str(view * 3),
+        })
+        write_start_script(cfg)
+        return
     (d / "eula.txt").write_text(
         "# Accepted in MC Hoster by the person who set up this server: https://aka.ms/MinecraftEULA\n"
         f"# {time.strftime('%Y-%m-%d %H:%M')}\neula=true\n", encoding="utf-8")
-    props = {
+    update_properties(d / "server.properties", {
         "motd": _prop_escape(cfg.name),
         "server-port": str(cfg.port),
         "max-players": str(cfg.players),
         "gamemode": cfg.gamemode.lower(),
-        "force-gamemode": "false",
         "difficulty": cfg.difficulty.lower(),
         "hardcore": str(cfg.hardcore).lower(),
         "online-mode": "true",
-        "pvp": "true",
-        "view-distance": str(view_distance(cfg.players)),
-        "simulation-distance": str(min(10, view_distance(cfg.players))),
+        "view-distance": str(view),
+        "simulation-distance": str(min(10, view)),
         "spawn-protection": "0",
         "enable-status": "true",
-    }
-    f = d / "server.properties"
-    existing = {}
-    if f.exists():  # keep anything the owner changed by hand
-        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
-            if "=" in line and not line.startswith("#"):
-                k, v = line.split("=", 1)
-                existing[k] = v
-    existing.update(props)
-    f.write_text("#Minecraft server properties (written by MC Hoster)\n" +
-                 "".join(f"{k}={v}\n" for k, v in existing.items()), encoding="utf-8")
-    if cfg.icon_path:
-        ok, _, _ = check_icon(cfg.icon_path)
-        if ok:
-            shutil.copy(cfg.icon_path, d / "server-icon.png")
-        else:
-            resize_icon(cfg.icon_path, d / "server-icon.png")
+    }, header="#Minecraft server properties (written by MC Hoster)")
+    icon = d / "server-icon.png"
+    if cfg.icon_path and Path(cfg.icon_path).exists():
+        if Path(cfg.icon_path).resolve() != icon.resolve():
+            if check_icon(cfg.icon_path)[0]:
+                shutil.copy(cfg.icon_path, icon)
+            else:
+                resize_icon(cfg.icon_path, icon)
+    elif not cfg.icon_path:
+        icon.unlink(missing_ok=True)
     addons = d / provider.addon_folder
     addons.mkdir(exist_ok=True)
     jar_name = "Gh0stAC.jar"
@@ -821,7 +986,9 @@ def write_server_files(cfg: ServerConfig) -> None:
     write_start_script(cfg)
 
 
-def java_args(cfg: ServerConfig) -> list[str]:
+def server_args(cfg: ServerConfig) -> list[str]:
+    if cfg.prov.bedrock:
+        return [str(bedrock_exe(Path(cfg.folder)))]
     args = [cfg.java, f"-Xms{min(1024, cfg.ram_mb)}M", f"-Xmx{cfg.ram_mb}M"]
     if cfg.ram_mb >= 4096:
         args += ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200"]
@@ -829,47 +996,101 @@ def java_args(cfg: ServerConfig) -> list[str]:
     return args
 
 
+java_args = server_args  # old name
+
+
 def write_start_script(cfg: ServerConfig) -> None:
     d = Path(cfg.folder)
-    args = java_args(cfg)
+    args = server_args(cfg)
     if WINDOWS:
         line = " ".join(f'"{a}"' if " " in a else a for a in args)
         (d / "start.bat").write_text(f"@echo off\r\ntitle {cfg.name}\r\ncd /d \"%~dp0\"\r\n{line}\r\npause\r\n", encoding="utf-8")
     else:
         line = " ".join(f"'{a}'" for a in args)
+        env = "LD_LIBRARY_PATH=. " if cfg.prov.bedrock else ""
         p = d / "start.sh"
-        p.write_text(f"#!/bin/sh\ncd \"$(dirname \"$0\")\"\nexec {line}\n", encoding="utf-8")
+        p.write_text(f"#!/bin/sh\ncd \"$(dirname \"$0\")\"\n{env}exec {line}\n", encoding="utf-8")
         p.chmod(0o755)
 
 
+def server_address(cfg: ServerConfig, host: str = "localhost") -> str:
+    default = BEDROCK_PORT if cfg.prov.bedrock else PORT
+    return host if cfg.port == default else f"{host}:{cfg.port}"
+
+
+def add_to_list(cfg: ServerConfig, log=print) -> None:
+    if not (cfg.minecraft_dir and cfg.add_to_list):
+        return
+    d, mc = Path(cfg.folder), Path(cfg.minecraft_dir)
+    try:
+        if cfg.prov.bedrock:
+            add_bedrock_server(mc, cfg.name, "127.0.0.1", cfg.port)
+            log(f"Added to your Bedrock Servers tab as \"{cfg.name}\" (restart Minecraft if it is open).")
+        else:
+            icon = (d / "server-icon.png").read_bytes() if (d / "server-icon.png").exists() else None
+            add_to_server_list(mc, cfg.name, server_address(cfg), icon)
+            log(f"Added to your Multiplayer list as \"{cfg.name}\" (restart Minecraft if it is open).")
+    except Exception as e:
+        log(f"Could not add it to your server list ({e}). Add it by hand.")
+
+
 def setup_server(cfg: ServerConfig, log=print, progress=None, step=None) -> ServerConfig:
-    """Makes a ready-to-run server folder. step(index, total, text) reports the big steps."""
-    provider = PROVIDER_BY_ID[cfg.provider]
+    """Makes (or updates) a ready-to-run server folder. step(index, total, text) reports the big steps.
+
+    Safe to run again on an existing server: it only downloads when the version changed or files are missing,
+    and server.properties keeps everything MC Hoster doesn't manage.
+    """
+    provider = cfg.prov
     if not cfg.eula:
         raise ValueError("The Minecraft EULA has to be accepted first")
-    steps = ["Finding Java", "Downloading the server", "Writing settings", "Adding to your server list"]
     st = step or (lambda i, n, t: log(f"[{i + 1}/{n}] {t}"))
     mc_dir = Path(cfg.minecraft_dir) if cfg.minecraft_dir else None
-
-    st(0, len(steps), steps[0])
-    need = required_java(cfg.version)
-    jdk = provider.id == "spigot"  # BuildTools compiles, so it needs a JDK, not just a JRE
-    found = find_java(need, mc_dir, jdk)
-    if found:
-        log(f"Using Java {found[1]}: {found[0]}")
-        cfg.java = str(found[0])
-    else:
-        log(f"No Java {need}{' JDK' if jdk else ''} on this PC, getting one (only the first time).")
-        cfg.java = str(download_java(need, progress, log, jdk))
-
     if not cfg.folder:
         cfg.folder = str(new_server_folder(cfg.name))
     d = Path(cfg.folder)
     log(f"Server folder: {d}")
+
+    if provider.bedrock:
+        steps = ["Downloading the Bedrock server", "Writing settings", "Adding to your server list"]
+        cfg.port = BEDROCK_PORT if cfg.port == PORT else cfg.port
+        st(0, len(steps), steps[0])
+        if not bedrock_exe(d).exists() or cfg.installed_version != cfg.version:
+            cfg.version = install_bedrock(d, log, progress)
+        else:
+            log(f"Bedrock server {cfg.version} is already here.")
+        cfg.installed_version = cfg.version
+        st(1, len(steps), steps[1])
+        write_server_files(cfg)
+        cfg.save()
+        st(2, len(steps), steps[2])
+        add_to_list(cfg, log)
+        return cfg
+
+    steps = ["Finding Java", "Downloading the server", "Writing settings", "Adding to your server list"]
+    st(0, len(steps), steps[0])
+    need = required_java(cfg.version)
+    jdk = provider.id == "spigot"  # BuildTools compiles, so it needs a JDK, not just a JRE
+    current = java_major(cfg.java) if cfg.java and Path(cfg.java).exists() else None
+    if current and current >= need and (not jdk or is_jdk(Path(cfg.java))):
+        log(f"Using Java {current}: {cfg.java}")
+    else:
+        found = find_java(need, mc_dir if not provider.bedrock else None, jdk)
+        if found:
+            log(f"Using Java {found[1]}: {found[0]}")
+            cfg.java = str(found[0])
+        else:
+            log(f"No Java {need}{' JDK' if jdk else ''} on this PC, getting one (only the first time).")
+            cfg.java = str(download_java(need, progress, log, jdk))
     cfg.ram_mb = ram_for_players(cfg.players, provider.kind == "fabric")
 
     st(1, len(steps), steps[1] + (" (compiling Spigot, 5-10 min)" if provider.slow else ""))
-    get_server_jar(provider, cfg.version, d, Path(cfg.java), log, progress)
+    if not (d / "server.jar").exists() or cfg.installed_version != cfg.version:
+        get_server_jar(provider, cfg.version, d, Path(cfg.java), log, progress)
+        if cfg.installed_version and cfg.installed_version != cfg.version:
+            log(f"Updated from {cfg.installed_version} to {cfg.version}.")
+    else:
+        log(f"{provider.name} {cfg.version} is already here.")
+    cfg.installed_version = cfg.version
 
     st(2, len(steps), steps[2])
     write_server_files(cfg)
@@ -878,20 +1099,23 @@ def setup_server(cfg: ServerConfig, log=print, progress=None, step=None) -> Serv
     cfg.save()
 
     st(3, len(steps), steps[3])
-    if mc_dir and cfg.add_to_list:
-        try:
-            icon = (d / "server-icon.png").read_bytes() if (d / "server-icon.png").exists() else None
-            add_to_server_list(mc_dir, cfg.name, "localhost" if cfg.port == PORT else f"localhost:{cfg.port}", icon)
-            log("Added to your Multiplayer list as \"" + cfg.name + "\" (restart Minecraft if it is open).")
-        except Exception as e:
-            log(f"Could not add it to the Multiplayer list ({e}). Add localhost by hand.")
+    add_to_list(cfg, log)
     return cfg
 
 
 # --------------------------------------------------------------------------- running
 
+def ports_for(cfg: ServerConfig, extra: list | None = None) -> list[tuple[int, str, str]]:
+    """(port, TCP/UDP, what for) for everything the router has to let in."""
+    ports = [(cfg.port, "UDP" if cfg.prov.bedrock else "TCP", "Minecraft")]
+    for p in extra or []:
+        if p not in ports:
+            ports.append(p)
+    return ports
+
+
 class ServerProcess:
-    DONE = re.compile(r"Done \(\d")
+    DONE = re.compile(r"Done \(\d|Server started\.")
 
     def __init__(self, cfg: ServerConfig, on_line=None, on_ready=None, on_exit=None):
         self.cfg = cfg
@@ -908,8 +1132,11 @@ class ServerProcess:
     def start(self):
         write_start_script(self.cfg)
         self.ready = False
-        self.proc = subprocess.Popen(java_args(self.cfg), cwd=self.cfg.folder, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        env = dict(os.environ)
+        if self.cfg.prov.bedrock and not WINDOWS:
+            env["LD_LIBRARY_PATH"] = "."
+        self.proc = subprocess.Popen(server_args(self.cfg), cwd=self.cfg.folder, stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
                                      encoding="utf-8", errors="replace", bufsize=1, creationflags=NO_WINDOW)
         threading.Thread(target=self._pump, daemon=True).start()
 

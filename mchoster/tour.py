@@ -4,6 +4,7 @@ No network: version lists and the server are faked, so it only tests the window 
 """
 from __future__ import annotations
 
+import tempfile
 import tkinter as tk
 from pathlib import Path
 
@@ -14,25 +15,29 @@ from .app import Wizard
 def run(outdir: str) -> int:
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
-    core.list_versions = lambda p: list(core.GH0ST_FABRIC_VERSIONS) if p.kind == "fabric" else core.FALLBACK_VERSIONS[:]
+    core.list_versions = lambda p: (["1.21.124.2"] if p.bedrock else list(core.GH0ST_FABRIC_VERSIONS)
+                                    if p.kind == "fabric" else core.FALLBACK_VERSIONS[:])
+    from tkinter import messagebox
+    messagebox.askyesno = lambda *a, **k: True  # the "more than 100 players" questions
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
-    root.minsize(max(600, root.winfo_reqwidth()), max(470, root.winfo_reqheight()))
+    root.minsize(max(660, root.winfo_reqwidth()), max(560, root.winfo_reqheight()))
     root.geometry("+40+40")
     shots: list[str] = []
 
-    def grab(name):
+    def grab(name, win=None):
+        win = win or root
         root.update()
-        root.lift()
-        root.attributes("-topmost", True)
+        win.lift()
+        win.attributes("-topmost", True)
         root.update()
         from PIL import ImageGrab
-        x, y = root.winfo_rootx(), root.winfo_rooty()
-        bw, bh = root.winfo_width(), root.winfo_height()
+        x, y = win.winfo_rootx(), win.winfo_rooty()
+        bw, bh = win.winfo_width(), win.winfo_height()
         try:
-            img = ImageGrab.grab(bbox=(x, y, x + bw, y + bh), all_screens=True) if core.WINDOWS else ImageGrab.grab(bbox=(x, y, x + bw, y + bh))
-            img.save(out / f"{name}.png")
+            kw = {"all_screens": True} if core.WINDOWS else {}
+            ImageGrab.grab(bbox=(x, y, x + bw, y + bh), **kw).save(out / f"{name}.png")
             shots.append(name)
         except Exception as e:
             print("screenshot failed:", e)
@@ -44,59 +49,98 @@ def run(outdir: str) -> int:
     d.ellipse((4, 4, 60, 60), fill=(20, 20, 20, 255))
     d.text((24, 22), "G", fill=(255, 255, 255, 255))
     im.save(icon)
+    dialogs = {}
 
-    steps = []
-    steps.append(lambda: grab("1-server-paper"))
-    steps.append(lambda: (w.provider_var.set("Fabric"), w.load_versions()))
-    steps.append(lambda: grab("1-server-fabric"))
-    steps.append(lambda: (w.provider_var.set("Paper"), w.load_versions()))
-    steps.append(lambda: w.next())
-    steps.append(lambda: grab("2-minecraft"))
-    steps.append(lambda: w.next())
-    steps.append(lambda: grab("3-settings-empty"))
+    def pick(name):
+        w.provider_var.set(name)
+        w.provider_changed()
 
     def fill():
         w.name_var.set("Lucas's SMP")
-        w.cfg.icon_path = str(icon)
-        w.icon_img = tk.PhotoImage(file=str(icon))
-        w.icon_preview.config(image=w.icon_img, text="", width=64, height=64)
-        w.icon_status.config(text="✔ server-icon.png", style="Ok.TLabel")
-        w.players_scale.set(45)
-        w.gamemode_var.set("Survival")
+        w.set_icon(str(icon))
+        w.players_var.set(250)
+        w.players_changed(250, from_spin=True)
+        w.check_over_100()
         w.difficulty_var.set("Hard")
         w.eula_var.set(True)
+        w.domain = {"enabled": True, "service": "Namecheap", "host": "play", "domain": "lucassmp.net", "password": "x"}
+        w.domain_label.config(text="play.lucassmp.net (Namecheap)")
+        w.sched = {"enabled": True, "repeat": "Weekly", "time": "18:00", "days": ["Fri", "Sat", "Sun"]}
+        from . import schedule
+        w.sched_label.config(text=schedule.describe(w.sched))
         w.update_buttons()
-    steps.append(fill)
-    steps.append(lambda: grab("3-settings-filled"))
+
+    def sched_dialog():
+        dialogs["s"] = w.schedule_dialog()
+
+    def domain_dialog():
+        dialogs["s"].destroy()
+        dialogs["d"] = w.domain_dialog()
 
     def play():
+        dialogs["d"].destroy()
         w.collect()
-        w.show(3)
+        w.cfg.folder = tempfile.mkdtemp()
+        w.cfg.installed_version = w.cfg.version
+        w.cfg.addons = ["voicechat", "vanish", "geyser"]
+        w.page = w.PLAY
+        w.enter_edit_mode()
         w.play_title.config(text=f"{w.cfg.name} is online!")
         w.progress.config(value=100)
         w.step_label.config(text="Open Minecraft → Multiplayer → Add Server, and paste the IP.")
         for l in ["[18:02:11 INFO]: Starting minecraft server version 1.21.11",
                   "[18:02:14 INFO]: [Gh0stAC] Gh0st AC 2.0.0 armed (Lite)",
+                  "[18:02:15 INFO]: [voicechat] Voice chat server started at port 24454",
                   "[18:02:19 WARN]: Can't keep up! Is the server overloaded?",
                   '[18:02:21 INFO]: Done (9.812s)! For help, type "help"']:
             w.log(l)
-        w.ip_vars["public"].set("86.45.120.17")
-        w.ip_vars["lan"].set("192.168.1.24")
-        w.ip_vars["local"].set("localhost")
-        w.port_label.config(text="✔ Port 25565 was opened on your router automatically, so friends anywhere can join "
-                                 "with the Friends IP.\nIf Windows asks about Java and the firewall, click Allow.", style="Ok.TLabel")
-        w.ip_box.grid(row=3, column=0, sticky="we", pady=(8, 0))
+        for k, v in {"domain": "play.lucassmp.net", "public": "86.45.120.17", "lan": "192.168.1.24", "local": "localhost"}.items():
+            w.ip_vars[k].set(v)
+        w.port_label.config(text="✔ Namecheap now points play.lucassmp.net at 86.45.120.17.\n"
+                                 "✔ Opened on your router automatically: 25565 TCP (Minecraft), 24454 UDP (Voice chat), "
+                                 "19132 UDP (Bedrock players (Geyser)). Friends anywhere can join.\n"
+                                 "If Windows asks about the firewall, click Allow.", style="Ok.TLabel")
+        w.show_ip_box()
         w.startstop_btn.config(state="normal")
-    steps.append(play)
-    steps.append(lambda: grab("4-play"))
+
+    steps = [
+        lambda: grab("1-server-paper"),
+        lambda: pick("Bedrock"),
+        lambda: grab("1-server-bedrock"),
+        lambda: w.show(w.SETTINGS),
+        lambda: grab("3-settings-bedrock"),
+        lambda: pick("Paper"),
+        lambda: w.next() if w.page == w.SERVER else w.show(w.SERVER),
+        lambda: w.show(w.MINECRAFT),
+        lambda: grab("2-minecraft"),
+        lambda: w.show(w.SETTINGS),
+        fill,
+        lambda: grab("3-settings-filled"),
+        sched_dialog,
+        lambda: grab("3-schedule", dialogs["s"]),
+        domain_dialog,
+        lambda: grab("3-custom-ip", dialogs["d"]),
+        play,
+        lambda: grab("4-play"),
+        lambda: w.show(w.ADDONS),
+        lambda: grab("5-plugins"),
+        lambda: w.show(w.SETTINGS),
+        lambda: grab("3-settings-edit"),
+    ]
 
     def go(i=0):
         if i < len(steps):
-            steps[i]()
+            try:
+                steps[i]()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print("step", i, "failed:", e)
             root.after(700, go, i + 1)
         else:
             root.destroy()
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    return 0 if len(shots) == 6 else 1
+    want = 10
+    return 0 if len(shots) == want else 1
