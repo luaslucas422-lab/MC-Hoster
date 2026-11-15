@@ -1,2 +1,2 @@
-selftest: failure, addons: success, scheduler: success
-commit: be6eaa50b5684849987a97c91c8e572768b5132b
+selftest: success, addons: success, scheduler: success
+commit: 324d06d3e7937e3ea7291e7c50de562256278a41
