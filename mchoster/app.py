@@ -53,7 +53,7 @@ class Wizard:
         self.page = 0
         self.edit = False          # True once the server exists: all tabs clickable, "Apply & restart"
         self.busy = False          # setting up / applying
-        self.over_100_ok = False   # said yes twice to more than 100 players
+        self.confirmed = 0   # how many times they said yes to a big player count
         self.versions_cache: dict[str, list[str]] = {}
         self.mc_checked_for = None
         self.addon_vars: dict[str, tk.BooleanVar] = {}
@@ -447,26 +447,36 @@ class Wizard:
             return self.players_var.get()
 
     def check_over_100(self) -> bool:
-        """More than 100 players asks twice. Saying no puts it back to 100."""
+        """Over 100 players asks 2 times, over 500 asks 5 times, over 1000 asks 7 times.
+        Saying no puts it back to the biggest number already confirmed."""
         n = self.players_value()
-        if n <= 100 or self.over_100_ok:
+        need = core.confirmations_needed(n)
+        if need <= self.confirmed:
             return True
-        ok = messagebox.askyesno("More than 100 players?",
-                                 f"Do you really want {n} players?\n\nMore than 100 players makes most PCs lag.",
-                                 parent=self.root)
-        if ok:
-            ram = core.ram_for_players(n, self.provider().kind == "fabric") / 1024
-            ok = messagebox.askyesno("Are you sure?",
-                                     f"Last check: {n} players"
-                                     + ("" if self.provider().bedrock else f" gives the server {ram:.1f} GB of RAM and") +
-                                     f" needs a strong PC and fast internet.\n\nKeep {n} players?",
-                                     icon="warning", parent=self.root)
-        if ok:
-            self.over_100_ok = True
-            return True
-        self.players_var.set(100)
-        self.players_changed(100, from_spin=True)
-        return False
+        modded = self.provider().kind == "fabric"
+        ram = core.ram_for_players(n, modded) / 1024
+        ramtxt = "" if self.provider().bedrock else f" and gives the server {ram:.1f} GB of RAM"
+        titles = ["More than 100 players?", "Are you sure?", "Really sure?", "Think about it...",
+                  "Your PC may struggle", "Are you REALLY sure?", "Last chance"]
+        texts = [
+            f"Do you really want {n} players?\n\nMore than 100 players makes most PCs lag.",
+            f"{n} players needs a strong PC and fast internet{ramtxt}.\n\nKeep {n} players?",
+            f"Over 500 players is huge. Most home internet can't handle {n} players.\n\nStill want {n}?",
+            f"Players will be kicked by lag and the PC may freeze while you host {n}.\n\nContinue with {n}?",
+            f"Fifth check: {n} players. Everything else on this PC will get slow.\n\nKeep {n} players?",
+            f"Over 1000 players is almost impossible from a home PC.\n\nDo you REALLY want {n}?",
+            f"Final check: {n} players. This is your last chance to go back.\n\nKeep {n} players?",
+        ]
+        for i in range(need):
+            if not messagebox.askyesno(f"{titles[i]} ({i + 1}/{need})", texts[i],
+                                       icon="warning" if i else "question", parent=self.root):
+                cap = core.confirmed_cap(i)
+                cap = min(cap, 100) if i < 2 else cap
+                self.players_var.set(cap)
+                self.players_changed(cap, from_spin=True)
+                return False
+        self.confirmed = need
+        return True
 
     def pick_icon(self):
         p = filedialog.askopenfilename(title="Server icon (64×64 PNG)", filetypes=[("PNG image", "*.png")])
@@ -1025,7 +1035,7 @@ class Wizard:
             self.set_icon(str(icon))
         else:
             self.clear_icon()
-        self.over_100_ok = c.players > 100
+        self.confirmed = core.confirmations_needed(c.players)
         self.players_var.set(c.players)
         self.players_changed(c.players, from_spin=True)
         self.gamemode_var.set(c.gamemode)

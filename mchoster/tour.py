@@ -58,8 +58,8 @@ def run(outdir: str) -> int:
     def fill():
         w.name_var.set("Lucas's SMP")
         w.set_icon(str(icon))
-        w.players_var.set(250)
-        w.players_changed(250, from_spin=True)
+        w.players_var.set(1200)
+        w.players_changed(1200, from_spin=True)
         w.check_over_100()
         w.difficulty_var.set("Hard")
         w.eula_var.set(True)

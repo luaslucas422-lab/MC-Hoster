@@ -28,13 +28,30 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
 BEDROCK_PORT = 19132
 BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-MAX_PLAYERS = 500
+MAX_PLAYERS = 1500
+# players above each limit need this many "yes" answers
+CONFIRM_TIERS = [(1000, 7), (500, 5), (100, 2)]
+
+
+def confirmations_needed(players: int) -> int:
+    for limit, times in CONFIRM_TIERS:
+        if players > limit:
+            return times
+    return 0
+
+
+def confirmed_cap(times: int) -> int:
+    """Most players that `times` confirmations allow."""
+    for limit, need in reversed(CONFIRM_TIERS):
+        if times < need:
+            return limit
+    return MAX_PLAYERS
 WINDOWS = os.name == "nt"
 NO_WINDOW = 0x08000000 if WINDOWS else 0  # CREATE_NO_WINDOW, so java never pops a console
 

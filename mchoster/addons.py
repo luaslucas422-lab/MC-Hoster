@@ -53,6 +53,8 @@ ADDONS = [
           {"bukkit": [["mr:rosestacker", "hangar:RoseStacker"]]}),
     Addon("essentials", "EssentialsX", "/home, /spawn, /tpa, /warp, kits, nicknames and more.",
           {"bukkit": [["mr:essentialsx", "hangar:EssentialsX"]]}),
+    Addon("vault", "Vault", "Economy and permissions link that shop, money and rank plugins need (VaultUnlocked).",
+          {"bukkit": [["mr:vaultunlocked", "hangar:VaultUnlocked", "hangar:Vault"]]}),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",
