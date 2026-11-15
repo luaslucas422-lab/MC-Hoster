@@ -32,7 +32,8 @@ class Addon:
     name: str
     desc: str
     # kind ("bukkit"/"fabric") -> list of files to install; each file is a list of places to try, in order:
-    # "mr:<modrinth slug>" or "hangar:<hangar slug>"
+    # "mr:<modrinth slug>", "hangar:<hangar slug>", "geysermc:<project>:<platform>" (download.geysermc.org)
+    # or "jenkins:<job url>:<file regex>" (newest build on a Jenkins server)
     sources: dict
     ports: list = field(default_factory=list)  # (port, "TCP"/"UDP", what for)
     note: str = ""
@@ -61,14 +62,16 @@ ADDONS = [
     Addon("ledger", "Ledger", "Logs every block change so you can roll back griefing.",
           {"fabric": [["mr:ledger"]]}),
     Addon("geyser", "Geyser + Floodgate", "Bedrock players (phone, console) can join this Java server.",
-          {"bukkit": [["mr:geyser"], ["mr:floodgate"]], "fabric": [["mr:geyser"], ["mr:floodgate"]]},
+          {"bukkit": [["mr:geyser", "geysermc:geyser:spigot"], ["mr:floodgate", "geysermc:floodgate:spigot"]],
+           "fabric": [["mr:geyser", "geysermc:geyser:fabric"], ["mr:floodgate", "geysermc:floodgate:fabric"]]},
           ports=[(19132, "UDP", "Bedrock players (Geyser)")], note="Bedrock players join on port 19132"),
     Addon("viaversion", "ViaVersion", "Players on newer Minecraft versions can join too.",
           {"bukkit": [["mr:viaversion", "hangar:ViaVersion"]]}),
     Addon("chunky", "Chunky", "Pre-generates the world (/chunky start) so exploring lags less.",
           {"bukkit": [["mr:chunky"]], "fabric": [["mr:chunky"]]}),
     Addon("spark", "spark", "Finds what is lagging the server (/spark profiler).",
-          {"bukkit": [["mr:spark"]], "fabric": [["mr:spark"]]}),
+          {"bukkit": [["mr:spark", "hangar:spark", r"jenkins:https://ci.lucko.me/job/spark/:spark-.*-bukkit\.jar"]],
+           "fabric": [["mr:spark"]]}),
     Addon("bluemap", "BlueMap", "A 3D map of your world in the browser.",
           {"bukkit": [["mr:bluemap"]], "fabric": [["mr:bluemap"]]},
           ports=[(8100, "TCP", "BlueMap web map")], note="Open http://localhost:8100"),
@@ -136,6 +139,23 @@ def _hangar(slug: str, version: str):
     raise NotFound(f"no Paper build on Hangar")
 
 
+def _geysermc(project: str, platform: str):
+    url = f"https://download.geysermc.org/v2/projects/{project}/versions/latest/builds/latest/downloads/{platform}"
+    j = core.http_json(f"https://download.geysermc.org/v2/projects/{project}/versions/latest/builds/latest", 20)
+    name = j.get("downloads", {}).get(platform, {}).get("name") or f"{project}-{platform}.jar"
+    return url, name, [], ""
+
+
+def _jenkins(job: str, pattern: str):
+    import re
+    base = job.rstrip("/") + "/lastSuccessfulBuild/"
+    j = core.http_json(base + "api/json", 20)
+    for a in j.get("artifacts", []):
+        if re.fullmatch(pattern, a.get("fileName", "")):
+            return base + "artifact/" + a["relativePath"], a["fileName"], [], ""
+    raise NotFound("no matching file in the newest build")
+
+
 def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, str, str]]:
     """Every file this preset needs for this server: (url, filename, deps, note, source). Raises NotFound."""
     p = cfg.prov
@@ -149,7 +169,12 @@ def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, 
             try:
                 if kind == "mr":
                     r = _modrinth(slug, loaders, cfg.version, exact)
-                elif p.kind == "bukkit":
+                elif kind == "geysermc":
+                    r = _geysermc(*slug.split(":", 1))
+                elif kind == "jenkins":
+                    job, _, pattern = slug.rpartition(":")
+                    r = _jenkins(job, pattern)
+                elif kind == "hangar" and p.kind == "bukkit":
                     r = _hangar(slug, cfg.version)
                 else:
                     continue
