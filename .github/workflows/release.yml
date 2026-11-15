@@ -1,0 +1,21 @@
+# Push a tag like v1.0.0 and this makes the GitHub release with dist/MC-Hoster.exe attached.
+# Notes come from .github/release-notes/<tag>.md if it exists.
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          notes=".github/release-notes/$TAG.md"
+          [ -f "$notes" ] || { echo "MC Hoster $TAG" > /tmp/n.md; notes=/tmp/n.md; }
+          gh release create "$TAG" dist/MC-Hoster.exe --title "MC Hoster ${TAG#v}" --notes-file "$notes" --latest
