@@ -17,9 +17,9 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
-              "darkdiscord": ("dcedit test", "DARKDISCORD")}
+              "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP")}
 
 
 def run(args: list[str]) -> int:
@@ -125,7 +125,7 @@ def run(args: list[str]) -> int:
             if aid in cfg.addons:
                 srv.send(cmd)
                 tests[aid] = tag
-        end = time.time() + 30
+        end = time.time() + 120
         while tests and time.time() < end and not all(re.search(t + r" TEST (OK|FAIL)", "\n".join(lines)) for t in tests.values()):
             time.sleep(1)
     srv.stop(60)

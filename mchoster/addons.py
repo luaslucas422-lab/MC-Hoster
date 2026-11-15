@@ -63,6 +63,8 @@ ADDONS = [
           note="Comes with Dark Shop for the money"),
     Addon("darkdiscord", "Dark Discord", "/discord and /dc send your Discord link; /dcedit (ops) sets it, Text or GUI mode.",
           {"bukkit": [["bundled:DarkDiscord.jar"]]}, note="Set your link in game: /dcedit link https://discord.gg/..."),
+    Addon("darkrtp", "Dark RTP", "/rtp: random teleport to the Overworld, Nether or End. /rtpq: go with another player.",
+          {"bukkit": [["bundled:DarkRTP.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",

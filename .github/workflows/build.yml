@@ -23,7 +23,7 @@ jobs:
         run: |
           mvn -B -q package
           mkdir -p ../darkplugins
-          cp darkshop/target/DarkShop.jar darkah/target/DarkAH.jar darkdiscord/target/DarkDiscord.jar ../darkplugins/
+          cp darkshop/target/DarkShop.jar darkah/target/DarkAH.jar darkdiscord/target/DarkDiscord.jar darkrtp/target/DarkRTP.jar ../darkplugins/
           mvn -B -q dependency:copy-dependencies -pl darkshop -DincludeScope=provided -DoutputDirectory=../../plugin-libs || true
           ls -la ../darkplugins
       - uses: actions/upload-artifact@v4

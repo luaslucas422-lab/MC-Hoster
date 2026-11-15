@@ -1,0 +1,22 @@
+name: DarkRTP
+version: ${project.version}
+main: dev.darkerdawnfr.darkrtp.DarkRTP
+api-version: "1.20"
+author: DarkerDawnFR
+description: /rtp (Overworld, Nether, End) and /rtpqueue. Made for MC Hoster.
+commands:
+  rtp:
+    description: Random teleport. Opens a menu, or /rtp overworld|nether|end.
+    aliases: [randomtp, wild]
+  rtpqueue:
+    description: Wait for another player, then you both teleport to the same random spot.
+    aliases: [rtpq]
+  darkrtp:
+    description: Dark RTP admin (reload, test).
+    permission: darkrtp.admin
+permissions:
+  darkrtp.admin:
+    default: op
+  darkrtp.bypass:
+    description: No countdown and no cooldown for /rtp.
+    default: op
