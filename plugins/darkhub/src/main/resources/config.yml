@@ -1,0 +1,16 @@
+# Dark Hub by DarkerDawnFR. Set hubs in game: stand there and type /hubset <number> [name].
+
+# Most players one hub can have.
+max-players: 100
+# Players within this many blocks of a hub count as being in it.
+radius: 150
+# Seconds to stand still before teleporting.
+countdown-seconds: 5
+# When you die without a bed, you respawn at the last hub you picked (or a random one).
+respawn-at-hub: true
+# Send brand new players to a random hub.
+new-players-to-hub: false
+prefix: "&8[&eHub&8] "
+
+# Filled in by /hubset. You can change the names here (and add bed: RED_BED to pick a colour).
+hubs: {}

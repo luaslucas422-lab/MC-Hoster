@@ -21,7 +21,7 @@ import java.util.UUID;
  * Dark Shop by DarkerDawnFR: the old DonutSMP shop.
  * /shop, /sell, /worth, /balance, /pay, /baltop, /eco and /darkshop (reload, test).
  */
-public class DarkShop extends JavaPlugin implements TabCompleter {
+public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.event.Listener {
     private Money money;
     private ShopMenus shop;
     private SellMenu sell;
@@ -38,6 +38,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter {
         baltop = new Baltop(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
+        getServer().getPluginManager().registerEvents(this, this);
         for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "darkshop")) {
             PluginCommand pc = getCommand(c);
             if (pc != null) {
@@ -59,6 +60,30 @@ public class DarkShop extends JavaPlugin implements TabCompleter {
     @Override
     public void onDisable() {
         if (money != null) money.unhook();
+    }
+
+    /**
+     * When EssentialsX (or another plugin) also has /pay, /bal, /sell..., the one that loaded first wins.
+     * This sends them to Dark Shop instead, so /pay always uses Dark Shop.
+     */
+    @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.LOWEST)
+    public void ownCommands(org.bukkit.event.player.PlayerCommandPreprocessEvent e) {
+        if (!getConfig().getBoolean("own-commands", true)) return;
+        String msg = e.getMessage();
+        if (!msg.startsWith("/") || msg.length() < 2) return;
+        String word = msg.substring(1).split(" ", 2)[0].toLowerCase(Locale.ROOT);
+        if (word.contains(":")) return;
+        PluginCommand ours = getCommand(word);
+        if (ours == null) {
+            for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty")) {
+                PluginCommand pc = getCommand(c);
+                if (pc != null && pc.getAliases().contains(word)) ours = pc;
+            }
+        }
+        if (ours == null || ours.getName().equals("darkshop")) return;
+        org.bukkit.command.Command current = Bukkit.getPluginCommand(word);
+        if (current == ours) return; // already ours
+        e.setMessage("/darkshop:" + msg.substring(1));
     }
 
     public Money money() {

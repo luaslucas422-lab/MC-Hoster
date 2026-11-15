@@ -1,6 +1,6 @@
 # Dark RTP by DarkerDawnFR: /rtp and /rtpqueue (/rtpq).
 
-# Seconds to stand still before /rtp teleports you (ops skip it).
+# Seconds to stand still before /rtp teleports you (everyone, ops too).
 countdown-seconds: 5
 # Seconds between two /rtp (ops skip it).
 cooldown-seconds: 20

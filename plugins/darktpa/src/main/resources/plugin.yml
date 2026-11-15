@@ -1,0 +1,37 @@
+name: DarkTPA
+version: ${project.version}
+main: dev.darkerdawnfr.darktpa.DarkTPA
+api-version: "1.20"
+author: DarkerDawnFR
+description: DonutSMP teleports - /tpa, /tpahere, /tpauto, /tp, /tphere. Made for MC Hoster.
+softdepend: [DarkCombat]
+commands:
+  tpa:
+    description: Ask to teleport to a player.
+    aliases: [tpask]
+  tpahere:
+    description: Ask a player to teleport to you.
+  tpaccept:
+    description: Accept a teleport request.
+    aliases: [tpyes]
+  tpdeny:
+    description: Deny a teleport request.
+    aliases: [tpno]
+  tpacancel:
+    description: Cancel the requests you sent.
+  tpauto:
+    description: Turn auto-accepting teleport requests on or off.
+    aliases: [tpaauto]
+  tp:
+    description: Teleport to a player (ops).
+    permission: darktpa.admin
+    aliases: [teleport]
+  tphere:
+    description: Bring a player to you (ops).
+    permission: darktpa.admin
+  darktpa:
+    description: Dark TPA admin (reload, test).
+    permission: darktpa.admin
+permissions:
+  darktpa.admin:
+    default: op

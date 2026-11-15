@@ -1,0 +1,78 @@
+# Dark Shards by DarkerDawnFR: earn shards by playing and killing players, spend them in /shards.
+# Change anything here, then /shards reload.
+
+earn:
+  # Shards for playing: `amount` every `minutes` minutes online.
+  amount: 1
+  minutes: 5
+  # Don't give shards to players who haven't moved (AFK).
+  skip-afk: true
+  # Shards for killing a player.
+  kill: 5
+  # No shards for killing the same player again within this many minutes.
+  same-player-cooldown-minutes: 10
+
+effects:
+  particles: true
+  held-particles: true
+  sounds: true
+
+shop-rows: 3
+
+# The shard shop. Every item can be changed: name, material, ability, size, price, hours, slot, lore, speed.
+# ability: pickaxe (mines size x size), shovel (digs size x size), axe (cuts the whole tree), hoe (harvests and replants size x size).
+# {size} in the lore becomes e.g. 3x3. speed = how fast it mines (a netherite pickaxe is 9).
+items:
+  pickaxe:
+    name: "&d&lShard Pickaxe"
+    material: AMETHYST_SHARD
+    ability: pickaxe
+    size: 3
+    speed: 9
+    price: 50
+    hours: 24
+    slot: 10
+    lore:
+      - "&7An amethyst shard that mines"
+      - "&7like a pickaxe, &d{size} &7at a time."
+  axe:
+    name: "&d&lShard Axe"
+    material: NETHERITE_AXE
+    ability: axe
+    max-logs: 128
+    speed: 9
+    price: 40
+    hours: 24
+    slot: 12
+    lore:
+      - "&7Cuts down the whole tree"
+      - "&7in one go."
+  shovel:
+    name: "&d&lShard Shovel"
+    material: NETHERITE_SHOVEL
+    ability: shovel
+    size: 3
+    speed: 9
+    price: 30
+    hours: 24
+    slot: 14
+    lore:
+      - "&7Digs &d{size} &7at a time."
+  hoe:
+    name: "&d&lShard Hoe"
+    material: NETHERITE_HOE
+    ability: hoe
+    size: 3
+    speed: 9
+    price: 25
+    hours: 24
+    slot: 16
+    lore:
+      - "&7Harvests grown crops &d{size}"
+      - "&7and plants them again."
+
+prefix: "&8[&d✦ Shards&8] "
+messages:
+  earned-bar: "&d+{amount} ✦ Shard"
+  kill: "&7You got &d✦ {amount} shards &7for killing &f{player}&7."
+  expired: "&7Your {item} &7ran out (24 hours) and broke."

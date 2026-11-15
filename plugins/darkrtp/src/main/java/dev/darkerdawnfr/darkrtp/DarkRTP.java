@@ -113,7 +113,22 @@ public class DarkRTP extends JavaPlugin implements Listener, TabCompleter {
         });
     }
 
+    /** True if Dark Combat says this player is in combat. */
+    public static boolean inCombat(Player p) {
+        org.bukkit.plugin.Plugin c = Bukkit.getPluginManager().getPlugin("DarkCombat");
+        if (c == null || !c.isEnabled()) return false;
+        try {
+            return Boolean.TRUE.equals(c.getClass().getMethod("inCombat", UUID.class).invoke(c, p.getUniqueId()));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public void rtp(Player p, World w) {
+        if (inCombat(p)) {
+            say(p, "&cYou can't teleport while you're in combat.");
+            return;
+        }
         if (pending.containsKey(p.getUniqueId())) {
             say(p, "&cYou're already teleporting.");
             return;
@@ -137,7 +152,7 @@ public class DarkRTP extends JavaPlugin implements Listener, TabCompleter {
                 say(p, "&cCouldn't find a safe spot, try again.");
                 return;
             }
-            int secs = p.hasPermission("darkrtp.bypass") ? 0 : Math.max(0, getConfig().getInt("countdown-seconds", 5));
+            int secs = Math.max(0, getConfig().getInt("countdown-seconds", 5)); // everyone waits, ops too
             countdown(p, secs, true, () -> {
                 go(p, loc);
                 cooldown.put(p.getUniqueId(), System.currentTimeMillis() + getConfig().getLong("cooldown-seconds", 20) * 1000);
@@ -181,6 +196,10 @@ public class DarkRTP extends JavaPlugin implements Listener, TabCompleter {
     }
 
     private void go(Player p, Location loc) {
+        if (inCombat(p)) {
+            say(p, "&cTeleport cancelled, you're in combat.");
+            return;
+        }
         Location to = loc.clone();
         to.setYaw(p.getLocation().getYaw());
         to.setPitch(p.getLocation().getPitch());

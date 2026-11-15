@@ -1,0 +1,16 @@
+name: DarkCombat
+version: ${project.version}
+main: dev.darkerdawnfr.darkcombat.DarkCombat
+api-version: "1.20"
+author: DarkerDawnFR
+description: DonutSMP combat tag (20 seconds, /combat time to change). Made for MC Hoster.
+commands:
+  combat:
+    description: Your combat time. Ops - /combat time <seconds>.
+    aliases: [ct, combattag]
+permissions:
+  darkcombat.admin:
+    default: op
+  darkcombat.bypass:
+    description: Never blocked by combat.
+    default: false

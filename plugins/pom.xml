@@ -13,6 +13,11 @@
     <module>darkdiscord</module>
     <module>darkrtp</module>
     <module>darkscoreboard</module>
+    <module>darktpa</module>
+    <module>darkcombat</module>
+    <module>darkhub</module>
+    <module>darkshards</module>
+    <module>darkhomes</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

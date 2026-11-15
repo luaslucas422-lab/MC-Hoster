@@ -2,6 +2,7 @@ name: DarkRTP
 version: ${project.version}
 main: dev.darkerdawnfr.darkrtp.DarkRTP
 api-version: "1.20"
+softdepend: [DarkCombat]
 author: DarkerDawnFR
 description: /rtp (Overworld, Nether, End) and /rtpqueue. Made for MC Hoster.
 commands:
@@ -18,5 +19,5 @@ permissions:
   darkrtp.admin:
     default: op
   darkrtp.bypass:
-    description: No countdown and no cooldown for /rtp.
+    description: No cooldown between /rtp (everyone still has the 5-second countdown).
     default: op

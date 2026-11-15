@@ -1,6 +1,10 @@
 # Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
 # Change prices here, then /darkshop reload.
 
+# /pay, /bal, /baltop, /sell, /worth, /eco, /shop and /bounty always use Dark Shop,
+# even if EssentialsX or another plugin has the same commands.
+own-commands: true
+
 # Money a new player starts with (only used when Dark Shop keeps the balances itself).
 start-balance: 0
 

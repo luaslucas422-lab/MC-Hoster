@@ -48,6 +48,9 @@ public class Hooks {
         HELP.put("x", "your X (also {y} {z})");
         HELP.put("health", "your health");
         HELP.put("level", "your XP level");
+        HELP.put("shards", "your shards");
+        HELP.put("combat", "combat seconds left (0 = not in combat)");
+        HELP.put("homes", "how many homes you set");
         HELP.put("listings", "your /ah listings");
         HELP.put("ah_total", "all /ah listings");
         HELP.put("rtp_queue", "players in /rtpq");
@@ -56,7 +59,7 @@ public class Hooks {
         HELP.put("time", "the time now");
     }
 
-    private Plugin shop, ah, rtp, discord, papi;
+    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes;
     private Object vault;
 
     public void hook() {
@@ -65,6 +68,9 @@ public class Hooks {
         rtp = enabled("DarkRTP");
         discord = enabled("DarkDiscord");
         papi = enabled("PlaceholderAPI");
+        shards = enabled("DarkShards");
+        combat = enabled("DarkCombat");
+        homes = enabled("DarkHomes");
         vault = null;
         if (enabled("Vault") != null || enabled("VaultUnlocked") != null) {
             try {
@@ -87,6 +93,9 @@ public class Hooks {
         if (ah != null) out.add("Dark AH");
         if (rtp != null) out.add("Dark RTP");
         if (discord != null) out.add("Dark Discord");
+        if (shards != null) out.add("Dark Shards");
+        if (combat != null) out.add("Dark Combat");
+        if (homes != null) out.add("Dark Homes");
         if (vault != null) out.add("Vault");
         if (papi != null) out.add("PlaceholderAPI");
         return out;
@@ -149,6 +158,12 @@ public class Hooks {
             }
             text = rep(text, "online", String.valueOf(Bukkit.getOnlinePlayers().size()));
             text = rep(text, "max", String.valueOf(Bukkit.getMaxPlayers()));
+            if (text.contains("{shards}")) text = rep(text, "shards", num(shards, "shards", id));
+            if (text.contains("{combat}")) text = rep(text, "combat", num(combat, "remaining", id));
+            if (text.contains("{homes}")) {
+                Object m = homes != null ? call(homes, "of", id) : null;
+                text = rep(text, "homes", m instanceof java.util.Map<?, ?> map ? String.valueOf(map.size()) : "0");
+            }
             if (text.contains("{listings}")) text = rep(text, "listings", num(ah, "listingCount", id));
             if (text.contains("{ah_total}")) text = rep(text, "ah_total", num(ah, "listingTotal"));
             if (text.contains("{rtp_queue}")) text = rep(text, "rtp_queue", num(rtp, "queueSize"));
