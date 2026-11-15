@@ -251,4 +251,51 @@ def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
             failed.append(a.name)
             log(f"  ! {a.name} is not available for {cfg.prov.name} {cfg.version} ({e})")
     cfg.addon_files["_version"] = [cfg.version]
+    ensure_java_for_addons(cfg, log)
     return failed
+
+
+def jar_java(jar: Path) -> int:
+    """The Java version a jar was built for (from its .class files), 0 if unknown."""
+    import zipfile
+    best = 0
+    try:
+        with zipfile.ZipFile(jar) as z:
+            n = 0
+            for info in z.infolist():
+                if not info.filename.endswith(".class") or info.filename.startswith("META-INF/"):
+                    continue
+                with z.open(info) as f:
+                    head = f.read(8)
+                if head[:4] == b"\xca\xfe\xba\xbe":
+                    best = max(best, int.from_bytes(head[6:8], "big") - 44)
+                n += 1
+                if n >= 40:
+                    break
+    except Exception:
+        return 0
+    return best
+
+
+def ensure_java_for_addons(cfg: core.ServerConfig, log=print) -> None:
+    """Some plugins need a newer Java than the server would (WorldEdit 7.4 needs Java 25). Switch Java if so."""
+    if cfg.prov.bedrock or not cfg.java:
+        return
+    folder = Path(cfg.folder) / cfg.prov.addon_folder
+    need, who = 0, ""
+    for aid, files in cfg.addon_files.items():
+        for name in files:
+            j = jar_java(folder / name)
+            if j > need:
+                need, who = j, ADDON_BY_ID[aid].name if aid in ADDON_BY_ID else name
+    have = core.java_major(cfg.java) or 0
+    if need <= have:
+        return
+    found = core.find_java(need, Path(cfg.minecraft_dir) if cfg.minecraft_dir else None, cfg.provider == "spigot")
+    if found:
+        cfg.java = str(found[0])
+    else:
+        log(f"{who} needs Java {need}, getting it (only the first time).")
+        cfg.java = str(core.download_java(need, log=log, jdk=cfg.provider == "spigot"))
+    log(f"{who} needs Java {need}, so the server now runs on Java {need}.")
+    core.write_start_script(cfg)
