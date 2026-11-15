@@ -281,23 +281,30 @@ def _java_candidates(mc_dir: Path | None) -> list[Path]:
     return out
 
 
-def find_java(min_major: int, mc_dir: Path | None = None) -> tuple[Path, int] | None:
+def is_jdk(java: Path) -> bool:
+    return (java.parent / ("javac.exe" if WINDOWS else "javac")).is_file()
+
+
+def find_java(min_major: int, mc_dir: Path | None = None, jdk: bool = False) -> tuple[Path, int] | None:
+    """jdk=True only accepts a full JDK (Spigot's BuildTools has to compile)."""
     best = None
     for p in _java_candidates(mc_dir):
+        if jdk and not is_jdk(p):
+            continue
         m = java_major(p)
         if m and m >= min_major and (best is None or m < best[1]):  # the closest version is the safest
             best = (p, m)
     return best
 
 
-def download_java(major: int, progress=None, log=print) -> Path:
+def download_java(major: int, progress=None, log=print, jdk: bool = False) -> Path:
     os_name = "windows" if WINDOWS else ("mac" if sys.platform == "darwin" else "linux")
     import platform
     arch = {"amd64": "x64", "x86_64": "x64", "arm64": "aarch64", "aarch64": "aarch64"}.get(platform.machine().lower(), "x64")
-    url = f"https://api.adoptium.net/v3/binary/latest/{major}/ga/{os_name}/{arch}/jre/hotspot/normal/eclipse"
-    target = app_dir() / "java" / str(major)
+    url = f"https://api.adoptium.net/v3/binary/latest/{major}/ga/{os_name}/{arch}/{'jdk' if jdk else 'jre'}/hotspot/normal/eclipse"
+    target = app_dir() / "java" / (f"{major}-jdk" if jdk else str(major))
     archive = app_dir() / "java" / (f"java{major}.zip" if WINDOWS else f"java{major}.tar.gz")
-    log(f"Downloading Java {major} (Eclipse Temurin)...")
+    log(f"Downloading Java {major}{' JDK' if jdk else ''} (Eclipse Temurin)...")
     download(url, archive, progress, timeout=120)
     shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True)
@@ -846,13 +853,14 @@ def setup_server(cfg: ServerConfig, log=print, progress=None, step=None) -> Serv
 
     st(0, len(steps), steps[0])
     need = required_java(cfg.version)
-    found = find_java(need, mc_dir)
+    jdk = provider.id == "spigot"  # BuildTools compiles, so it needs a JDK, not just a JRE
+    found = find_java(need, mc_dir, jdk)
     if found:
         log(f"Using Java {found[1]}: {found[0]}")
         cfg.java = str(found[0])
     else:
-        log(f"No Java {need} on this PC, getting one (only the first time).")
-        cfg.java = str(download_java(need, progress, log))
+        log(f"No Java {need}{' JDK' if jdk else ''} on this PC, getting one (only the first time).")
+        cfg.java = str(download_java(need, progress, log, jdk))
 
     if not cfg.folder:
         cfg.folder = str(new_server_folder(cfg.name))
