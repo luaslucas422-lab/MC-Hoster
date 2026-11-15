@@ -278,8 +278,9 @@ public class DarkHub extends JavaPlugin implements Listener, TabCompleter {
             if (m.getInventory().getItem(13) == null || m.getInventory().getItem(13).getType() != Material.ENDER_EYE) fails.add("random button not at the end");
             if (random() == null) fails.add("no random hub");
             if (players(hs.get(1)) != 0) fails.add("player count");
-            getConfig().set("max-players", 0);
-            if (random() != null) fails.add("full hubs still picked");
+            if (max() != 100) fails.add("max players is " + max());
+            getConfig().set("max-players", 250);
+            if (max() != 250) fails.add("max players setting ignored");
         } catch (Throwable t) {
             fails.add(t.toString());
             getLogger().log(java.util.logging.Level.WARNING, "test failed", t);
