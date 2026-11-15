@@ -50,7 +50,7 @@ jobs:
           - { type: pufferfish, version: latest }
           - { type: spigot, version: "1.21.11" }
           - { type: bedrock, version: latest }
-          - { type: paper, version: latest, extra: --addons }
+          - { type: paper, version: "1.21.11", extra: --addons }
           - { type: fabric, version: "1.21.1", extra: --addons }
     steps:
       - uses: actions/checkout@v4

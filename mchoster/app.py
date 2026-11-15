@@ -828,7 +828,9 @@ class Wizard:
         self.addons_folder_btn.state(["!disabled"])
         self.addons_sub.config(text=f"Tick the {what} you want, then click Apply & restart. They are downloaded for "
                                     f"{p.name} {self.version_var.get() or self.cfg.version} from Modrinth. "
-                                    f"Gh0st AC is in tab 3. Your own {what} go in the {p.addon_folder} folder.")
+                                    f"Gh0st AC is in tab 3. Your own {what} go in the {p.addon_folder} folder." +
+                                    ("\nOn the very newest version some plugins may not be updated yet: check the console after a restart."
+                                     if p.kind == "bukkit" else ""))
         for i, a in enumerate(addons.addons_for(p)):
             v = tk.BooleanVar(value=a.id in self.cfg.addons)
             self.addon_vars[a.id] = v

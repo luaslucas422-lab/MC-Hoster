@@ -114,7 +114,7 @@ def _modrinth(project: str, loaders: list[str], version: str, exact: bool):
         # Plugins often keep working on newer versions without saying so.
         vs = core.http_json(f"{MODRINTH}/project/{project}/version?{_q({'loaders': loaders})}", 20)
         if vs:
-            note = f" (not marked for {version} yet, usually fine)"
+            note = f" (! not made for {version} yet, it might not load)"
     if not vs:
         raise NotFound(f"no {'/'.join(loaders)} build for {version} on Modrinth")
     v = vs[0]
@@ -134,7 +134,7 @@ def _hangar(slug: str, version: str):
             if not url:
                 raise NotFound("Hangar only links to an outside download")
             name = (dl.get("fileInfo") or {}).get("name") or f"{slug}.jar"
-            note = "" if "platformVersion" in q else f" (not marked for {version} yet, usually fine)"
+            note = "" if "platformVersion" in q else f" (! not made for {version} yet, it might not load)"
             return url, name, [], note
     raise NotFound(f"no Paper build on Hangar")
 

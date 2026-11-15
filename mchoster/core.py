@@ -1115,7 +1115,7 @@ def ports_for(cfg: ServerConfig, extra: list | None = None) -> list[tuple[int, s
 
 
 class ServerProcess:
-    DONE = re.compile(r"Done \(\d|Server started\.")
+    DONE = re.compile(r"INFO\]: Done \(\d+[.,]\d+s\)! For help|Server started\.")  # not a plugin's own "Done (...)"
 
     def __init__(self, cfg: ServerConfig, on_line=None, on_ready=None, on_exit=None):
         self.cfg = cfg
