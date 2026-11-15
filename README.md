@@ -22,7 +22,7 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
    - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
@@ -30,6 +30,12 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark AH**: DonutSMP-style `/ah`: `/ah sell <price>`, sort, filter, search, Your Items, 48-hour listings.
    - **Dark RTP**: `/rtp` (menu: Overworld, Nether, End, 5-second countdown, safe spots only), `/rtpqueue` or `/rtpq` (matched with another player, both sent to the same spot).
    - **Dark Scoreboard**: the old DonutSMP sidebar (titled *Test SMP*: money, kills, deaths, bounty, playtime, online, ping) and tab list header/footer/names. Reads money, bounty, baltop rank, /ah listings, /rtpq and the Discord link from the other Dark plugins, plus PlaceholderAPI. Ops edit everything in game with `/dsb edit`; anyone can hide theirs with `/dsb toggle`.
+   - **Dark Homes**: the modern DonutSMP `/home` menu (a bed per home, delete buttons), `/sethome`, `/delhome`. 5 homes, more with `darkhomes.homes.<n>`.
+   - **Dark TPA**: `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny`, `/tpacancel`, `/tpauto` (auto-accept), and `/tp`, `/tphere` for ops.
+   - **Dark Hub**: `/hub` menu with a bed per hub (own names, 100 players each) and a Random Hub button at the end. Ops set them with `/hubset <number> [name]`. You respawn at your hub if you have no bed.
+   - **Dark Combat**: 20-second combat tag in dark colours above the hotbar; no teleporting, logging out kills you. `/combat time <seconds>` changes it.
+   - **Dark Shards**: shards for playing and killing players, `/shards` shop with 24-hour shard tools (the Shard Pickaxe is an amethyst shard that mines 3x3), purple particles and amethyst sounds. Every item is editable in its config.
+   - Every teleport (home, hub, tpa, tp, rtp) is a 5-second countdown you can't move in, and is blocked in combat.
    - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).
 
    Downloaded for your exact version (Modrinth, Hangar, GeyserMC), with their required libraries. Unticking removes them. Their ports (voice chat 24454 UDP, Geyser 19132 UDP, BlueMap 8100) are opened too.
