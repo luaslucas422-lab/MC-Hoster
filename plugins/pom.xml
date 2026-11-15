@@ -12,6 +12,7 @@
     <module>darkah</module>
     <module>darkdiscord</module>
     <module>darkrtp</module>
+    <module>darkscoreboard</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

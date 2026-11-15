@@ -66,6 +66,9 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
 
     public Eco eco() { return eco; }
     public AuctionHouse ah() { return ah; }
+    // Used by Dark Scoreboard.
+    public int listingCount(UUID id) { return ah.of(id).size(); }
+    public int listingTotal() { return ah.all().size(); }
 
     public String msg(String key) {
         return Util.color(getConfig().getString("messages.prefix", "") + getConfig().getString("messages." + key, key));

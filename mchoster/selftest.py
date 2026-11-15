@@ -17,9 +17,10 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
-              "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP")}
+              "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
+              "darkscoreboard": ("dsb test", "DARKSCOREBOARD")}
 
 
 def run(args: list[str]) -> int:

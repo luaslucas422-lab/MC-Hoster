@@ -154,6 +154,20 @@ public class Money {
         return out;
     }
 
+    public void setName(UUID id, String name) {
+        names.put(id, name);
+    }
+
+    /** Every built-in account with a known name. */
+    public List<Baltop.Row> builtInRows() {
+        List<Baltop.Row> out = new ArrayList<>();
+        for (Map.Entry<UUID, Double> e : balances.entrySet()) {
+            String name = names.getOrDefault(e.getKey(), Bukkit.getOfflinePlayer(e.getKey()).getName());
+            if (name != null) out.add(new Baltop.Row(e.getKey(), name, e.getValue()));
+        }
+        return out;
+    }
+
     /** Removes an account completely (used by the self test). */
     public void forget(UUID id) {
         if (balances.remove(id) != null) dirty = true;

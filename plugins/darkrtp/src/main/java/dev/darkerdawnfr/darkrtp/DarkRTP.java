@@ -60,6 +60,11 @@ public class DarkRTP extends JavaPlugin implements Listener, TabCompleter {
         getLogger().info("Dark RTP ready. Worlds: " + worlds().keySet());
     }
 
+    /** Used by Dark Scoreboard. */
+    public int queueSize() {
+        return queue.size();
+    }
+
     private String prefix() {
         return Util.color(getConfig().getString("prefix", "&8[&dRTP&8] "));
     }

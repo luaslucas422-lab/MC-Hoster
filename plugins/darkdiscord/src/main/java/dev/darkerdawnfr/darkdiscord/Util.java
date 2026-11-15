@@ -98,6 +98,19 @@ public final class Util {
         return it;
     }
 
+    /** A player head with a name and lore. */
+    public static ItemStack head(org.bukkit.OfflinePlayer owner, String name, List<String> lore) {
+        ItemStack it = item(Material.PLAYER_HEAD, 1, name, lore);
+        if (owner != null && it.getItemMeta() instanceof org.bukkit.inventory.meta.SkullMeta sm) {
+            try {
+                sm.setOwningPlayer(owner);
+                it.setItemMeta(sm);
+            } catch (Throwable ignored) {
+            }
+        }
+        return it;
+    }
+
     public static ItemStack glass() {
         return item(Material.GRAY_STAINED_GLASS_PANE, " ");
     }

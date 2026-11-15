@@ -139,6 +139,10 @@ worth:
   SHULKER_SHELL: 500
   TOTEM_OF_UNDYING: 200
 
+# /bounty: put money on someone's head, the player who kills them gets it.
+bounty:
+  min: 100
+
 messages:
   prefix: "&8[&dDark Shop&8] "
   not-enough: "&cYou don't have enough money. You need &f{price}&c."
@@ -146,3 +150,5 @@ messages:
   bought: "&aYou bought &f{amount}x {item} &afor &f{price}&a."
   sold: "&aYou sold &f{amount} &aitems for &f{price}&a."
   nothing-sold: "&7None of those items can be sold, so you got them back."
+  bounty-placed: "&c{player} &7put a &a{price} &7bounty on &c{target}&7! &8(total {total})"
+  bounty-claimed: "&c{killer} &7killed &c{target} &7and got the &a{price} &7bounty!"
