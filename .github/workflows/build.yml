@@ -1,0 +1,84 @@
+name: Build MC Hoster
+on:
+  push:
+    paths-ignore: ['dist/**', 'screenshots/**', '**.md']
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  PYTHONUTF8: "1"
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller pillow
+      - name: Click through every tab (from source)
+        run: python MC-Hoster.py --tour screenshots
+      - name: Build MC-Hoster.exe
+        run: >
+          pyinstaller --noconfirm --onefile --windowed --name MC-Hoster --icon assets/icon.ico
+          --add-data "assets;assets" --add-data "gh0stac;gh0stac" MC-Hoster.py
+      - name: The exe opens its window
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\MC-Hoster.exe -ArgumentList '--tour','exe-shots' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "exe tour failed: $($p.ExitCode)" }
+          Get-ChildItem exe-shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MC-Hoster
+          path: |
+            dist/MC-Hoster.exe
+            screenshots/*.png
+
+  selftest:
+    # A real server per type, set up exactly like the window does it, then started and checked.
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { type: paper, version: latest }
+          - { type: paper, version: "1.21.1" }
+          - { type: paper, version: "1.20.6" }
+          - { type: fabric, version: "1.21.1" }
+          - { type: purpur, version: latest }
+          - { type: pufferfish, version: latest }
+          - { type: spigot, version: "1.21.11" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - name: ${{ matrix.type }} ${{ matrix.version }}
+        timeout-minutes: 30
+        run: python -u MC-Hoster.py --selftest ${{ matrix.type }} ${{ matrix.version }}
+
+  publish:
+    # Puts the exe and the screenshots in the repo once everything passed.
+    needs: [exe, selftest]
+    if: always() && needs.exe.result == 'success' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: MC-Hoster
+          path: out
+      - run: |
+          mkdir -p dist screenshots
+          cp out/dist/MC-Hoster.exe dist/
+          cp out/screenshots/*.png screenshots/ 2>/dev/null || true
+          rm -f screenshots/_icon.png
+          echo "selftest: ${{ needs.selftest.result }}" > dist/BUILD.txt
+          echo "commit: ${{ github.sha }}" >> dist/BUILD.txt
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add dist screenshots
+          git commit -m "MC-Hoster.exe from ${{ github.sha }} [skip ci]" || exit 0
+          git push
