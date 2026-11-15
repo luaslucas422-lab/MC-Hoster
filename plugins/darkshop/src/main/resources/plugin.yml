@@ -1,0 +1,32 @@
+name: DarkShop
+version: ${project.version}
+main: dev.darkerdawnfr.darkshop.DarkShop
+api-version: "1.20"
+author: DarkerDawnFR
+description: The old DonutSMP shop (End, Nether, Gear, Food), /sell and money. Made for MC Hoster.
+softdepend: [Vault, VaultUnlocked]
+loadbefore: [DarkAH]
+commands:
+  shop:
+    description: Open the shop.
+    aliases: [store]
+  sell:
+    description: Open the sell chest. Close it to get paid.
+  worth:
+    description: What the item in your hand sells for.
+  balance:
+    description: Your money (or someone else's).
+    aliases: [bal, money]
+  pay:
+    description: Give money to a player.
+  baltop:
+    description: The richest players.
+  eco:
+    description: Give, take or set money (ops).
+    permission: darkshop.admin
+  darkshop:
+    description: Dark Shop admin (reload, test).
+    permission: darkshop.admin
+permissions:
+  darkshop.admin:
+    default: op

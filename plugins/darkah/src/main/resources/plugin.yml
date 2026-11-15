@@ -1,0 +1,20 @@
+name: DarkAH
+version: ${project.version}
+main: dev.darkerdawnfr.darkah.DarkAH
+api-version: "1.20"
+author: DarkerDawnFR
+description: A DonutSMP-style auction house (/ah). Made for MC Hoster.
+softdepend: [DarkShop, Vault, VaultUnlocked, Essentials, CMI]
+commands:
+  ah:
+    description: Open the auction house. /ah sell <price> sells the item in your hand.
+    aliases: [auction, auctionhouse]
+  darkah:
+    description: Dark AH admin (reload, test).
+    permission: darkah.admin
+permissions:
+  darkah.admin:
+    default: op
+  darkah.unlimited:
+    description: No limit on how many items you can sell at once.
+    default: op

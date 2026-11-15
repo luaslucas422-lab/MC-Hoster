@@ -33,7 +33,8 @@ class Addon:
     desc: str
     # kind ("bukkit"/"fabric") -> list of files to install; each file is a list of places to try, in order:
     # "mr:<modrinth slug>", "hangar:<hangar slug>", "geysermc:<project>:<platform>" (download.geysermc.org)
-    # or "jenkins:<job url>:<file regex>" (newest build on a Jenkins server)
+    # "jenkins:<job url>:<file regex>" (newest build on a Jenkins server)
+    # or "bundled:<file>" (one of the Dark plugins that come inside MC Hoster, in darkplugins/)
     sources: dict
     ports: list = field(default_factory=list)  # (port, "TCP"/"UDP", what for)
     note: str = ""
@@ -55,6 +56,13 @@ ADDONS = [
           {"bukkit": [["mr:essentialsx", "hangar:EssentialsX"]]}),
     Addon("vault", "Vault", "Economy and permissions link that shop, money and rank plugins need (VaultUnlocked).",
           {"bukkit": [["mr:vaultunlocked", "hangar:VaultUnlocked", "hangar:Vault"]]}),
+    Addon("darkshop", "Dark Shop", "The old DonutSMP /shop (End, Nether, Gear, Food), /sell, /bal, /pay, /baltop.",
+          {"bukkit": [["bundled:DarkShop.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
+    Addon("darkah", "Dark AH", "DonutSMP-style auction house: /ah, /ah sell <price>, sort, filter, search.",
+          {"bukkit": [["bundled:DarkAH.jar"], ["bundled:DarkShop.jar"]]},
+          note="Comes with Dark Shop for the money"),
+    Addon("darkdiscord", "Dark Discord", "/discord and /dc send your Discord link; /dcedit (ops) sets it, Text or GUI mode.",
+          {"bukkit": [["bundled:DarkDiscord.jar"]]}, note="Set your link in game: /dcedit link https://discord.gg/..."),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",
@@ -158,6 +166,30 @@ def _jenkins(job: str, pattern: str):
     raise NotFound("no matching file in the newest build")
 
 
+def bundled_jar(name: str) -> Path:
+    """A Dark plugin that ships inside MC Hoster."""
+    import sys
+    for p in (core.resource("darkplugins", name), Path(sys.argv[0]).resolve().parent / "darkplugins" / name):
+        if p.exists():
+            return p
+    raise NotFound(f"{name} is missing from MC Hoster")
+
+
+def _bundled_outdated(addon: Addon, cfg: core.ServerConfig) -> bool:
+    """True if this MC Hoster has a different copy of a bundled jar than the server (MC Hoster was updated)."""
+    folder = Path(cfg.folder) / cfg.prov.addon_folder
+    for candidates in addon.files_for(cfg.prov.kind):
+        for c in candidates:
+            if c.startswith("bundled:"):
+                name = c.split(":", 1)[1]
+                try:
+                    if bundled_jar(name).read_bytes() != (folder / name).read_bytes():
+                        return True
+                except Exception:
+                    return True
+    return False
+
+
 def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, str, str]]:
     """Every file this preset needs for this server: (url, filename, deps, note, source). Raises NotFound."""
     p = cfg.prov
@@ -169,7 +201,9 @@ def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, 
         for c in candidates:
             kind, _, slug = c.partition(":")
             try:
-                if kind == "mr":
+                if kind == "bundled":
+                    r = (str(bundled_jar(slug)), slug, [], "")
+                elif kind == "mr":
                     r = _modrinth(slug, loaders, cfg.version, exact)
                 elif kind == "geysermc":
                     r = _geysermc(*slug.split(":", 1))
@@ -197,7 +231,11 @@ def install(addon: Addon, cfg: core.ServerConfig, log=print) -> list[str]:
     files = []
     pending = []
     for url, name, deps, note, source in resolve(addon, cfg):
-        core.download(url, folder / name)
+        if source.startswith("bundled:"):
+            import shutil
+            shutil.copyfile(url, folder / name)
+        else:
+            core.download(url, folder / name)
         files.append(name)
         log(f"  + {name}{note}")
         pending += deps
@@ -237,7 +275,8 @@ def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
         a = ADDON_BY_ID.get(aid)
         if not a or not a.files_for(cfg.prov.kind):
             continue
-        if aid in cfg.addons and not version_changed and all((folder / f).exists() for f in cfg.addon_files.get(aid, [])):
+        if aid in cfg.addons and not version_changed and all((folder / f).exists() for f in cfg.addon_files.get(aid, [])) \
+                and not _bundled_outdated(a, cfg):
             continue
         log(f"Installing {a.name}...")
         try:

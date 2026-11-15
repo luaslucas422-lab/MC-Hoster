@@ -22,8 +22,13 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
-   - Fabric mods: Simple Voice Chat, Vanish, Vault, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
+
+   The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
+   - **Dark Shop**: the old DonutSMP `/shop` (End, Nether, Gear, Food, amount menu), `/sell`, `/worth`, `/bal`, `/pay`, `/baltop`, `/eco`. Uses EssentialsX/Vault money if there is one, its own otherwise (and shares it through Vault).
+   - **Dark AH**: DonutSMP-style `/ah`: `/ah sell <price>`, sort, filter, search, Your Items, 48-hour listings.
+   - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).
 
    Downloaded for your exact version (Modrinth, Hangar, GeyserMC), with their required libraries. Unticking removes them. Their ports (voice chat 24454 UDP, Geyser 19132 UDP, BlueMap 8100) are opened too.
 

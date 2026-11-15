@@ -1,0 +1,148 @@
+# Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
+# Change prices here, then /darkshop reload.
+
+# Money a new player starts with (only used when Dark Shop keeps the balances itself).
+start-balance: 0
+
+# Most of one item you can buy at once in the amount menu.
+max-buy: 2304
+
+# Categories in /shop. icon and items use Minecraft item names. Items: NAME: price for 1.
+# Items that don't exist in your Minecraft version are skipped.
+categories:
+  end:
+    name: "&dEnd"
+    icon: END_STONE
+    slot: 10
+    lore: "&7Blocks and items from the End."
+    items:
+      END_STONE: 10
+      ENDER_PEARL: 50
+      ENDER_CHEST: 2500
+      CHORUS_FRUIT: 15
+      DRAGON_BREATH: 300
+      PURPUR_BLOCK: 20
+      END_ROD: 50
+      SHULKER_SHELL: 7500
+  nether:
+    name: "&cNether"
+    icon: NETHERRACK
+    slot: 12
+    lore: "&7Blocks and items from the Nether."
+    items:
+      NETHERRACK: 2
+      SOUL_SAND: 10
+      NETHER_WART: 20
+      GLOWSTONE_DUST: 15
+      QUARTZ: 20
+      MAGMA_CREAM: 50
+      BLAZE_ROD: 150
+      GHAST_TEAR: 300
+  gear:
+    name: "&bGear"
+    icon: TOTEM_OF_UNDYING
+    slot: 14
+    lore: "&7Everything you need to fight."
+    items:
+      OBSIDIAN: 100
+      END_CRYSTAL: 500
+      RESPAWN_ANCHOR: 1000
+      GLOWSTONE: 100
+      TOTEM_OF_UNDYING: 1250
+      GOLDEN_APPLE: 100
+      EXPERIENCE_BOTTLE: 30
+      ARROW: 5
+  food:
+    name: "&aFood"
+    icon: COOKED_BEEF
+    slot: 16
+    lore: "&7Food to keep you going."
+    items:
+      POTATO: 5
+      CARROT: 5
+      SWEET_BERRIES: 5
+      APPLE: 10
+      BREAD: 10
+      COOKED_CHICKEN: 20
+      COOKED_BEEF: 35
+      GOLDEN_CARROT: 50
+
+# What /sell pays for 1 item. Anything not listed can't be sold.
+worth:
+  WHEAT: 1
+  CARROT: 1
+  POTATO: 1
+  BEETROOT: 1
+  MELON_SLICE: 1
+  PUMPKIN: 4
+  SUGAR_CANE: 2
+  CACTUS: 2
+  BAMBOO: 0.5
+  COCOA_BEANS: 2
+  NETHER_WART: 3
+  SWEET_BERRIES: 1
+  KELP: 0.5
+  ROTTEN_FLESH: 1
+  BONE: 2
+  STRING: 2
+  SPIDER_EYE: 3
+  GUNPOWDER: 5
+  ARROW: 0.5
+  SLIME_BALL: 5
+  ENDER_PEARL: 10
+  BLAZE_ROD: 30
+  GHAST_TEAR: 50
+  MAGMA_CREAM: 10
+  PHANTOM_MEMBRANE: 10
+  LEATHER: 3
+  FEATHER: 1
+  EGG: 1
+  WHITE_WOOL: 2
+  BEEF: 2
+  PORKCHOP: 2
+  CHICKEN: 2
+  MUTTON: 2
+  COD: 2
+  SALMON: 2
+  INK_SAC: 2
+  COAL: 2
+  RAW_IRON: 5
+  IRON_INGOT: 10
+  RAW_GOLD: 8
+  GOLD_INGOT: 15
+  RAW_COPPER: 1
+  COPPER_INGOT: 2
+  REDSTONE: 1
+  LAPIS_LAZULI: 2
+  QUARTZ: 3
+  AMETHYST_SHARD: 3
+  EMERALD: 50
+  DIAMOND: 100
+  NETHERITE_SCRAP: 400
+  NETHERITE_INGOT: 2000
+  OAK_LOG: 1
+  SPRUCE_LOG: 1
+  BIRCH_LOG: 1
+  JUNGLE_LOG: 1
+  ACACIA_LOG: 1
+  DARK_OAK_LOG: 1
+  MANGROVE_LOG: 1
+  CHERRY_LOG: 1
+  COBBLESTONE: 0.1
+  STONE: 0.2
+  DEEPSLATE: 0.1
+  SAND: 0.2
+  GRAVEL: 0.2
+  OBSIDIAN: 10
+  END_STONE: 1
+  NETHERRACK: 0.1
+  SHULKER_SHELL: 500
+  TOTEM_OF_UNDYING: 200
+
+messages:
+  prefix: "&8[&dDark Shop&8] "
+  not-enough: "&cYou don't have enough money. You need &f{price}&c."
+  inventory-full: "&cYou don't have room for that many."
+  bought: "&aYou bought &f{amount}x {item} &afor &f{price}&a."
+  sold: "&aYou sold &f{amount} &aitems for &f{price}&a."
+  nothing-sold: "&7None of those items can be sold, so you got them back."

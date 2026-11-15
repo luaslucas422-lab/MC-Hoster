@@ -8,10 +8,43 @@ permissions:
 env:
   PYTHONUTF8: "1"
 jobs:
+  plugins:
+    # Dark Shop, Dark AH and Dark Discord (plugins/), bundled into MC Hoster.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build the Dark plugins
+        working-directory: plugins
+        run: |
+          mvn -B -q package
+          mkdir -p ../darkplugins
+          cp darkshop/target/DarkShop.jar darkah/target/DarkAH.jar darkdiscord/target/DarkDiscord.jar ../darkplugins/
+          mvn -B -q dependency:copy-dependencies -pl darkshop -DincludeScope=provided -DoutputDirectory=../../plugin-libs || true
+          ls -la ../darkplugins
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins/*.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-libs
+          path: plugin-libs/*.jar
+          retention-days: 3
+
   exe:
+    needs: plugins
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -21,7 +54,7 @@ jobs:
       - name: Build MC-Hoster.exe
         run: >
           pyinstaller --noconfirm --onefile --windowed --name MC-Hoster --icon assets/icon.ico
-          --add-data "assets;assets" --add-data "gh0stac;gh0stac" MC-Hoster.py
+          --add-data "assets;assets" --add-data "gh0stac;gh0stac" --add-data "darkplugins;darkplugins" MC-Hoster.py
       - name: The exe opens its window
         shell: pwsh
         run: |
@@ -37,6 +70,7 @@ jobs:
 
   selftest:
     # A real server per type, set up exactly like the window does it, then started and checked.
+    needs: plugins
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -52,8 +86,16 @@ jobs:
           - { type: bedrock, version: latest }
           - { type: paper, version: "1.21.11", extra: --addons }
           - { type: fabric, version: "1.21.1", extra: --addons }
+          - { type: paper, version: "1.20.6", extra: --dark }
+          - { type: paper, version: latest, extra: --dark --vault }
+          - { type: purpur, version: latest, extra: --dark }
+          - { type: spigot, version: "1.21.11", extra: --dark --vault }
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -64,6 +106,7 @@ jobs:
 
   addons:
     # Every Plugins & Mods preset has to be downloadable for each server type.
+    needs: plugins
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -76,6 +119,10 @@ jobs:
           - { type: fabric, version: "1.21.1" }
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -103,6 +150,10 @@ jobs:
         with:
           name: MC-Hoster
           path: out
+      - uses: actions/download-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins
       - run: |
           mkdir -p dist screenshots
           cp out/dist/MC-Hoster.exe dist/
@@ -112,6 +163,6 @@ jobs:
           echo "commit: ${{ github.sha }}" >> dist/BUILD.txt
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add dist screenshots
+          git add dist screenshots darkplugins
           git commit -m "MC-Hoster.exe from ${{ github.sha }} [skip ci]" || exit 0
           git push

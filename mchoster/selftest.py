@@ -17,6 +17,11 @@ from pathlib import Path
 from . import core
 
 
+DARK = ["darkshop", "darkah", "darkdiscord"]
+DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
+              "darkdiscord": ("dcedit test", "DARKDISCORD")}
+
+
 def run(args: list[str]) -> int:
     if len(args) < 2:
         print("usage: --selftest <paper|purpur|fabric|pufferfish|spigot> <version|latest> [--no-gh0st]")
@@ -25,6 +30,7 @@ def run(args: list[str]) -> int:
     provider = core.PROVIDER_BY_ID[pid]
     gh0st = "--no-gh0st" not in args and not provider.bedrock
     with_addons = "--addons" in args
+    dark = "--dark" in args  # only the Dark plugins (+ Vault with --vault), then their in-game tests
     versions = core.list_versions(provider)
     print(f"{provider.name} versions offered: {', '.join(versions)}")
     if version == "latest":
@@ -93,6 +99,16 @@ def run(args: list[str]) -> int:
         print("  files:", files)
         addons.sync(cfg, [w for w in wanted if w != "spark"], log=lambda l: print("  " + l))
         assert "spark" not in cfg.addons and not any("spark" in f.lower() for f in os.listdir(d / provider.addon_folder)), "spark not removed"
+    if dark:
+        from . import addons
+        wanted = DARK + (["vault"] if "--vault" in args else [])
+        failed = addons.sync(cfg, wanted, log=lambda l: print("  " + l))
+        assert not failed, f"addons failed: {failed}"
+        print("  files:", sorted(p.name for p in (d / provider.addon_folder).iterdir()))
+        # unticking Dark Shop must keep DarkShop.jar, Dark AH still needs it
+        addons.sync(cfg, [w for w in wanted if w != "darkshop"], log=lambda l: print("  " + l))
+        assert (d / provider.addon_folder / "DarkShop.jar").exists(), "DarkShop.jar removed although Dark AH needs it"
+        addons.sync(cfg, wanted, log=lambda l: print("  " + l))
 
     lines: list[str] = []
     ready = threading.Event()
@@ -101,9 +117,17 @@ def run(args: list[str]) -> int:
                              on_ready=ready.set, on_exit=lambda c: exited.set())
     srv.start()
     ok = ready.wait(600)
+    tests = {}
     if ok:
         srv.send("list")
         time.sleep(3)
+        for aid, (cmd, tag) in DARK_TESTS.items():
+            if aid in cfg.addons:
+                srv.send(cmd)
+                tests[aid] = tag
+        end = time.time() + 30
+        while tests and time.time() < end and not all(re.search(t + r" TEST (OK|FAIL)", "\n".join(lines)) for t in tests.values()):
+            time.sleep(1)
     srv.stop(60)
     exited.wait(30)
     text = "\n".join(lines)
@@ -115,6 +139,15 @@ def run(args: list[str]) -> int:
     if with_addons and re.search(r"Could not load|Error occurred while enabling|Incompatible mods", text):
         print("FAILED: a plugin or mod did not load")
         return 1
+    if (with_addons or dark) and re.search(r"Could not load|Error occurred while enabling", text):
+        print("FAILED: a plugin did not load")
+        return 1
+    for aid, tag in tests.items():
+        m = re.search(tag + r" TEST (OK.*|FAIL.*)", text)
+        print(f"{tag}: {m.group(0) if m else 'no answer'}")
+        if not m or not m.group(1).startswith("OK"):
+            print(f"FAILED: {tag} test")
+            return 1
     if gh0st and not re.search(r"Gh0st AC.*armed", text):
         print("FAILED: Gh0st AC did not load")
         return 1

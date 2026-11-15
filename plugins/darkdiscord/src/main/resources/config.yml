@@ -1,0 +1,18 @@
+# Dark Discord by DarkerDawnFR. Change these in game with /dcedit (ops).
+
+# Your Discord invite. Set it with /dcedit link https://discord.gg/yourcode
+link: "https://discord.gg/"
+
+# text: /discord sends the link to everyone, /dc shows it only to you for dc-seconds.
+# gui:  /discord and /dc open a chest with a purple dye to click.
+mode: text
+
+prefix: "&8[&5Discord&8] "
+broadcast-message: "&fJoin our Discord: &d"
+click-message: "&dClick to join: &f"
+dc-title: "&5&lDISCORD"
+dc-seconds: 5
+gui-title: "&5Discord"
+gui-item-name: "&d&lJoin The Discord!"
+# Non-ops can send the link to everyone once per this many seconds.
+broadcast-cooldown-seconds: 30

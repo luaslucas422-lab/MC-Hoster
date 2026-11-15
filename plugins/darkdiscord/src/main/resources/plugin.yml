@@ -1,0 +1,18 @@
+name: DarkDiscord
+version: ${project.version}
+main: dev.darkerdawnfr.darkdiscord.DarkDiscord
+api-version: "1.20"
+author: DarkerDawnFR
+description: /discord, /dc and /dcedit. Made for MC Hoster.
+commands:
+  discord:
+    description: Send the Discord link to everyone (or open the Discord menu in GUI mode).
+  dc:
+    description: Show the Discord link only to you for 5 seconds (or open the Discord menu in GUI mode).
+  dcedit:
+    description: Change the Discord link and switch between Text and GUI mode (ops).
+    aliases: [discordedit]
+    permission: darkdiscord.edit
+permissions:
+  darkdiscord.edit:
+    default: op
