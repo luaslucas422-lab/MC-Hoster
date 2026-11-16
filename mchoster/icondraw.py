@@ -64,7 +64,7 @@ class IconDrawer:
         tools = ttk.Frame(side)
         tools.pack(anchor="w", pady=(2, 6))
         self.tool_btns = {}
-        for t, label in (("pencil", "✏ Pencil"), ("eraser", "⌫ Eraser"), ("fill", "🪣 Fill"), ("picker", "💧 Pick colour")):
+        for t, label in (("pencil", "✏ Pencil"), ("eraser", "⌫ Eraser"), ("fill", "🪣 Fill"), ("picker", "💧 Picker")):
             b = ttk.Button(tools, text=label, width=12, command=lambda t=t: self.set_tool(t))
             b.pack(side="left", padx=(0, 3))
             self.tool_btns[t] = b
