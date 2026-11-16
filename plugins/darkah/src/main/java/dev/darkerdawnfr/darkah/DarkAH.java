@@ -69,6 +69,11 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
     // Used by Dark Scoreboard.
     public int listingCount(UUID id) { return ah.of(id).size(); }
     public int listingTotal() { return ah.all().size(); }
+    // Used by Dark Shop: what one item usually goes for on /ah (0 = no sales yet).
+    public double auctionValue(String material) {
+        Material m = Material.matchMaterial(material);
+        return m == null ? 0 : ah.auctionValue(m);
+    }
 
     public String msg(String key) {
         return Util.color(getConfig().getString("messages.prefix", "") + getConfig().getString("messages." + key, key));
@@ -224,6 +229,10 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
             if (ah.get(old.id) != null || ah.claims(seller).stream().noneMatch(i -> i.getType() == Material.OAK_LOG))
                 fails.add("expired listing not returned");
             if (!Util.money(1500).equals("$1.5K") || Util.parseMoney("2m") != 2_000_000) fails.add("money text");
+            ah.forgetSales(Material.BEDROCK);
+            for (double v : new double[]{10, 1000, 30, 20, 40}) ah.recordSale(Material.BEDROCK, v);
+            if (ah.auctionValue(Material.BEDROCK) != 30) fails.add("auction value " + ah.auctionValue(Material.BEDROCK));
+            ah.forgetSales(Material.BEDROCK);
             if (money) {
                 eco.take(buyer, eco.balance(buyer));
                 eco.take(seller, eco.balance(seller) - sellerStart);

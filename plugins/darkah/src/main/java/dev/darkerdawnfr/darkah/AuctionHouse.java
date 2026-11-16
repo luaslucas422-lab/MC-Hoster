@@ -55,6 +55,8 @@ public class AuctionHouse {
     private final File file;
     private final Map<UUID, Listing> listings = new LinkedHashMap<>();
     private final Map<UUID, List<ItemStack>> claims = new HashMap<>();
+    /** unit prices of the last sales of each item */
+    private final Map<Material, List<Double>> sales = new HashMap<>();
 
     public AuctionHouse(DarkAH plugin) {
         this.plugin = plugin;
@@ -156,6 +158,7 @@ public class AuctionHouse {
         if (!eco.ready()) return Result.NO_ECONOMY;
         if (!eco.take(buyer, l.price)) return Result.NO_MONEY;
         listings.remove(l.id);
+        recordSale(l.item.getType(), l.price / Math.max(1, l.item.getAmount()));
         double tax = Math.max(0, Math.min(100, plugin.getConfig().getDouble("tax-percent", 0)));
         double paid = Math.round(l.price * (100 - tax)) / 100.0;
         eco.give(l.seller, paid);
@@ -208,6 +211,26 @@ public class AuctionHouse {
         claims.remove(who);
     }
 
+    public void recordSale(Material m, double unit) {
+        List<Double> l = sales.computeIfAbsent(m, k -> new ArrayList<>());
+        l.add(Math.round(unit * 100) / 100.0);
+        while (l.size() > 25) l.remove(0);
+    }
+
+    /** What one of this item usually sells for on /ah (the middle of the last 25 sales), 0 if it never sold. */
+    public double auctionValue(Material m) {
+        List<Double> l = sales.get(m);
+        if (l == null || l.isEmpty()) return 0;
+        List<Double> sorted = new ArrayList<>(l);
+        java.util.Collections.sort(sorted);
+        int n = sorted.size();
+        return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2;
+    }
+
+    public void forgetSales(Material m) {
+        sales.remove(m);
+    }
+
     // ------------------------------------------------------------------ storage
 
     private void load() {
@@ -226,6 +249,11 @@ public class AuctionHouse {
                 } catch (IllegalArgumentException ignored) {
                 }
             }
+        }
+        ConfigurationSection ss = y.getConfigurationSection("sales");
+        if (ss != null) for (String k : ss.getKeys(false)) {
+            Material m = Material.matchMaterial(k);
+            if (m != null) sales.put(m, new ArrayList<>(ss.getDoubleList(k)));
         }
         ConfigurationSection cs = y.getConfigurationSection("claims");
         if (cs != null) {
@@ -251,6 +279,7 @@ public class AuctionHouse {
             y.set(p + "listed", l.listed);
             y.set(p + "expires", l.expires);
         }
+        for (Map.Entry<Material, List<Double>> e : sales.entrySet()) y.set("sales." + e.getKey().name(), e.getValue());
         for (Map.Entry<UUID, List<ItemStack>> e : claims.entrySet())
             if (!e.getValue().isEmpty()) y.set("claims." + e.getKey(), e.getValue());
         try {

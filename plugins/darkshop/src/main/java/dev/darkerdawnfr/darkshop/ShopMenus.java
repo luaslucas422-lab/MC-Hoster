@@ -119,7 +119,7 @@ public class ShopMenus {
             List<String> lore = new java.util.ArrayList<>();
             if (premium && discount(v) > 0) lore.add("&7Price: &8&m" + Util.money(en.price()) + "&r &a" + Util.money(price(v, en)));
             else lore.add("&7Price: &a" + Util.money(price(v, en)));
-            if (worth > 0) lore.add("&7Sells for: &e" + Util.money(worth));
+            lore.addAll(plugin.valueLore(en.material().name(), 1));
             lore.add("");
             lore.add("&eClick to buy");
             m.set(slot, Util.item(en.material(), 1, "&f" + Util.nice(en.material()), lore),

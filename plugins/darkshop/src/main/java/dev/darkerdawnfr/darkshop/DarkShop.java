@@ -131,9 +131,11 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         if (!Settings.on(p.getUniqueId(), "worth")) return;
         ItemStack it = p.getInventory().getItem(e.getNewSlot());
         if (it == null || it.getType() == Material.AIR) return;
-        double w = sell.worth(it);
-        if (w <= 0) return;
-        String text = Util.color("&7" + Util.nice(it.getType()) + " sells for &a" + Util.money(w) + (it.getAmount() > 1 ? " &8(&a" + Util.money(w * it.getAmount()) + " &8for " + it.getAmount() + ")" : ""));
+        double w = sell.worth(it), av = auctionValue(it.getType().name());
+        if (w <= 0 && av <= 0) return;
+        String text = Util.color("&7" + Util.small("Sell") + " &a" + (w > 0 ? Util.money(w) : "-")
+                + (av > 0 ? "  &8|  &7" + Util.small("Auction") + " &e" + Util.money(av) : "")
+                + (it.getAmount() > 1 && w > 0 ? "  &8(" + Util.money(w * it.getAmount()) + " for " + it.getAmount() + ")" : ""));
         try {
             p.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(text));
         } catch (Throwable t) {
@@ -159,6 +161,28 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     public String economyMode() { return money.mode(); }
     // Used by Dark Spawners: what one item sells for in /sell.
     public double worth(String material) { return getConfig().getDouble("worth." + material, 0); }
+
+    /** What one item usually goes for on /ah (from Dark AH), 0 if unknown. */
+    public double auctionValue(String material) {
+        org.bukkit.plugin.Plugin ah = Bukkit.getPluginManager().getPlugin("DarkAH");
+        if (ah == null || !ah.isEnabled()) return 0;
+        try {
+            Object v = ah.getClass().getMethod("auctionValue", String.class).invoke(ah, material);
+            return v instanceof Number n ? n.doubleValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** The "ѕᴇʟʟ ᴠᴀʟᴜᴇ" and "ᴀᴜᴄᴛɪᴏɴ ᴠᴀʟᴜᴇ" lines for an item (amount > 1 also shows the total). Also used by Dark Spawners. */
+    public List<String> valueLore(String material, int amount) {
+        List<String> out = new ArrayList<>();
+        double w = worth(material), a = auctionValue(material);
+        out.add(Util.color("&7" + Util.small("Sell value") + ": " + (w > 0 ? "&a" + Util.money(w) + (amount > 1 ? " &8(" + Util.money(w * amount) + ")" : "") : "&8can't be sold")));
+        if (Bukkit.getPluginManager().getPlugin("DarkAH") != null)
+            out.add(Util.color("&7" + Util.small("Auction value") + ": " + (a > 0 ? "&e" + Util.money(a) + (amount > 1 ? " &8(" + Util.money(a * amount) + ")" : "") : "&8no sales yet")));
+        return out;
+    }
 
     /** Starter gear from Dark Essentials can't be sold or put on the auction house. */
     public static boolean starter(ItemStack it) {

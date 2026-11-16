@@ -191,14 +191,24 @@ public class AhMenus {
         ItemStack it = l.item.clone();
         List<String> extra = new ArrayList<>(List.of("", "&7Price: &a" + Util.money(l.price), "&7Seller: &f" + l.sellerName,
                 "&7Expires in: &f" + time(l.expires - System.currentTimeMillis())));
-        double worth = worth(l.item);
-        if (worth > 0) extra.add(3, "&7/sell value: &e" + Util.money(worth * l.item.getAmount()));
+        extra.addAll(4, values(l.item));
         if (action != null) {
             extra.add("");
             extra.add(action);
         }
         addLore(it, extra);
         return it;
+    }
+
+    /** "ѕᴇʟʟ ᴠᴀʟᴜᴇ" and "ᴀᴜᴄᴛɪᴏɴ ᴠᴀʟᴜᴇ" lines for an item. */
+    public List<String> values(ItemStack it) {
+        List<String> out = new ArrayList<>();
+        int n = it.getAmount();
+        double w = worth(it);
+        out.add("&7" + Util.small("Sell value") + ": " + (w > 0 ? "&a" + Util.money(w) + (n > 1 ? " &8(" + Util.money(w * n) + ")" : "") : "&8can't be sold"));
+        double a = plugin.ah().auctionValue(it.getType());
+        out.add("&7" + Util.small("Auction value") + ": " + (a > 0 ? "&e" + Util.money(a) + (n > 1 ? " &8(" + Util.money(a * n) + ")" : "") : "&8no sales yet"));
+        return out;
     }
 
     /** What one item sells for in Dark Shop's /sell (0 if not sellable or Dark Shop isn't installed). */

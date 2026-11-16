@@ -375,8 +375,11 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
             while (left > 0 && slot < 45) {
                 int n = (int) Math.min(left, e.getKey().getMaxStackSize());
                 Material mat = e.getKey();
-                double w = worth(mat);
-                m.set(slot++, Util.item(mat, n, null, w > 0 ? List.of("&7Sells for &e" + Util.money(w) + " &7each", "&7Click to take") : List.of("&7Click to take")), ev -> {
+                List<String> lore = new ArrayList<>();
+                Object vl = call("DarkShop", "valueLore", mat.name(), n);
+                if (vl instanceof List<?> l) for (Object o : l) lore.add(String.valueOf(o));
+                lore.add("&7Click to take");
+                m.set(slot++, Util.item(mat, n, null, lore), ev -> {
                     long have = s.items.getOrDefault(mat, 0L);
                     int take = (int) Math.min(have, mat.getMaxStackSize());
                     if (take <= 0) return;
