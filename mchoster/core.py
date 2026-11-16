@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.7.1"
+VERSION = "2.0.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -745,6 +745,9 @@ class ServerConfig:
     addon_files: dict = field(default_factory=dict)   # id -> file names in plugins/ or mods/
     schedule: dict = field(default_factory=dict)      # auto-start, see schedule.py
     domain: dict = field(default_factory=dict)        # custom IP (play.yourdomain.com), see domain.py
+    tweaks: dict = field(default_factory=dict)        # tab 6 Config: server.properties, gamerules, RAM... (only what was changed)
+    resource_pack: dict = field(default_factory=dict) # url, sha1, required, prompt, name, source
+    auto_restart: dict = field(default_factory=dict)  # every_hours (0 = off), on_crash
     # filled in by setup
     folder: str = ""
     java: str = ""
@@ -1011,6 +1014,107 @@ def set_allow_end(folder: Path, on: bool) -> None:
     f.write_text(text, encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- tab 6: Config
+
+# (key, label, kind, default, help). kind: text, int:min:max, bool, choice:a|b|c. Keys are server.properties names.
+PROP_TWEAKS = [
+    ("motd", "Server list message (MOTD)", "text", "", "Under the name in the server list. & colours work. Empty = the server's name"),
+    ("level-seed", "World seed", "text", "", "Only for a new world"),
+    ("level-type", "World type", "choice:Normal|Flat|Large Biomes|Amplified", "Normal", "Only for a new world"),
+    ("generate-structures", "Villages, temples and other structures", "bool", True, ""),
+    ("view-distance", "View distance (chunks)", "int:0:32", 0, "0 = automatic (by max players)"),
+    ("simulation-distance", "Simulation distance (chunks)", "int:0:32", 0, "How far mobs and farms keep working. 0 = automatic"),
+    ("spawn-protection", "Spawn protection (blocks)", "int:0:128", 0, "Only ops can build this close to spawn"),
+    ("max-world-size", "World border (blocks from the middle)", "int:1000:29999984", 29999984, ""),
+    ("pvp", "PvP (players can hurt each other)", "bool", True, ""),
+    ("allow-flight", "Allow flying (no kick for flying mods)", "bool", False, "Needed for some plugins and mods"),
+    ("force-gamemode", "Everyone gets the game mode when they join", "bool", False, ""),
+    ("white-list", "Whitelist (only listed players can join)", "bool", False, "Add names below"),
+    ("player-idle-timeout", "Kick AFK players after (minutes)", "int:0:1440", 0, "0 = never"),
+    ("hide-online-players", "Hide who's online in the server list", "bool", False, ""),
+    ("enable-command-block", "Command blocks", "bool", False, ""),
+]
+LEVEL_TYPES = {"Normal": "minecraft:normal", "Flat": "minecraft:flat", "Large Biomes": "minecraft:large_biomes", "Amplified": "minecraft:amplified"}
+
+# (key, label, default, [names to try: old camelCase, new snake_case]). Sent as commands when the server is ready.
+GAMERULES = [
+    ("keep_inventory", "Keep inventory when you die", False, ["keepInventory", "keep_inventory"]),
+    ("mob_griefing", "Mobs break blocks (creepers, endermen)", True, ["mobGriefing", "mob_griefing"]),
+    ("fire_tick", "Fire spreads", True, ["doFireTick", "fire_spread_radius_around_player"]),
+    ("daylight", "Day and night", True, ["doDaylightCycle", "advance_time"]),
+    ("weather", "Weather changes", True, ["doWeatherCycle", "advance_weather"]),
+    ("phantoms", "Phantoms", True, ["doInsomnia", "spawn_phantoms"]),
+    ("mob_spawning", "Mobs spawn", True, ["doMobSpawning", "spawn_mobs"]),
+    ("regeneration", "Health comes back by itself", True, ["naturalRegeneration", "natural_health_regeneration"]),
+    ("fall_damage", "Fall damage", True, ["fallDamage", "fall_damage"]),
+    ("immediate_respawn", "Respawn without the death screen", False, ["doImmediateRespawn", "immediate_respawn"]),
+    ("advancements", "Advancements in chat", True, ["announceAdvancements", "show_advancement_messages"]),
+    ("sleeping", "Players who must sleep to skip the night (%)", 100, ["playersSleepingPercentage", "players_sleeping_percentage"]),
+]
+
+
+def tweak(cfg: "ServerConfig", key: str, default=None):
+    return (cfg.tweaks or {}).get(key, default)
+
+
+def tweak_props(cfg: "ServerConfig") -> dict[str, str]:
+    """server.properties lines from tab 6 and the resource pack (only what was changed from the default)."""
+    out: dict[str, str] = {}
+    t = cfg.tweaks or {}
+    for key, _label, kind, default, _h in PROP_TWEAKS:
+        if key not in t or t[key] == default:
+            continue
+        v = t[key]
+        if key == "motd":
+            out["motd"] = _prop_escape(re.sub(r"&([0-9a-fk-orA-FK-OR])", "\u00a7\\1", str(v))) if str(v).strip() else _prop_escape(cfg.name)
+        elif key == "level-type":
+            out["level-type"] = LEVEL_TYPES.get(str(v), "minecraft:normal")
+        elif kind == "bool":
+            out[key] = str(bool(v)).lower()
+            if key == "white-list":
+                out["enforce-whitelist"] = str(bool(v)).lower()
+        elif kind.startswith("int"):
+            if key in ("view-distance", "simulation-distance") and int(v) <= 0:
+                continue
+            out[key] = str(int(v))
+        else:
+            out[key] = _prop_escape(str(v))
+    rp = cfg.resource_pack or {}
+    if rp.get("url"):
+        out["resource-pack"] = _prop_escape(rp["url"])
+        out["resource-pack-sha1"] = rp.get("sha1", "")
+        out["require-resource-pack"] = str(bool(rp.get("required"))).lower()
+        out["resource-pack-prompt"] = _prop_escape(json.dumps({"text": rp.get("prompt") or "This server uses a resource pack."}))
+    else:
+        out.update({"resource-pack": "", "resource-pack-sha1": "", "require-resource-pack": "false"})
+    return out
+
+
+def ready_commands(cfg: "ServerConfig") -> list[str]:
+    """Console commands for when the server is ready: gamerules, whitelist and ops from tab 6, the owner."""
+    cmds = []
+    if cfg.prov.bedrock:
+        return cmds
+    t = cfg.tweaks or {}
+    for key, _label, default, names in GAMERULES:
+        if key not in t or t[key] == default:
+            continue
+        v = t[key]
+        val = str(v).lower() if isinstance(v, bool) else str(int(v))
+        for n in names:  # one of the names works, depending on the Minecraft version
+            cmds.append(f"gamerule {n} {val}")
+    for n in t.get("whitelist_names", []) or []:
+        if valid_player_name(n):
+            cmds.append(f"whitelist add {n}")
+    names = list(t.get("ops", []) or [])
+    if cfg.owner:
+        names.insert(0, cfg.owner)
+    for n in names:
+        if valid_player_name(n):
+            cmds.append(f"op {n}")
+    return cmds
+
+
 def write_server_files(cfg: ServerConfig) -> None:
     d = Path(cfg.folder)
     provider = cfg.prov
@@ -1044,6 +1148,7 @@ def write_server_files(cfg: ServerConfig) -> None:
         "simulation-distance": str(min(10, view)),
         "spawn-protection": "0",
         "enable-status": "true",
+        **tweak_props(cfg),
     }, header="#Minecraft server properties (written by MC Hoster)")
     if provider.kind == "bukkit":
         set_allow_end(d, cfg.end)
@@ -1073,7 +1178,13 @@ def server_args(cfg: ServerConfig) -> list[str]:
     if cfg.prov.bedrock:
         return [str(bedrock_exe(Path(cfg.folder)))]
     args = [cfg.java, f"-Xms{min(1024, cfg.ram_mb)}M", f"-Xmx{cfg.ram_mb}M"]
-    if cfg.ram_mb >= 4096:
+    if tweak(cfg, "aikar", False):  # Aikar's flags: smoother garbage collection
+        args += ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200", "-XX:+UnlockExperimentalVMOptions",
+                 "-XX:+DisableExplicitGC", "-XX:+AlwaysPreTouch", "-XX:G1NewSizePercent=30", "-XX:G1MaxNewSizePercent=40",
+                 "-XX:G1HeapRegionSize=8M", "-XX:G1ReservePercent=20", "-XX:G1HeapWastePercent=5", "-XX:G1MixedGCCountTarget=4",
+                 "-XX:InitiatingHeapOccupancyPercent=15", "-XX:G1MixedGCLiveThresholdPercent=90", "-XX:G1RSetUpdatingPauseTimePercent=5",
+                 "-XX:SurvivorRatio=32", "-XX:+PerfDisableSharedMem", "-XX:MaxTenuringThreshold=1", "-Daikars.new.flags=true"]
+    elif cfg.ram_mb >= 4096:
         args += ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200"]
     args += ["-jar", "server.jar", "nogui"]
     return args
@@ -1164,7 +1275,7 @@ def setup_server(cfg: ServerConfig, log=print, progress=None, step=None) -> Serv
         else:
             log(f"No Java {need}{' JDK' if jdk else ''} on this PC, getting one (only the first time).")
             cfg.java = str(download_java(need, progress, log, jdk))
-    cfg.ram_mb = ram_for_players(cfg.players, provider.kind == "fabric")
+    cfg.ram_mb = int(tweak(cfg, "ram_mb", 0) or 0) or ram_for_players(cfg.players, provider.kind == "fabric")
 
     st(1, len(steps), steps[1] + (" (compiling Spigot, 5-10 min)" if provider.slow else ""))
     if not (d / "server.jar").exists() or cfg.installed_version != cfg.version:

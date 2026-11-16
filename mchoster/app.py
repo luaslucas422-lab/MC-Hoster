@@ -18,7 +18,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import addons, core, domain, schedule, updater
+from . import addons, core, domain, icondraw, respack, schedule, updater
 from .core import PROVIDERS, PROVIDER_BY_NAME, ServerConfig
 
 GREEN, YELLOW, ORANGE, RED = "#2e9e44", "#c9a400", "#e07b00", "#cc2b2b"
@@ -40,8 +40,8 @@ def open_folder(path: str):
 
 
 class Wizard:
-    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods"]
-    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS = range(5)
+    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config"]
+    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG = range(6)
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -90,8 +90,10 @@ class Wizard:
         self._page_settings(self.pages[2])
         self._page_play(self.pages[3])
         self._page_addons(self.pages[4])
+        self._page_config(self.pages[5])
         self.show(0)
         self.root.after(60, self._drain)
+        self.root.after(1000, self._restart_tick)
 
     # ------------------------------------------------------------------ look
     def _style(self):
@@ -318,6 +320,8 @@ class Wizard:
         self.icon_preview.pack(side="left")
         self.icon_btn = ttk.Button(icon_row, text="Choose PNG…", command=self.pick_icon)
         self.icon_btn.pack(side="left", padx=8)
+        self.icon_draw = ttk.Button(icon_row, text="Draw…", command=self.draw_icon)
+        self.icon_draw.pack(side="left", padx=(0, 8))
         self.icon_rm = ttk.Button(icon_row, text="Remove", command=self.clear_icon)
         self.icon_rm.pack(side="left")
         _, self.icon_hint = self.row(f, 2, "Icon:", icon_row, "PNG, 64×64")
@@ -379,11 +383,18 @@ class Wizard:
         self.domain_label.pack(side="left")
         ttk.Button(dom, text="Set up…", command=self.domain_dialog, width=12).pack(side="right")
         self.row(f, 11, "Custom IP:", dom)
+        rp = ttk.Frame(f)
+        self.rp = {}
+        self.rp_label = ttk.Label(rp, text="None")
+        self.rp_label.pack(side="left")
+        self.rp_btn = ttk.Button(rp, text="Choose…", command=self.respack_dialog, width=12)
+        self.rp_btn.pack(side="right")
+        self.row(f, 12, "Resource pack:", rp)
 
-        ttk.Separator(f).grid(row=12, column=0, columnspan=3, sticky="we", pady=8)
+        ttk.Separator(f).grid(row=13, column=0, columnspan=3, sticky="we", pady=8)
         self.gh0st_var = tk.BooleanVar(value=True)
         self.gh0st_cb = ttk.Checkbutton(f, text="Install Gh0st AC anticheat on the server (free version)", variable=self.gh0st_var)
-        self.gh0st_cb.grid(row=13, column=0, columnspan=3, sticky="w")
+        self.gh0st_cb.grid(row=14, column=0, columnspan=3, sticky="w")
         self.eula_row = ttk.Frame(f)
         self.eula_var = tk.BooleanVar(value=False)
         self.eula_cb = ttk.Checkbutton(self.eula_row, text="I agree to the", variable=self.eula_var, command=self.update_buttons)
@@ -392,14 +403,14 @@ class Wizard:
         link.pack(side="left")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aka.ms/MinecraftEULA"))
         ttk.Label(self.eula_row, text="(needed to run any server)", style="Hint.TLabel").pack(side="left", padx=6)
-        self.eula_row.grid(row=14, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self.eula_row.grid(row=15, column=0, columnspan=3, sticky="w", pady=(4, 0))
         self.players_changed(10)
 
     def settings_for_provider(self):
         """Bedrock has no icon, hardcore, spectator or Gh0st AC."""
         p, v = self.provider(), self.version_var.get()
         bed = p.bedrock
-        for w in (self.icon_btn, self.icon_rm):
+        for w in (self.icon_btn, self.icon_rm, self.icon_draw, self.rp_btn):
             w.state(["disabled"] if bed else ["!disabled"])
         self.icon_hint.config(text="Bedrock has no server icons" if bed else "PNG, 64×64")
         self.hardcore_cb.state(["disabled"] if bed else ["!disabled"])
@@ -524,6 +535,120 @@ class Wizard:
         except Exception:
             pass
         self.icon_status.config(text="✔ " + Path(p).name, style="Ok.TLabel")
+
+    def draw_icon(self):
+        icondraw.open_drawer(self.root, self.cfg.icon_path or None, self.set_icon)
+
+    # ------------------------------------------------------------------ resource pack dialog
+    def respack_dialog(self):
+        rp = dict(self.rp or {})
+        top, f = self.dialog("Resource pack")
+        top.resizable(True, True)
+        ttk.Label(f, text="Server resource pack", style="Title.TLabel").grid(row=0, column=0, columnspan=3, sticky="w")
+        ttk.Label(f, text="Players get it when they join. Find one on Modrinth or CurseForge, or paste a direct download link.",
+                  style="Hint.TLabel", wraplength=520).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        nb = ttk.Notebook(f)
+        nb.grid(row=2, column=0, columnspan=3, sticky="nsew")
+        # Modrinth search
+        mr = ttk.Frame(nb, padding=8)
+        nb.add(mr, text="  Modrinth  ")
+        q = tk.StringVar()
+        ttk.Entry(mr, textvariable=q, width=40).grid(row=0, column=0, sticky="we")
+        lb = tk.Listbox(mr, width=70, height=9, activestyle="none")
+        lb.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=6)
+        hits: list = []
+
+        def search(_e=None):
+            lb.delete(0, "end")
+            lb.insert("end", "Searching…")
+
+            def work():
+                try:
+                    res = respack.search_modrinth(q.get().strip() or "faithful")
+                except Exception as e:
+                    res = e
+                self.root.after(0, lambda: show(res))
+            threading.Thread(target=work, daemon=True).start()
+
+        def show(res):
+            lb.delete(0, "end")
+            hits.clear()
+            if isinstance(res, Exception):
+                lb.insert("end", f"Couldn't search Modrinth: {res}")
+                return
+            for h in res:
+                hits.append(h)
+                lb.insert("end", f"{h['title']}  ·  {h['downloads']:,} downloads  ·  {h['desc'][:70]}")
+            if not res:
+                lb.insert("end", "Nothing found.")
+        ttk.Button(mr, text="Search", command=search).grid(row=0, column=1, padx=6)
+        top.bind("<Return>", search)
+        # CurseForge link
+        cf = ttk.Frame(nb, padding=8)
+        nb.add(cf, text="  CurseForge  ")
+        ttk.Label(cf, text="Open the pack on curseforge.com and paste its page link here:").grid(row=0, column=0, sticky="w")
+        cf_var = tk.StringVar()
+        ttk.Entry(cf, textvariable=cf_var, width=70).grid(row=1, column=0, sticky="we", pady=6)
+        # direct link
+        dl = ttk.Frame(nb, padding=8)
+        nb.add(dl, text="  Direct link  ")
+        ttk.Label(dl, text="A link that downloads the .zip straight away (e.g. a Dropbox link ending in ?dl=1):").grid(row=0, column=0, sticky="w")
+        url_var = tk.StringVar(value=rp.get("url", "") if rp.get("source") in (None, "", "Link") else "")
+        ttk.Entry(dl, textvariable=url_var, width=70).grid(row=1, column=0, sticky="we", pady=6)
+
+        opts = ttk.Frame(f)
+        opts.grid(row=3, column=0, columnspan=3, sticky="we", pady=(8, 0))
+        req = tk.BooleanVar(value=rp.get("required", False))
+        ttk.Checkbutton(opts, text="Players must use it (they're kicked if they say no)", variable=req).grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(opts, text="Message:").grid(row=1, column=0, sticky="w", pady=4)
+        prompt = tk.StringVar(value=rp.get("prompt", "This server uses a resource pack."))
+        ttk.Entry(opts, textvariable=prompt, width=55).grid(row=1, column=1, sticky="we", pady=4)
+        status = ttk.Label(f, text=("Now: " + respack.describe(rp)) if rp.get("url") else "", style="Hint.TLabel", wraplength=520)
+        status.grid(row=4, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        btns = ttk.Frame(f)
+        btns.grid(row=5, column=0, columnspan=3, sticky="we", pady=(10, 0))
+
+        def done(info):
+            info.update({"required": req.get(), "prompt": prompt.get().strip()})
+            self.rp = info
+            self.rp_label.config(text=respack.describe(info))
+            top.destroy()
+
+        def use():
+            tab = nb.index("current")
+            status.config(text="Getting the pack…", style="Hint.TLabel")
+            sel = lb.curselection()
+            mcv = self.version_var.get() or self.cfg.version
+
+            def work():
+                try:
+                    if tab == 0:
+                        if not sel or sel[0] >= len(hits):
+                            raise LookupError("search, then click a pack in the list")
+                        info = respack.modrinth_pack(hits[sel[0]]["id"], mcv)
+                    elif tab == 1:
+                        info = respack.curseforge_pack(cf_var.get().strip())
+                    else:
+                        u = url_var.get().strip()
+                        if not u.lower().startswith(("http://", "https://")):
+                            raise LookupError("paste a link starting with https://")
+                        info = {"url": u, "sha1": "", "name": Path(u.split("?")[0]).name or "Custom pack", "source": "Link"}
+                    if not info.get("sha1"):
+                        info["sha1"] = respack.sha1_of(info["url"])
+                    self.root.after(0, lambda: done(info))
+                except Exception as e:
+                    self.root.after(0, lambda: status.config(text=f"Couldn't use that pack: {e}", style="Bad.TLabel"))
+            threading.Thread(target=work, daemon=True).start()
+
+        def remove():
+            self.rp = {}
+            self.rp_label.config(text="None")
+            top.destroy()
+        ttk.Button(btns, text="Use this pack", style="Accent.TButton", command=use).pack(side="right")
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right", padx=6)
+        ttk.Button(btns, text="No resource pack", command=remove).pack(side="left")
+        search()
+        return top
 
     def clear_icon(self):
         self.cfg.icon_path = ""
@@ -838,6 +963,150 @@ class Wizard:
     def _wheel(self, e):
         if self.page == self.ADDONS:
             self.addons_canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
+        elif self.page == self.CONFIG:
+            self.config_canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
+
+    # ------------------------------------------------------------------ 6. Config
+    def _page_config(self, f):
+        f.columnconfigure(0, weight=1)
+        f.rowconfigure(2, weight=1)
+        ttk.Label(f, text="Config", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(f, text="Everything else about your server. Change anything, then click Apply & restart. "
+                          "Things you don't change stay the Minecraft default.", style="Hint.TLabel", wraplength=540,
+                  justify="left").grid(row=1, column=0, sticky="w", pady=(0, 8))
+        box = ttk.Frame(f, relief="sunken", borderwidth=1)
+        box.grid(row=2, column=0, sticky="nsew")
+        box.columnconfigure(0, weight=1)
+        box.rowconfigure(0, weight=1)
+        self.config_canvas = tk.Canvas(box, highlightthickness=0, height=300)
+        sb = ttk.Scrollbar(box, command=self.config_canvas.yview)
+        self.config_canvas.config(yscrollcommand=sb.set)
+        self.config_canvas.grid(row=0, column=0, sticky="nsew")
+        sb.grid(row=0, column=1, sticky="ns")
+        inner = ttk.Frame(self.config_canvas, padding=8)
+        win = self.config_canvas.create_window(0, 0, window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: self.config_canvas.config(scrollregion=self.config_canvas.bbox("all")))
+        self.config_canvas.bind("<Configure>", lambda e: self.config_canvas.itemconfigure(win, width=e.width))
+        inner.columnconfigure(0, weight=1)
+        self.tweak_vars: dict[str, tk.Variable] = {}
+        r = 0
+
+        def section(title):
+            nonlocal r
+            lf = ttk.LabelFrame(inner, text=f" {title} ", padding=8)
+            lf.grid(row=r, column=0, sticky="we", pady=(0, 8))
+            lf.columnconfigure(1, weight=1)
+            r += 1
+            return lf
+
+        def add(parent, row, key, label, kind, default, hint=""):
+            if kind == "bool":
+                v = tk.BooleanVar(value=bool(default))
+                ttk.Checkbutton(parent, text=label, variable=v).grid(row=row, column=0, columnspan=2, sticky="w", pady=2)
+            elif kind.startswith("int"):
+                _, lo, hi = kind.split(":")
+                v = tk.IntVar(value=int(default))
+                ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
+                ttk.Spinbox(parent, from_=int(lo), to=int(hi), textvariable=v, width=10).grid(row=row, column=1, sticky="w", padx=8)
+            elif kind.startswith("choice"):
+                v = tk.StringVar(value=str(default))
+                ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
+                ttk.Combobox(parent, textvariable=v, values=kind.split(":", 1)[1].split("|"), state="readonly", width=16).grid(row=row, column=1, sticky="w", padx=8)
+            else:
+                v = tk.StringVar(value=str(default))
+                ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
+                ttk.Entry(parent, textvariable=v, width=34).grid(row=row, column=1, sticky="we", padx=8)
+            if hint:
+                ttk.Label(parent, text=hint, style="Hint.TLabel", wraplength=230, justify="left").grid(row=row, column=2, sticky="w")
+            self.tweak_vars[key] = v
+
+        world_keys = ["motd", "level-seed", "level-type", "generate-structures", "view-distance", "simulation-distance",
+                      "spawn-protection", "max-world-size"]
+        lf = section("World")
+        i = 0
+        for key, label, kind, default, hint in core.PROP_TWEAKS:
+            if key in world_keys:
+                add(lf, i, key, label, kind, default, hint)
+                i += 1
+        lf = section("Players")
+        i = 0
+        for key, label, kind, default, hint in core.PROP_TWEAKS:
+            if key not in world_keys:
+                add(lf, i, key, label, kind, default, hint)
+                i += 1
+        add(lf, i, "whitelist_names", "Whitelisted players", "text", "", "Names with commas: Geo, Steve")
+        add(lf, i + 1, "ops", "Extra ops (admins)", "text", "", "Names with commas. You're op already (tab 3)")
+        lf = section("Game rules")
+        for i, (key, label, default, _names) in enumerate(core.GAMERULES):
+            add(lf, i, key, label, "int:0:100" if isinstance(default, int) and not isinstance(default, bool) else "bool", default)
+        lf = section("Performance")
+        add(lf, 0, "ram_mb", "Memory for the server (MB)", "int:0:65536", 0, f"0 = automatic. This PC has {core.total_ram_mb():,} MB")
+        add(lf, 1, "aikar", "Smoother memory clean-up (Aikar's flags, best with 4 GB+)", "bool", False)
+        lf = section("Auto restart")
+        self.ar_hours = tk.IntVar(value=0)
+        ttk.Label(lf, text="Restart every (hours)").grid(row=0, column=0, sticky="w", pady=2)
+        ttk.Spinbox(lf, from_=0, to=168, textvariable=self.ar_hours, width=10).grid(row=0, column=1, sticky="w", padx=8)
+        ttk.Label(lf, text="0 = never. Players get a warning 5 min, 1 min and 10 s before.", style="Hint.TLabel",
+                  wraplength=230).grid(row=0, column=2, sticky="w")
+        self.ar_crash = tk.BooleanVar(value=True)
+        ttk.Checkbutton(lf, text="Start it again if it crashes (up to 3 times in 10 minutes)", variable=self.ar_crash).grid(
+            row=1, column=0, columnspan=3, sticky="w", pady=2)
+        ttk.Button(inner, text="Reset everything to the defaults", command=self._config_defaults).grid(row=r, column=0, sticky="w")
+
+    def _config_defaults(self):
+        if not messagebox.askyesno("Config", "Put every setting on this page back to the default?"):
+            return
+        self.cfg.tweaks = {}
+        self.cfg.auto_restart = {}
+        self.fill_config()
+
+    def _tweak_defaults(self) -> dict:
+        d = {k: dflt for k, _l, _k, dflt, _h in core.PROP_TWEAKS}
+        d.update({k: dflt for k, _l, dflt, _n in core.GAMERULES})
+        d.update({"whitelist_names": "", "ops": "", "ram_mb": 0, "aikar": False})
+        return d
+
+    def fill_config(self):
+        t = self.cfg.tweaks or {}
+        for k, dflt in self._tweak_defaults().items():
+            v = t.get(k, dflt)
+            if isinstance(v, list):
+                v = ", ".join(v)
+            try:
+                self.tweak_vars[k].set(v)
+            except Exception:
+                pass
+        ar = self.cfg.auto_restart or {}
+        self.ar_hours.set(int(ar.get("every_hours", 0) or 0))
+        self.ar_crash.set(bool(ar.get("on_crash", True)))
+
+    def collect_config(self):
+        out = {}
+        for k, dflt in self._tweak_defaults().items():
+            try:
+                v = self.tweak_vars[k].get()
+            except Exception:
+                continue
+            if k in ("whitelist_names", "ops"):
+                names = [n.strip() for n in str(v).replace(";", ",").split(",") if n.strip()]
+                if names:
+                    out[k] = names
+                continue
+            if isinstance(dflt, bool):
+                v = bool(v)
+            elif isinstance(dflt, int):
+                try:
+                    v = int(v)
+                except (TypeError, ValueError):
+                    v = dflt
+            if v != dflt:
+                out[k] = v
+        self.cfg.tweaks = out
+        try:
+            hours = max(0, int(self.ar_hours.get()))
+        except (TypeError, ValueError, tk.TclError):
+            hours = 0
+        self.cfg.auto_restart = {"every_hours": hours, "on_crash": bool(self.ar_crash.get())}
 
     def _open_addon_folder(self):
         if self.cfg.folder and self.cfg.prov.addon_folder:
@@ -863,21 +1132,55 @@ class Wizard:
                                     f"Gh0st AC is in tab 3. Your own {what} go in the {p.addon_folder} folder." +
                                     ("\nOn the very newest version some plugins may not be updated yet: check the console after a restart."
                                      if p.kind == "bukkit" else ""))
-        for i, a in enumerate(addons.addons_for(p)):
-            v = tk.BooleanVar(value=a.id in self.cfg.addons)
-            self.addon_vars[a.id] = v
-            row = ttk.Frame(self.addons_list)
-            row.grid(row=i, column=0, sticky="we", pady=3)
-            ttk.Checkbutton(row, text=a.name, variable=v, style="Bold.TCheckbutton", width=20,
-                            command=self._addons_count).pack(side="left", anchor="n")
-            txt = ttk.Frame(row)
-            txt.pack(side="left", fill="x", expand=True)
-            ttk.Label(txt, text=a.desc, wraplength=340, justify="left").pack(anchor="w")
-            if a.note:
-                ttk.Label(txt, text=a.note, style="Warn.TLabel").pack(anchor="w")
+        # folders by what they do; folders with something ticked start open
+        groups: dict[str, list] = {}
+        for a in addons.addons_for(p):
+            groups.setdefault(addons.category(a), []).append(a)
+        if not hasattr(self, "_open_folders"):
+            self._open_folders = {addons.category(a) for a in addons.addons_for(p) if a.id in self.cfg.addons} or {addons.CATEGORIES[0]}
+        self._folder_heads = {}
+        r = 0
+        for cat in addons.CATEGORIES:
+            items = groups.get(cat)
+            if not items:
+                continue
+            head = ttk.Button(self.addons_list, style="Toolbutton")
+            head.grid(row=r, column=0, sticky="we", pady=(6, 2))
+            body = ttk.Frame(self.addons_list, padding=(18, 0, 0, 0))
+            body.grid(row=r + 1, column=0, sticky="we")
+            r += 2
+            for i, a in enumerate(items):
+                v = tk.BooleanVar(value=a.id in self.cfg.addons)
+                self.addon_vars[a.id] = v
+                row = ttk.Frame(body)
+                row.grid(row=i, column=0, sticky="we", pady=3)
+                ttk.Checkbutton(row, text=a.name, variable=v, style="Bold.TCheckbutton", width=20,
+                                command=self._addons_count).pack(side="left", anchor="n")
+                txt = ttk.Frame(row)
+                txt.pack(side="left", fill="x", expand=True)
+                ttk.Label(txt, text=a.desc, wraplength=320, justify="left").pack(anchor="w")
+                if a.note:
+                    ttk.Label(txt, text=a.note, style="Warn.TLabel").pack(anchor="w")
+            self._folder_heads[cat] = (head, body, [a.id for a in items])
+            head.config(command=lambda c=cat: self._toggle_folder(c))
+            if cat not in self._open_folders:
+                body.grid_remove()
+        self._addons_count()
+
+    def _toggle_folder(self, cat):
+        head, body, _ids = self._folder_heads[cat]
+        if cat in self._open_folders:
+            self._open_folders.discard(cat)
+            body.grid_remove()
+        else:
+            self._open_folders.add(cat)
+            body.grid()
         self._addons_count()
 
     def _addons_count(self):
+        for cat, (head, _body, ids) in getattr(self, "_folder_heads", {}).items():
+            ticked = sum(self.addon_vars[i].get() for i in ids if i in self.addon_vars)
+            head.config(text=f"{'▼' if cat in self._open_folders else '▶'}  📁 {cat}   ({ticked}/{len(ids)} ticked)")
         n = sum(v.get() for v in self.addon_vars.values())
         installed = len([a for a in self.cfg.addons if a in self.addon_vars])
         self.addons_status.config(text=f"{installed} installed · {n} ticked")
@@ -966,6 +1269,8 @@ class Wizard:
         c.end = self.end_var.get() or c.prov.bedrock or c.prov.kind == "fabric"
         c.gh0stac = self.gh0st_var.get()
         c.owner = self.owner_var.get().strip()
+        c.resource_pack = dict(self.rp or {})
+        self.collect_config()
         mc = Path(self.mc_var.get().strip().strip('"'))
         c.minecraft_dir = str(mc) if self.mc_var.get().strip() and self.mc_ok(mc) else ""
         c.add_to_list = self.add_list_var.get() and bool(c.minecraft_dir)
@@ -1076,6 +1381,9 @@ class Wizard:
         self.end_var.set(c.end)
         self.gh0st_var.set(c.gh0stac)
         self.owner_var.set(c.owner or "")
+        self.rp = dict(c.resource_pack or {})
+        self.rp_label.config(text=respack.describe(self.rp))
+        self.fill_config()
         self.sched = dict(c.schedule or {})
         self.sched_label.config(text=schedule.describe(self.sched))
         self.domain = dict(c.domain or {})
@@ -1190,8 +1498,55 @@ class Wizard:
         threading.Thread(target=lambda: core.add_to_list(cfg, log=lambda l: None), daemon=True).start()
         return True
 
+    # ------------------------------------------------------------------ auto restart
+    def _restart_tick(self):
+        """Every second: a timed restart (tab 6) with warnings in chat."""
+        try:
+            hours = int((self.cfg.auto_restart or {}).get("every_hours", 0) or 0)
+            at = getattr(self, "_ready_at", None)
+            if hours > 0 and at and self.server and self.server.running and not getattr(self, "_restarting", False):
+                left = at + hours * 3600 - time.time()
+                for secs, text in ((300, "5 minutes"), (60, "1 minute"), (10, "10 seconds")):
+                    if left <= secs and secs not in self._warned:
+                        self._warned.add(secs)
+                        self.server.send(f"say The server restarts in {text}.")
+                if left <= 0:
+                    self.restart_now("Auto restart")
+        finally:
+            self.root.after(1000, self._restart_tick)
+
+    def restart_now(self, why: str):
+        self._restarting = True
+        self._ready_at = None
+        self.log(f"» {why}: restarting the server (the world is saved).")
+        srv = self.server
+
+        def work():
+            try:
+                srv.stop(90)
+            finally:
+                self.q.put(("restart",))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _crash_restart(self, why) -> bool:
+        """After a crash: start again (tab 6), at most 3 times in 10 minutes. True if it will."""
+        if not (self.cfg.auto_restart or {}).get("on_crash", True):
+            return False
+        if why and "crashed" not in why and "memory" not in why.lower():
+            return False  # a setup problem (port, Java, missing jar...): starting again won't help
+        now = time.time()
+        self._crashes = [t for t in getattr(self, "_crashes", []) if now - t < 600] + [now]
+        if len(self._crashes) > 3:
+            self.log("! It crashed 3 times in 10 minutes, so it isn't started again by itself.")
+            return False
+        self.log(f"! The server crashed{': ' + why if why else ''}. Starting it again in 10 seconds…")
+        self.step_label.config(text="It crashed: starting again in 10 seconds…")
+        self.root.after(10_000, lambda: (not (self.server and self.server.running)) and self.run_server())
+        return True
+
     def run_server(self):
         self.busy = False
+        self._restarting = False
         if not self.free_port_or_ask():
             self.show(self.PLAY)
             self.play_title.config(text=f"{self.cfg.name} is offline")
@@ -1372,6 +1727,9 @@ class Wizard:
                 k = ev[0]
                 if k == "versions":
                     self._set_versions(ev[1], ev[2], ev[3])
+                elif k == "restart":
+                    self._restarting = False
+                    self.run_server()
                 elif k == "update":
                     self.update_dialog(ev[1], ev[2])
                 elif k == "upd_progress":
@@ -1430,11 +1788,10 @@ class Wizard:
                     self.progress.stop()
                     self.progress.config(mode="determinate", value=100)
                     self.play_title.config(text=f"{self.cfg.name} is online!")
-                    if core.valid_player_name(self.cfg.owner) and not self.cfg.prov.bedrock:
-                        try:
-                            self.server.send(f"op {self.cfg.owner}")
-                        except Exception:
-                            pass
+                    self._ready_at = time.time()
+                    self._warned = set()
+                    for c in core.ready_commands(self.cfg):  # gamerules, whitelist and ops from tab 6, you as op
+                        self.server.send(c)
                     self.step_label.config(text=("Open Minecraft → Play → Servers → Add Server." if self.cfg.prov.bedrock
                                                  else "Open Minecraft → Multiplayer → Add Server, and paste the IP."))
                     self.show_ip_box()
@@ -1457,10 +1814,14 @@ class Wizard:
                     self.step_label.config(text=f"The server stopped (exit code {ev[1]}).")
                     srv = ev[2] if len(ev) > 2 else None
                     by_itself = srv is not None and not srv.stopping and not getattr(self, "_closing", False)
+                    self._ready_at = None
                     if by_itself and not any("FAILED TO BIND" in l or "Address already in use" in l for l in srv.tail):
                         # it stopped by itself: say why, if we can tell (a plain "stop" typed in the console ends with 0)
                         why = core.explain_exit(srv.tail, self.cfg.folder)
-                        if why or ev[1] not in (0, None):
+                        crashed = bool(why) or ev[1] not in (0, None)
+                        if crashed and self._crash_restart(why):
+                            pass
+                        elif crashed:
                             last = "\n".join(l[-160:] for l in srv.tail[-8:])
                             self.step_label.config(text="The server stopped by itself. " + (why or "See the console above."))
                             messagebox.showwarning("The server stopped", (why or "It stopped by itself.") +

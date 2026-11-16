@@ -67,6 +67,10 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 
 **Updates**: MC Hoster checks for a new version when it opens and shows what's new; one click installs it (or use **Check for updates** on the first tab).
 
+6. **Config**: MOTD, seed, world type, view distance, spawn protection, world border, PvP, flying, whitelist, AFK kick, game rules (keep inventory, mob griefing, fire, day/night, weather, phantoms...), memory and Aikar's flags, and **auto restart** (every few hours with warnings, and after a crash).
+
+The Settings tab also has a **resource pack** (Modrinth search, a CurseForge link or any direct link, optional or required) and **Draw…** for the icon (a 64×64 drawing board with ready-made pictures). Tab 5 sorts the presets into **folders**.
+
 **After Finish, every tab can be clicked.** Change anything in 1, 2, 3 or 5 and press **Apply & restart**: the server stops (world saved), the changes are applied, and it starts again. In tab 1 you can update to a newer version (never older, that would break the world).
 
 **A server can't keep running after MC Hoster closes.** It's tied to MC Hoster, so closing MC Hoster (or a crash, or ending it in Task Manager) stops it too. A server left running by an older MC Hoster is found when MC Hoster opens and before every start, and you can stop it. If something else is using the port, MC Hoster offers another port.

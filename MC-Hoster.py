@@ -21,6 +21,9 @@ def main():
     if args[:1] == ["--addons-test"]:
         from mchoster.selftest import addons_test
         sys.exit(addons_test(args[1:]))
+    if args[:1] == ["--respack-test"]:
+        from mchoster.selftest import respack_test
+        sys.exit(respack_test())
     if args[:1] == ["--schedule-test"]:
         from mchoster.selftest import schedule_test
         sys.exit(schedule_test())

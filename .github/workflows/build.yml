@@ -171,6 +171,7 @@ jobs:
       - run: pip install pillow
       - run: python -u MC-Hoster.py --schedule-test
       - run: python -u .github/update_test.py
+      - run: python -u MC-Hoster.py --respack-test
 
   orphans:
     # A server must never outlive MC Hoster, and leftover / port-blocking servers are found.

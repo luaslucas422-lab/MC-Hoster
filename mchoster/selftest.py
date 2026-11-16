@@ -159,6 +159,22 @@ def run(args: list[str]) -> int:
         assert (d / provider.addon_folder / "DarkShop.jar").exists(), "DarkShop.jar removed although Dark AH needs it"
         addons.sync(cfg, wanted, log=lambda l: print("  " + l))
 
+    # tab 6 Config: properties written now, gamerules / whitelist / ops sent when it's ready
+    if not provider.bedrock:
+        cfg.tweaks = {"pvp": False, "motd": "&bCI &lserver", "spawn-protection": 8, "allow-flight": True, "view-distance": 7,
+                      "keep_inventory": True, "phantoms": False, "sleeping": 50, "whitelist_names": ["CiPlayer"], "aikar": True}
+        cfg.resource_pack = {"url": "https://example.com/pack.zip", "sha1": "0" * 40, "required": True, "prompt": "Please"}
+        core.write_server_files(cfg)
+        props = core.read_properties(d / "server.properties")
+        for k, v in {"pvp": "false", "spawn-protection": "8", "allow-flight": "true", "view-distance": "7",
+                     "resource-pack": "https\\://example.com/pack.zip", "require-resource-pack": "true"}.items():
+            assert props.get(k, "").replace("\\", "") == v.replace("\\", ""), f"tab 6: {k}={props.get(k)} not {v}"
+        assert "u00a7b" in props.get("motd", "").lower(), "motd colours: " + props.get("motd", "")
+        assert "-Daikars.new.flags=true" in core.server_args(cfg), "Aikar's flags missing"
+        cfg.resource_pack = {}
+        core.write_server_files(cfg)
+        assert core.read_properties(d / "server.properties").get("resource-pack", "") == "", "resource pack not removed"
+
     lines: list[str] = []
     ready = threading.Event()
     exited = threading.Event()
@@ -167,6 +183,16 @@ def run(args: list[str]) -> int:
     srv.start()
     ok = ready.wait(600)
     tests = {}
+    rules_ok: dict[str, bool] = {}
+    if ok and not provider.bedrock:
+        for c in core.ready_commands(cfg):
+            srv.send(c)
+        time.sleep(4)
+        joined = "\n".join(lines)
+        for key, _label, default, names in core.GAMERULES:
+            if key in cfg.tweaks:
+                rules_ok[key] = any(re.search(r"(?i)" + re.escape(n) + r".{0,30}(is now set to|now set|set to)", joined) for n in names)
+        print("gamerules set:", rules_ok)
     if ok:
         srv.send("list")
         time.sleep(3)
@@ -197,6 +223,10 @@ def run(args: list[str]) -> int:
         if not m or not m.group(1).startswith("OK"):
             print(f"FAILED: {tag} test")
             return 1
+    bad_rules = [k for k, v in rules_ok.items() if not v]
+    if bad_rules:
+        print(f"FAILED: gamerules not set on {version}: {bad_rules}")
+        return 1
     if gh0st and not re.search(r"Gh0st AC.*armed", text):
         print("FAILED: Gh0st AC did not load")
         return 1
@@ -221,6 +251,27 @@ def addons_test(args: list[str]) -> int:
             print(f"FAIL {a.name:20} {e}")
     print(f"{provider.name} {version}: {len(bad)} missing" + (": " + ", ".join(bad) if bad else ""))
     return 1 if bad else 0
+
+
+def respack_test() -> int:
+    """Resource packs: search Modrinth, a CurseForge link, and the SHA-1 of the file."""
+    from . import respack
+    hits = respack.search_modrinth("faithful")
+    print("Modrinth search:", [h["title"] for h in hits[:5]])
+    assert hits, "no Modrinth results"
+    mr = respack.modrinth_pack(hits[0]["id"], "1.21.1")
+    print("Modrinth pack:", mr)
+    assert mr["url"].startswith("https://") and len(mr["sha1"]) == 40
+    sha = respack.sha1_of(mr["url"])
+    assert sha == mr["sha1"], f"sha1 {sha} != {mr['sha1']}"
+    cf = respack.curseforge_pack("https://www.curseforge.com/minecraft/texture-packs/faithful-32x")
+    print("CurseForge pack:", cf)
+    assert cf["url"].startswith("https://")
+    cf_sha = respack.sha1_of(cf["url"])
+    print("CurseForge sha1:", cf_sha)
+    assert len(cf_sha) == 40
+    print("RESPACK TEST OK")
+    return 0
 
 
 def schedule_test() -> int:

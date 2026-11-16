@@ -70,6 +70,27 @@ def run(outdir: str) -> int:
         w.sched_label.config(text=schedule.describe(w.sched))
         w.update_buttons()
 
+    def drawer():
+        from . import icondraw
+        d = icondraw.open_drawer(root, None, lambda p: None)
+        d.set_color("#3A8EE8")
+        d.gradient_background()
+        d.put_stamp("Sword", 32, 32, 3)
+        d.put_stamp("Heart", 52, 12, 1)
+        d.redraw()
+        dialogs["draw"] = d
+
+    def respack():
+        dialogs["draw"].top.destroy()
+        dialogs["rp"] = w.respack_dialog()
+
+    def config_tab():
+        dialogs["rp"].destroy()
+        w.cfg.tweaks = {"pvp": False, "keep_inventory": True, "motd": "&bLucas's &lSMP", "view-distance": 10}
+        w.cfg.auto_restart = {"every_hours": 12, "on_crash": True}
+        w.fill_config()
+        w.show(w.CONFIG)
+
     def sched_dialog():
         dialogs["s"] = w.schedule_dialog()
 
@@ -126,6 +147,12 @@ def run(outdir: str) -> int:
         lambda: grab("5-plugins"),
         lambda: w.show(w.SETTINGS),
         lambda: grab("3-settings-edit"),
+        drawer,
+        lambda: grab("3-icon-drawer", dialogs["draw"].top),
+        respack,
+        lambda: grab("3-resource-pack", dialogs["rp"]),
+        config_tab,
+        lambda: grab("6-config"),
     ]
 
     def go(i=0):
@@ -142,5 +169,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 10
+    want = 13
     return 0 if len(shots) == want else 1

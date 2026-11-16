@@ -118,6 +118,31 @@ ADDONS = [
           {"bukkit": [["bundled:DarkNames.jar"]]}, note="Made by DarkerDawnFR. /dn rename, /dn reset"),
     Addon("darkrsaddon", "Dark RS Add-on", "Players turn RoseStacker stacking on/off in /settings; the first player in a chunk decides.",
           {"bukkit": [["bundled:DarkRSAddon.jar"], ["mr:rosestacker", "hangar:RoseStacker"]]}, note="Installs RoseStacker too"),
+    # ---- more from Modrinth (Hangar if Modrinth has no build)
+    Addon("tab", "TAB", "A better tab list and name tags: headers, footers, sorting by rank, animations.",
+          {"bukkit": [["mr:tab-was-taken", "hangar:TAB"]]}, note="Turn off Dark Scoreboard's tab list if you use this one"),
+    Addon("decentholograms", "DecentHolograms", "Floating text and items: /dh create <name> <text>.",
+          {"bukkit": [["mr:decentholograms", "hangar:DecentHolograms"]]}),
+    Addon("multiverse", "Multiverse-Core", "More worlds: /mv create <name> normal, /mv tp <world>.",
+          {"bukkit": [["mr:multiverse-core", "hangar:Multiverse-Core"]]}),
+    Addon("placeholderapi", "PlaceholderAPI", "%placeholders% for other plugins (Dark Scoreboard reads them too).",
+          {"bukkit": [["hangar:PlaceholderAPI", "mr:placeholderapi"]]}),
+    Addon("grimac", "GrimAC", "A strong free anticheat (movement, combat, blocks).",
+          {"bukkit": [["mr:grimac", "hangar:GrimAC"]]}, note="Works next to Gh0st AC"),
+    Addon("squaremap", "squaremap", "A light web map of your world (like BlueMap, but flat and fast). Port 8080.",
+          {"bukkit": [["mr:squaremap", "hangar:squaremap"]]}, ports=[(8080, "TCP", "squaremap")]),
+    Addon("skinsrestorer", "SkinsRestorer", "/skin <name> to change your skin, and skins for cracked players.",
+          {"bukkit": [["mr:skinsrestorer", "hangar:SkinsRestorer"]]}),
+    Addon("maintenance", "Maintenance", "/maintenance on: only staff can join, with a message in the server list.",
+          {"bukkit": [["mr:maintenance", "hangar:Maintenance"]]}),
+    Addon("fawe", "FastAsyncWorldEdit", "WorldEdit, but much faster for big edits (//set on millions of blocks).",
+          {"bukkit": [["mr:fastasyncworldedit", "hangar:FastAsyncWorldEdit"]]}, note="Don't tick WorldEdit with it"),
+    Addon("viabackwards", "ViaBackwards", "Older Minecraft versions can join (with ViaVersion).",
+          {"bukkit": [["mr:viabackwards", "hangar:ViaBackwards"], ["mr:viaversion", "hangar:ViaVersion"]]}, note="Installs ViaVersion too"),
+    Addon("worldguard", "WorldGuard", "Protected regions with flags (pvp, mob spawning, entry...).",
+          {"bukkit": [["mr:worldguard"], ["mr:worldedit", "hangar:WorldEdit"]]}, note="Installs WorldEdit too"),
+    Addon("chunkyborder", "ChunkyBorder", "A round or square world border with particles (/chunky border).",
+          {"bukkit": [["mr:chunkyborder", "hangar:ChunkyBorder"], ["mr:chunky", "hangar:Chunky"]]}, note="Installs Chunky too"),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",
@@ -144,6 +169,27 @@ ADDONS = [
     Addon("ferritecore", "FerriteCore", "Uses less RAM.", {"fabric": [["mr:ferrite-core"]]}),
 ]
 ADDON_BY_ID = {a.id: a for a in ADDONS}
+
+
+# The folders in tab 5, in this order.
+CATEGORIES = ["Dark plugins (by DarkerDawnFR)", "Admin & permissions", "Protection & anticheat", "Chat, voice & looks",
+              "World & building", "Maps", "Performance", "Cross-play & versions", "Economy", "Other"]
+_CATEGORY = {
+    "luckperms": 1, "vanish": 1, "essentials": 1, "maintenance": 1, "placeholderapi": 1,
+    "coreprotect": 2, "ledger": 2, "grimac": 2, "worldguard": 2,
+    "voicechat": 3, "tab": 3, "decentholograms": 3, "skinsrestorer": 3,
+    "worldedit": 4, "fawe": 4, "multiverse": 4, "chunky": 4, "chunkyborder": 4,
+    "bluemap": 5, "squaremap": 5,
+    "spark": 6, "lithium": 6, "ferritecore": 6, "rosestacker": 6,
+    "geyser": 7, "viaversion": 7, "viabackwards": 7,
+    "vault": 8,
+}
+
+
+def category(a: Addon) -> str:
+    if a.id.startswith("dark"):
+        return CATEGORIES[0]
+    return CATEGORIES[_CATEGORY.get(a.id, len(CATEGORIES) - 1)]
 
 
 def addons_for(provider: core.Provider) -> list[Addon]:
