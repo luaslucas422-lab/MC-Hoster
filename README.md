@@ -19,10 +19,10 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    | Fabric | 1.21.1 (+ Fabric API) | ✔ | mods |
    | **Bedrock** | the newest Bedrock Dedicated Server from Mojang | Java only | none (use Paper + Geyser to mix) |
 2. **Minecraft**: finds your `.minecraft` folder (or your Minecraft Bedrock folder) and adds the server to your server list.
-3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
+3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Nether and End on/off**, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, **Dark Spawners**, **Dark Settings**, **Dark Duels**, **Dark Ranks**, **Dark Perks**, **Dark VC Add-on**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, **Dark Spawners**, **Dark Settings**, **Dark Duels**, **Dark Ranks**, **Dark Perks**, **Dark VC Add-on**, **Dark RS Add-on**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
    - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
@@ -52,6 +52,9 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark Perks**: commands only ranks get: `/craft`, `/hat`, `/ec`, `/feed`, `/fly`, `/nick`, `/repair`, `/glow`, `/heal`, `/trail`.
    - **`/shop premium`** for ranks: better deals and things the normal shop doesn't have, with a bigger discount for better ranks (5% VIP up to 15% LEGEND). **`/media`** shows what's needed for the Media rank. Over 200 items can be sold with `/sell`, and sell values show in the shop, `/ah`, `/orders`, spawners, and above the hotbar for the item you hold.
    - **Dark VC Add-on**: voice chat only after `/voicechat agree` and accepting the rules in a pop-up (installs Simple Voice Chat too).
+   - **Dark RS Add-on**: RoseStacker stacking on/off per player in `/settings`; in a shared chunk, whoever arrived first decides (installs RoseStacker too; RoseStacker doesn't run on 26.x yet).
+   - Dark Shop also shows **money under name tags**, has **`/rules`** and **`/stats [player]`**, and shows both the **sell value** and the **auction value** (from real `/ah` sales) on items.
+   - Better ranks get `/ec` (from VIP), more homes (up to 20 for LEGEND) and a better respawn kit. **Random Coords** in `/settings` hides your real coordinates on the scoreboard, `/home` and `/rtp` for streaming.
    - Editors for ops: `/shop edit`, `/shards edit`, `/rank edit`, `/dsb edit`.
    - Every teleport (home, hub, tpa, tp, rtp, spawn, back) is a 5-second countdown you can't move in, and is blocked in combat.
    - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).
