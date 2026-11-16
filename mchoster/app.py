@@ -353,22 +353,32 @@ class Wizard:
         self.hardcore_cb = ttk.Checkbutton(diff, text="Hardcore (one life)", variable=self.hardcore_var, command=self._hardcore)
         self.hardcore_cb.pack(side="left", padx=10)
         self.row(f, 7, "Difficulty:", diff)
+        dims = ttk.Frame(f)
+        self.nether_var = tk.BooleanVar(value=True)
+        self.end_var = tk.BooleanVar(value=True)
+        self.nether_cb = ttk.Checkbutton(dims, text="Nether open", variable=self.nether_var)
+        self.nether_cb.pack(side="left")
+        self.end_cb = ttk.Checkbutton(dims, text="The End open", variable=self.end_var)
+        self.end_cb.pack(side="left", padx=10)
+        self.dims_hint = ttk.Label(dims, text="", style="Hint.TLabel")
+        self.dims_hint.pack(side="left")
+        self.row(f, 8, "Dimensions:", dims)
 
         sch = ttk.Frame(f)
         self.sched_label = ttk.Label(sch, text="Off")
         self.sched_label.pack(side="left")
         ttk.Button(sch, text="Schedule…", command=self.schedule_dialog, width=12).pack(side="right")
-        self.row(f, 8, "Auto-start:", sch)
+        self.row(f, 9, "Auto-start:", sch)
         dom = ttk.Frame(f)
         self.domain_label = ttk.Label(dom, text=domain.describe({}))
         self.domain_label.pack(side="left")
         ttk.Button(dom, text="Set up…", command=self.domain_dialog, width=12).pack(side="right")
-        self.row(f, 9, "Custom IP:", dom)
+        self.row(f, 10, "Custom IP:", dom)
 
-        ttk.Separator(f).grid(row=10, column=0, columnspan=3, sticky="we", pady=8)
+        ttk.Separator(f).grid(row=11, column=0, columnspan=3, sticky="we", pady=8)
         self.gh0st_var = tk.BooleanVar(value=True)
         self.gh0st_cb = ttk.Checkbutton(f, text="Install Gh0st AC anticheat on the server (free version)", variable=self.gh0st_var)
-        self.gh0st_cb.grid(row=11, column=0, columnspan=3, sticky="w")
+        self.gh0st_cb.grid(row=12, column=0, columnspan=3, sticky="w")
         self.eula_row = ttk.Frame(f)
         self.eula_var = tk.BooleanVar(value=False)
         self.eula_cb = ttk.Checkbutton(self.eula_row, text="I agree to the", variable=self.eula_var, command=self.update_buttons)
@@ -377,7 +387,7 @@ class Wizard:
         link.pack(side="left")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aka.ms/MinecraftEULA"))
         ttk.Label(self.eula_row, text="(needed to run any server)", style="Hint.TLabel").pack(side="left", padx=6)
-        self.eula_row.grid(row=12, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self.eula_row.grid(row=13, column=0, columnspan=3, sticky="w", pady=(4, 0))
         self.players_changed(10)
 
     def settings_for_provider(self):
@@ -390,6 +400,12 @@ class Wizard:
         self.hardcore_cb.state(["disabled"] if bed else ["!disabled"])
         if bed:
             self.hardcore_var.set(False)
+        fabric = p.kind == "fabric"
+        self.nether_cb.state(["disabled"] if bed else ["!disabled"])
+        self.end_cb.state(["disabled"] if bed or fabric else ["!disabled"])
+        if fabric:
+            self.end_var.set(True)
+        self.dims_hint.config(text="Bedrock can't close them" if bed else "Fabric can't close the End" if fabric else "")
         modes = core.BEDROCK_GAMEMODES if bed else core.GAMEMODES
         self.gamemode_cb.config(values=modes)
         if self.gamemode_var.get() not in modes:
@@ -941,6 +957,8 @@ class Wizard:
         c.gamemode = self.gamemode_var.get()
         c.difficulty = self.difficulty_var.get()
         c.hardcore = self.hardcore_var.get()
+        c.nether = self.nether_var.get() or c.prov.bedrock
+        c.end = self.end_var.get() or c.prov.bedrock or c.prov.kind == "fabric"
         c.gh0stac = self.gh0st_var.get()
         mc = Path(self.mc_var.get().strip().strip('"'))
         c.minecraft_dir = str(mc) if self.mc_var.get().strip() and self.mc_ok(mc) else ""
@@ -1042,6 +1060,8 @@ class Wizard:
         self.gamemode_var.set(c.gamemode)
         self.difficulty_var.set(c.difficulty)
         self.hardcore_var.set(c.hardcore)
+        self.nether_var.set(c.nether)
+        self.end_var.set(c.end)
         self.gh0st_var.set(c.gh0stac)
         self.sched = dict(c.schedule or {})
         self.sched_label.config(text=schedule.describe(self.sched))

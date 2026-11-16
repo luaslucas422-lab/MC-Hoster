@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkrsaddon"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -31,7 +31,8 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darkannounce": ("darkannounce test", "DARKANNOUNCE"), "darkspawners": ("spawners test", "DARKSPAWNERS"),
               "darksettings": ("settings test", "DARKSETTINGS"), "darkduels": ("duel test", "DARKDUELS"),
               "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS"),
-              "darkvcaddon": ("vc test", "DARKVCADDON")}
+              "darkvcaddon": ("vc test", "DARKVCADDON"),
+              "darkrsaddon": ("stacking test", "DARKRSADDON")}
 
 
 def run(args: list[str]) -> int:
@@ -101,6 +102,17 @@ def run(args: list[str]) -> int:
         core.setup_server(cfg, log=lambda l: print("  again: " + l))
         props = core.read_properties(d / "server.properties")
         assert props["pvp"] == "false" and props["max-players"] == "20" and props["motd"] != "hand edited", props
+        # closing the Nether and the End (and opening them again before the real start)
+        cfg.nether, cfg.end = False, False
+        core.write_server_files(cfg)
+        assert core.read_properties(d / "server.properties")["allow-nether"] == "false"
+        if provider.kind == "bukkit":
+            assert "allow-end: false" in (d / "bukkit.yml").read_text(), "bukkit.yml allow-end not written"
+        cfg.nether, cfg.end = True, True
+        core.write_server_files(cfg)
+        assert core.read_properties(d / "server.properties")["allow-nether"] == "true"
+        if provider.kind == "bukkit":
+            assert "allow-end: true" in (d / "bukkit.yml").read_text()
     if with_addons:
         from . import addons
         wanted = [a.id for a in addons.addons_for(provider)]

@@ -1,0 +1,14 @@
+name: DarkRSAddon
+version: ${project.version}
+main: dev.darkerdawnfr.darkrsaddon.DarkRSAddon
+api-version: "1.20"
+author: DarkerDawnFR
+description: Turn RoseStacker stacking on or off per player in /settings; the first player in a chunk decides. Needs RoseStacker. Made for MC Hoster.
+softdepend: [RoseStacker, DarkSettings]
+commands:
+  stacking:
+    description: Is stacking on in your chunk? (change it in /settings)
+    aliases: [rsaddon]
+permissions:
+  darkrsaddon.admin:
+    default: op

@@ -1,4 +1,4 @@
-config-version: 2
+config-version: 3
 
 # Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
 # Change prices here, then /darkshop reload.
@@ -6,6 +6,21 @@ config-version: 2
 # /pay, /bal, /baltop, /sell, /worth, /eco, /shop and /bounty always use Dark Shop,
 # even if EssentialsX or another plugin has the same commands.
 own-commands: true
+
+# Everyone's money under their name tag.
+money-tags:
+  enabled: true
+  format: "&a{money}"
+  label: "&a$"
+
+# /rules
+rules:
+  - "No cheating, hacked clients or x-ray."
+  - "No griefing or stealing outside of PvP."
+  - "Be respectful in chat. No hate, slurs or spam."
+  - "No lag machines or duping."
+  - "No advertising other servers."
+  - "Staff have the final say."
 
 # Money a new player starts with (only used when Dark Shop keeps the balances itself).
 start-balance: 0

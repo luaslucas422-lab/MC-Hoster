@@ -71,6 +71,19 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             getConfig().set("config-version", 2);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 3) {
+            // /ec (ender chest anywhere) for every rank in the shop, from VIP up
+            if (getConfig().isSet("ranks.vip")) {
+                List<String> l = new ArrayList<>(getConfig().getStringList("ranks.vip.permissions"));
+                if (!l.contains("darkperks.ec")) l.add("darkperks.ec");
+                getConfig().set("ranks.vip.permissions", l);
+                List<String> perks = new ArrayList<>(getConfig().getStringList("ranks.vip.perks"));
+                if (perks.stream().noneMatch(x -> x.contains("/ec"))) perks.add(0, "&f/ec &7- ender chest anywhere");
+                getConfig().set("ranks.vip.perks", perks);
+            }
+            getConfig().set("config-version", 3);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();
@@ -501,6 +514,7 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             Set<String> perms = permissions(legend);
             if (!perms.contains("darkperks.craft") || !perms.contains("darkperks.fly") || !perms.contains("darkperks.trail")) fails.add("legend perms " + perms);
             if (permissions(ranks.get("vip")).contains("darkperks.fly")) fails.add("vip shouldn't fly");
+            if (!permissions(ranks.get("vip")).contains("darkperks.ec")) fails.add("vip should have /ec");
             if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");
             if (getConfig().getStringList("media.requirements").size() < 2) fails.add("media requirements");
             if (!ChatColor.stripColor(prefix(id)).isBlank()) fails.add("member prefix should be empty");

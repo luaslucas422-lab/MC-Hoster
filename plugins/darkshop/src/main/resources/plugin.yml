@@ -27,6 +27,11 @@ commands:
   orders:
     description: Buy orders - ask for items at a price, or fill other players' orders.
     aliases: [order]
+  rules:
+    description: The server rules.
+  stats:
+    description: Your stats, or someone else's (/stats <player>).
+    aliases: [stat]
   eco:
     description: Give, take or set money (ops).
     permission: darkshop.admin

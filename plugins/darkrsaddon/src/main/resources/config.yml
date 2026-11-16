@@ -1,0 +1,4 @@
+# Dark RS Add-on by DarkerDawnFR, for RoseStacker.
+# Each player sets "Stacking" in /settings. A chunk stacks (or not) the way the player who got there first has it.
+# Chunks with nobody in them:
+empty-chunks-stack: true

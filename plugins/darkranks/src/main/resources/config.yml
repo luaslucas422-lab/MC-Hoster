@@ -6,7 +6,7 @@
 # inherit = also gets every permission of that rank.
 # permissions = like LuckPerms. The Dark Perks commands (darkperks.*) are only for ranks.
 
-config-version: 2
+config-version: 3
 default-rank: member
 
 # /media: what someone needs to get the Media rank (shown in the item's lore). Change it freely.
@@ -45,8 +45,8 @@ ranks:
     shop: true
     icon: EMERALD
     inherit: member
-    permissions: [darkperks.craft, darkperks.hat, darkhomes.homes.6, darkshop.premium, darkshop.discount.vip]
-    perks: ["&f/shop premium &7- 5% off", "&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f6 homes"]
+    permissions: [darkperks.craft, darkperks.hat, darkperks.ec, darkhomes.homes.6, darkshop.premium, darkshop.discount.vip]
+    perks: ["&f/shop premium &7- 5% off", "&f/ec &7- ender chest anywhere", "&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f6 homes"]
   vip+:
     name: "&2&lVIP+"
     prefix: "&2&l✦ VIP+ &r"
@@ -55,8 +55,8 @@ ranks:
     shop: true
     icon: EMERALD_BLOCK
     inherit: vip
-    permissions: [darkperks.ec, darkperks.feed, darkhomes.homes.7, darkshop.discount.vipplus]
-    perks: ["&7Everything in VIP", "&f/shop premium &7- 7.5% off", "&f/ec &7- ender chest anywhere", "&f/feed &7- fill your hunger", "&f7 homes"]
+    permissions: [darkperks.feed, darkhomes.homes.7, darkshop.discount.vipplus]
+    perks: ["&7Everything in VIP", "&f/shop premium &7- 7.5% off", "&f/feed &7- fill your hunger", "&f7 homes"]
   mvp:
     name: "&b&lMVP"
     prefix: "&b&l✪ MVP &r"

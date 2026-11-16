@@ -28,6 +28,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     private Bounties bounties;
     private Orders orders;
     private ShopEditor editor, premiumEditor;
+    private Extras extras;
     private Baltop baltop;
 
     @Override
@@ -43,10 +44,11 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         orders = new Orders(this);
         editor = new ShopEditor(this, shop);
         premiumEditor = new ShopEditor(this, premium);
+        extras = new Extras(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getServer().getPluginManager().registerEvents(this, this);
-        for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "orders", "darkshop")) {
+        for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "orders", "rules", "stats", "darkshop")) {
             PluginCommand pc = getCommand(c);
             if (pc != null) {
                 pc.setExecutor(this);
@@ -96,7 +98,15 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     /** Adds things from newer versions (more /sell items, the premium shop) without touching what you changed. */
     private void migrate() {
         int v = getConfig().getInt("config-version", 1);
-        if (v >= 2) return;
+        if (v >= 3) return;
+        var d3 = getConfig().getDefaults();
+        if (d3 != null) for (String k : List.of("rules", "money-tags"))
+            if (!getConfig().isSet(k) && d3.isSet(k)) getConfig().set(k, d3.get(k));
+        if (v >= 2) {
+            getConfig().set("config-version", 3);
+            saveConfig();
+            return;
+        }
         var defs = getConfig().getDefaults();
         if (defs != null) {
             var worth = defs.getConfigurationSection("worth");
@@ -105,7 +115,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
             for (String k : List.of("premium", "worth-hint"))
                 if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
         }
-        getConfig().set("config-version", 2);
+        getConfig().set("config-version", 3);
         saveConfig();
     }
 
@@ -290,6 +300,16 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
                 orders.browse(p, 0).open(p);
             }
+            case "rules" -> {
+                if (s instanceof Player p) extras.rules().open(p);
+                else for (String r : getConfig().getStringList("rules")) s.sendMessage(c("&7- &f" + r));
+            }
+            case "stats" -> {
+                OfflinePlayer t = a.length > 0 ? find(a[0]) : s instanceof Player p ? p : null;
+                if (t == null) return msg(s, a.length > 0 ? "&cNo player called " + a[0] + "." : "&7Usage: /stats <player>");
+                if (s instanceof Player p) extras.statsMenu(t).open(p);
+                else for (String[] st : extras.stats(t)) s.sendMessage(c(st[1] + "&7: &f" + st[2]));
+            }
             case "eco" -> {
                 if (a.length < 3) return msg(s, "&7Usage: /eco <give|take|set> <player> <amount>");
                 OfflinePlayer t = find(a[1]);
@@ -355,6 +375,12 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            if (getConfig().getStringList("rules").size() < 3) fails.add("rules");
+            extras.rules();
+            UUID sid = UUID.nameUUIDFromBytes("darkshop-stats".getBytes());
+            if (extras.stats(Bukkit.getOfflinePlayer(sid)).size() < 9) fails.add("stats");
+            extras.statsMenu(Bukkit.getOfflinePlayer(sid));
+            extras.moneyTags();
             if (premium.categories().size() < 2) fails.add("premium shop has " + premium.categories().size() + " categories");
             premium.main(null);
             int sellable = getConfig().getConfigurationSection("worth").getKeys(false).size();
@@ -459,7 +485,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     public List<String> onTabComplete(CommandSender s, Command cmd, String alias, String[] a) {
         String name = cmd.getName().toLowerCase(Locale.ROOT);
         List<String> out = new ArrayList<>();
-        if ((name.equals("pay") || name.equals("balance") || name.equals("bounty")) && a.length == 1
+        if ((name.equals("pay") || name.equals("balance") || name.equals("bounty") || name.equals("stats")) && a.length == 1
                 || name.equals("eco") && a.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         } else if (name.equals("eco") && a.length == 1) {

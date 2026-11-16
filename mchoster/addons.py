@@ -108,6 +108,8 @@ ADDONS = [
     Addon("darkvcaddon", "Dark VC Add-on", "Voice chat only after accepting the rules: /voicechat agree opens a DonutSMP-style pop-up.",
           {"bukkit": [["bundled:DarkVCAddon.jar"], ["mr:simple-voice-chat"]]},
           ports=[(24454, "UDP", "Voice chat")], note="Installs Simple Voice Chat too (players still need the mod)"),
+    Addon("darkrsaddon", "Dark RS Add-on", "Players turn RoseStacker stacking on/off in /settings; the first player in a chunk decides.",
+          {"bukkit": [["bundled:DarkRSAddon.jar"], ["mr:rosestacker", "hangar:RoseStacker"]]}, note="Installs RoseStacker too"),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",

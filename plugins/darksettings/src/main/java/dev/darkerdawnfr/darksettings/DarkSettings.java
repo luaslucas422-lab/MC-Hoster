@@ -51,7 +51,8 @@ public class DarkSettings extends JavaPlugin implements Listener, TabCompleter {
             new Setting("tpa", "TPA Requests", Material.ENDER_PEARL, "Players can send you /tpa.", "DarkTPA", true),
             new Setting("pay", "Payments", Material.GOLD_INGOT, "Players can /pay you.", "DarkShop", true),
             new Setting("tips", "Tips", Material.BOOK, "Tips in chat every few minutes.", "DarkTips", true),
-            new Setting("worth", "Sell Prices", Material.SUNFLOWER, "Show what the item you hold sells for.", "DarkShop", true));
+            new Setting("worth", "Sell Prices", Material.SUNFLOWER, "Show what the item you hold sells for.", "DarkShop", true),
+            new Setting("stacking", "Stacking", Material.SPAWNER, "Mobs and items stack in your chunk (if you got there first).", "DarkRSAddon", true));
 
     private final Map<UUID, Map<String, Boolean>> values = new ConcurrentHashMap<>();
     private File file;

@@ -733,6 +733,8 @@ class ServerConfig:
     gamemode: str = "Survival"
     difficulty: str = "Normal"
     hardcore: bool = False
+    nether: bool = True   # the Nether can be closed (allow-nether)
+    end: bool = True      # the End can be closed (Paper/Spigot: bukkit.yml allow-end)
     gh0stac: bool = True
     icon_path: str = ""
     minecraft_dir: str = ""      # .minecraft for Java, the minecraftpe folder for Bedrock
@@ -948,6 +950,24 @@ def add_bedrock_server(pe_dir: Path, name: str, address: str, port: int) -> bool
 
 # --------------------------------------------------------------------------- server folder
 
+def set_allow_end(folder: Path, on: bool) -> None:
+    """Paper, Purpur, Pufferfish and Spigot close the End with allow-end in bukkit.yml."""
+    f = Path(folder) / "bukkit.yml"
+    if not f.exists():
+        if not on:
+            f.write_text("settings:\n  allow-end: false\n", encoding="utf-8")
+        return
+    text = f.read_text(encoding="utf-8", errors="replace")
+    value = "true" if on else "false"
+    if re.search(r"(?m)^\s+allow-end:", text):
+        text = re.sub(r"(?m)^(\s+allow-end:)\s*\S+", rf"\1 {value}", text)
+    elif re.search(r"(?m)^settings:\s*$", text):
+        text = re.sub(r"(?m)^settings:\s*$", f"settings:\n  allow-end: {value}", text, count=1)
+    else:
+        text = f"settings:\n  allow-end: {value}\n" + text
+    f.write_text(text, encoding="utf-8")
+
+
 def write_server_files(cfg: ServerConfig) -> None:
     d = Path(cfg.folder)
     provider = cfg.prov
@@ -975,12 +995,15 @@ def write_server_files(cfg: ServerConfig) -> None:
         "gamemode": cfg.gamemode.lower(),
         "difficulty": cfg.difficulty.lower(),
         "hardcore": str(cfg.hardcore).lower(),
+        "allow-nether": str(cfg.nether).lower(),
         "online-mode": "true",
         "view-distance": str(view),
         "simulation-distance": str(min(10, view)),
         "spawn-protection": "0",
         "enable-status": "true",
     }, header="#Minecraft server properties (written by MC Hoster)")
+    if provider.kind == "bukkit":
+        set_allow_end(d, cfg.end)
     icon = d / "server-icon.png"
     if cfg.icon_path and Path(cfg.icon_path).exists():
         if Path(cfg.icon_path).resolve() != icon.resolve():

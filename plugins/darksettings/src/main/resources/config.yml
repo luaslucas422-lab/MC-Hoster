@@ -14,6 +14,7 @@ defaults:
   pay: true
   tips: true
   worth: true
+  stacking: true
 
 # Settings you don't want in the menu, e.g. [mobspawns]
 hidden: []
