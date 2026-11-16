@@ -40,8 +40,8 @@ def open_folder(path: str):
 
 
 class Wizard:
-    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config", "Experimental", "Hosted servers"]
-    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG, EXPERIMENTAL, HOSTED = range(8)
+    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config", "Experimental", "Hosted servers", "Max storage usage"]
+    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG, EXPERIMENTAL, HOSTED, STORAGE = range(9)
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -106,6 +106,7 @@ class Wizard:
         self._page_config(self.pages[5])
         self._page_experimental(self.pages[6])
         self._page_hosted(self.pages[7])
+        self._page_storage(self.pages[8])
         if profile.load().get("mc") and not self.owner_var.get():
             self.owner_var.set(profile.load()["mc"])  # you are made operator on every server you set up
         self.show(0)
@@ -1363,6 +1364,7 @@ class Wizard:
         c.owner = self.owner_var.get().strip()
         c.resource_pack = dict(self.rp or {})
         self.collect_config()
+        c.storage = self._storage_cfg()
         c.experimental = {"enabled": bool(self.exp_on.get()), "commands": self._exp_commands()}
         mc = Path(self.mc_var.get().strip().strip('"'))
         c.minecraft_dir = str(mc) if self.mc_var.get().strip() and self.mc_ok(mc) else ""
@@ -1474,6 +1476,9 @@ class Wizard:
         self.end_var.set(c.end)
         self.gh0st_var.set(c.gh0stac)
         self.owner_var.set(c.owner or "")
+        st = c.storage or {}
+        self.st_on.set(bool(st.get("enabled")))
+        self.st_gb.set(str(st.get("max_gb", 20)))
         self.rp = dict(c.resource_pack or {})
         self.rp_label.config(text=respack.describe(self.rp))
         self.fill_config()
@@ -1600,8 +1605,11 @@ class Wizard:
 
     # ------------------------------------------------------------------ auto restart
     def _restart_tick(self):
-        """Every second: a timed restart (tab 6) with warnings in chat."""
+        """Every second: a timed restart (tab 6) with warnings in chat, and every minute the storage check (tab 9)."""
         try:
+            self._tick_n = getattr(self, "_tick_n", 0) + 1
+            if self._tick_n % 60 == 0:
+                self._storage_tick()
             hours = int((self.cfg.auto_restart or {}).get("every_hours", 0) or 0)
             at = getattr(self, "_ready_at", None)
             if hours > 0 and at and self.server and self.server.running and not getattr(self, "_restarting", False):
@@ -1653,6 +1661,19 @@ class Wizard:
             self.startstop_btn.config(text="Start server", state="normal")
             self.update_buttons()
             return
+        limit = core.storage_limit_bytes(self.cfg)
+        if limit and self.cfg.folder:
+            used = core.folder_size(self.cfg.folder)
+            if used >= limit:
+                messagebox.showwarning("Max storage usage", f"{self.cfg.name} uses {core.fmt_bytes(used)} and its limit is "
+                                       f"{core.fmt_bytes(limit)}, so it won't start.\n\nFree some space or raise the limit in tab 9.")
+                self.show(self.PLAY)
+                self.play_title.config(text=f"{self.cfg.name} is offline (storage full)")
+                self.startstop_btn.config(text="Start server", state="normal")
+                self.update_buttons()
+                return
+        self._st_warned = False
+        self._storage_stopping = False
         # every server uses "localhost", so the Multiplayer list shows whichever one ran last: keep it this one
         cfg = self.cfg
         threading.Thread(target=lambda: core.add_to_list(cfg, log=lambda l: None), daemon=True).start()
@@ -1962,6 +1983,82 @@ class Wizard:
                 self.q.put(("hosted_done", None, self._offline_text(e)))
         threading.Thread(target=work, daemon=True).start()
 
+
+    # ------------------------------------------------------------------ tab 9: max storage usage
+    def _page_storage(self, f):
+        f.columnconfigure(0, weight=1)
+        ttk.Label(f, text="Max storage usage", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(f, text="Worlds, logs and backups grow and can fill your drive. Set a limit: at 90% you get a warning, "
+                          "and at the limit the server saves and stops by itself, and won't start again until there's room "
+                          "(delete things or raise the limit).", style="Hint.TLabel", wraplength=540, justify="left"
+                  ).grid(row=1, column=0, sticky="w", pady=(0, 10))
+        self.st_on = tk.BooleanVar(value=False)
+        self.st_gb = tk.StringVar(value="20")
+        ttk.Checkbutton(f, text="Limit how much storage this server may use", variable=self.st_on).grid(row=2, column=0, sticky="w")
+        row = ttk.Frame(f)
+        row.grid(row=3, column=0, sticky="w", pady=8)
+        ttk.Label(row, text="Stop the server at:").pack(side="left")
+        ttk.Spinbox(row, from_=1, to=100000, width=8, textvariable=self.st_gb).pack(side="left", padx=6)
+        ttk.Label(row, text="GB").pack(side="left")
+        self.st_bar = ttk.Progressbar(f, mode="determinate", maximum=100)
+        self.st_bar.grid(row=4, column=0, sticky="we", pady=(8, 2))
+        self.st_label = ttk.Label(f, text="Open or set up a server to see how much it uses.", style="Hint.TLabel")
+        self.st_label.grid(row=5, column=0, sticky="w")
+        ttk.Button(f, text="Check now", command=self.storage_check_now).grid(row=6, column=0, sticky="w", pady=8)
+        self._st_warned = False
+
+    def _storage_cfg(self) -> dict:
+        try:
+            gb = max(1.0, float(self.st_gb.get().replace(",", ".")))
+        except ValueError:
+            gb = 20.0
+        return {"enabled": bool(self.st_on.get()), "max_gb": gb}
+
+    def storage_check_now(self):
+        if not self.edit or not self.cfg.folder:
+            self.st_label.config(text="Set up a server first.")
+            return
+        self.st_label.config(text="Counting…")
+        folder = self.cfg.folder
+        threading.Thread(target=lambda: self.q.put(("storage", core.folder_size(folder), folder, True)), daemon=True).start()
+
+    def _storage_tick(self):
+        """Every minute while the server runs (and a limit is set)."""
+        cfg = self.cfg
+        if self.server and self.server.running and core.storage_limit_bytes(cfg) and cfg.folder:
+            folder = cfg.folder
+            threading.Thread(target=lambda: self.q.put(("storage", core.folder_size(folder), folder, False)), daemon=True).start()
+
+    def _storage_result(self, used: int, folder: str, manual: bool):
+        if folder != self.cfg.folder:
+            return
+        limit = core.storage_limit_bytes(self.cfg)
+        shown = self._storage_cfg()
+        if manual and not limit:  # not saved yet: show against what is typed
+            limit = int(shown["max_gb"] * 1024 ** 3) if shown["enabled"] else 0
+        if limit:
+            self.st_bar.config(value=min(100, used * 100 / limit))
+            self.st_label.config(text=f"Using {core.fmt_bytes(used)} of {core.fmt_bytes(limit)} ({used * 100 / limit:.0f}%)")
+        else:
+            self.st_bar.config(value=0)
+            self.st_label.config(text=f"Using {core.fmt_bytes(used)}. No limit is set.")
+        if not limit or manual:
+            return
+        if used >= limit and self.server and self.server.running and not getattr(self, "_storage_stopping", False):
+            self._storage_stopping = True
+            self.log(f"! Storage full: {core.fmt_bytes(used)} of {core.fmt_bytes(limit)}. Stopping the server.")
+            srv = self.server
+            try:
+                srv.send("say The server is out of storage and is stopping to keep the PC safe.")
+            except Exception:
+                pass
+            threading.Thread(target=lambda: (srv.stop(90), self.q.put(("storage_stopped", used, limit))), daemon=True).start()
+        elif used >= limit * 0.9 and not self._st_warned:
+            self._st_warned = True
+            self.log(f"! Storage is at {used * 100 / limit:.0f}% of the limit ({core.fmt_bytes(used)} of {core.fmt_bytes(limit)}).")
+            messagebox.showwarning("Max storage usage", f"The server uses {core.fmt_bytes(used)} of its {core.fmt_bytes(limit)} limit.\n"
+                                   "It stops by itself at the limit. Delete old backups or logs, or raise the limit in tab 9.")
+
     # ------------------------------------------------------------------ feedback, update logs
     def _secret_click(self, _e=None):
         """Click "by DarkerDawnFR" 20 times in a row (nothing else in between) to unlock Received feedback."""
@@ -2259,6 +2356,13 @@ class Wizard:
                                            f"Downloading… {done / 1048576:.1f} MB")
                         if total:
                             u["bar"].config(value=done * 100 / total)
+                elif k == "storage":
+                    self._storage_result(ev[1], ev[2], ev[3])
+                elif k == "storage_stopped":
+                    self._storage_stopping = False
+                    messagebox.showwarning("Max storage usage", f"The server stopped because it used {core.fmt_bytes(ev[1])}, "
+                                           f"and the limit is {core.fmt_bytes(ev[2])}.\n\nFree some space (old backups, logs, "
+                                           "worlds) or raise the limit in tab 9, then start it again.")
                 elif k == "posts":
                     if self.share_frame is not None and self.posts_text.winfo_exists():
                         self._set_posts_text(ev[2] or "No posts yet. Be the first!", ev[1])

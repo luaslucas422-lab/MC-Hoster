@@ -189,6 +189,9 @@ def run(outdir: str) -> int:
         lambda: grab("6-config"),
         lambda: (w.exp_text.insert("1.0", "say Welcome to Lucas's SMP!\ntime set day\n# a note\n"), w.show(w.EXPERIMENTAL)),
         lambda: grab("7-experimental"),
+        lambda: (w.st_on.set(True), w.st_gb.set("20"), w.nb.select(w.STORAGE), w.st_bar.config(value=82),
+                 w.st_label.config(text="Using 16.4 GB of 20.00 GB (82%)")),
+        lambda: grab("9-storage"),
         hosted_tab,
         lambda: grab("8-hosted"),
         sharing_side,
@@ -222,5 +225,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 20
+    want = 21
     return 0 if len(shots) == want else 1

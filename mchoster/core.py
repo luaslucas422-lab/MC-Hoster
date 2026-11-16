@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "3.0.2"
+VERSION = "3.1.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -495,6 +495,41 @@ def heap_for_start(cfg: "ServerConfig") -> int:
     return max(768, (mb // 128) * 128)
 
 
+def folder_size(path: str | Path) -> int:
+    """Bytes used by everything inside a folder (what the Max storage usage tab watches)."""
+    total = 0
+    stack = [str(path)]
+    while stack:
+        try:
+            with os.scandir(stack.pop()) as it:
+                for e in it:
+                    try:
+                        if e.is_dir(follow_symlinks=False):
+                            stack.append(e.path)
+                        elif e.is_file(follow_symlinks=False):
+                            total += e.stat(follow_symlinks=False).st_size
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+    return total
+
+
+def storage_limit_bytes(cfg: "ServerConfig") -> int:
+    """0 when there is no limit."""
+    st = cfg.storage or {}
+    if not st.get("enabled"):
+        return 0
+    try:
+        return int(float(st.get("max_gb", 0)) * 1024 ** 3)
+    except (TypeError, ValueError):
+        return 0
+
+
+def fmt_bytes(n: float) -> str:
+    return f"{n / 1024 ** 3:.2f} GB" if n >= 1024 ** 3 else f"{n / 1024 ** 2:.0f} MB"
+
+
 def total_ram_mb() -> int:
     try:
         if WINDOWS:
@@ -809,6 +844,7 @@ class ServerConfig:
     resource_pack: dict = field(default_factory=dict) # url, sha1, required, prompt, name, source
     auto_restart: dict = field(default_factory=dict)  # every_hours (0 = off), on_crash
     experimental: dict = field(default_factory=dict)  # tab 7: startup commands {"enabled": bool, "commands": [...]}
+    storage: dict = field(default_factory=dict)       # tab 9: {"enabled": bool, "max_gb": number}
     # filled in by setup
     folder: str = ""
     java: str = ""
