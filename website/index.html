@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MC Hoster</title>
+<meta name="description" content="Host a Minecraft server from your own Windows PC in a few clicks. Free, with Gh0st AC anti-cheat and a set of Dark plugins.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* layout idea: one calm column, a split hero with the real app screenshot, then plain sections */
+:root{
+  --bg:#f5f1ea; --panel:#ffffff; --ink:#1d2433; --muted:#5d6678; --line:#ddd6c8;
+  --accent:#c2410c; --accent-ink:#ffffff; --good:#2f7d46;
+  --display:"Bricolage Grotesque",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#161b26; --panel:#1f2635; --ink:#eae6dd; --muted:#a2abbd; --line:#323b50; --accent:#f08a4b; --accent-ink:#1a1206; --good:#6cc388;
+}}
+:root[data-theme="dark"]{--bg:#161b26; --panel:#1f2635; --ink:#eae6dd; --muted:#a2abbd; --line:#323b50; --accent:#f08a4b; --accent-ink:#1a1206; --good:#6cc388;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.6 var(--body)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0}
+.logo{font:800 22px var(--display);letter-spacing:-.01em}
+nav{display:flex;gap:20px;flex-wrap:wrap}
+nav a{color:var(--muted);text-decoration:none;font-weight:500}
+nav a:hover,nav a:focus-visible{color:var(--ink);text-decoration:underline}
+.hero{display:grid;grid-template-columns:1fr 1.15fr;gap:40px;align-items:center;padding:32px 0 56px}
+h1{font:800 clamp(34px,5vw,54px)/1.05 var(--display);letter-spacing:-.025em;margin:0 0 16px;text-wrap:balance}
+h2{font:800 30px/1.15 var(--display);letter-spacing:-.015em;margin:0 0 12px;text-wrap:balance}
+h3{font:600 18px var(--display);margin:0 0 6px}
+.lead{font-size:19px;color:var(--muted);margin:0 0 24px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);padding:14px 22px;border-radius:10px;font-weight:600;text-decoration:none;border:0}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.small{font-size:14px;color:var(--muted);margin:12px 0 0}
+.shot{border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:0 14px 40px rgba(20,24,40,.18);width:100%;height:auto;display:block}
+section{padding:40px 0;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card p{margin:0;color:var(--muted);font-size:15.5px}
+.steps{counter-reset:s;list-style:none;padding:0;margin:20px 0 0;display:grid;gap:12px}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px 14px 56px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:16px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:600;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:14.5px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:20px}
+.gallery figure{margin:0}
+.gallery figcaption{font-size:14px;color:var(--muted);margin-top:6px}
+footer{padding:32px 0 48px;color:var(--muted);font-size:15px;border-top:1px solid var(--line)}
+@media (max-width:820px){.hero{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){.btn{transition:filter .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">MC Hoster</div>
+    <nav aria-label="Sections"><a href="#features">What it does</a><a href="#how">How it works</a><a href="#plugins">Plugins</a><a href="#screens">Screens</a><a href="#faq">Questions</a></nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Host a Minecraft server from your own PC.</h1>
+        <p class="lead">Pick a server type and a version, press Finish. MC Hoster downloads everything, opens your router, adds anti-cheat and gives you the address to send to friends.</p>
+        <div class="row">
+          <a class="btn" id="dl" href="https://github.com/luaslucas422-lab/MC-Hoster/releases/latest/download/MC-Hoster.exe">Download for Windows</a>
+          <a class="btn alt" href="https://github.com/luaslucas422-lab/MC-Hoster/releases">Update logs</a>
+        </div>
+        <p class="small" id="ver">Free. Windows 10 or 11. No Java or setup needed, MC Hoster gets what it needs.</p>
+      </div>
+      <img class="shot" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/4-play.png" alt="MC Hoster's Play tab showing a running server, its join addresses and the console" width="724" height="627">
+    </div>
+
+    <section id="features">
+      <h2>Everything a home server needs</h2>
+      <div class="grid">
+        <div class="card"><h3>Paper, Purpur, Spigot, Fabric, Bedrock</h3><p>Java versions from 1.20.6 to the newest, and Bedrock. Versions are listed live.</p></div>
+        <div class="card"><h3>Gh0st AC anti-cheat</h3><p>Bundled and on by default: fly, speed, reach, aura and more are caught and punished.</p></div>
+        <div class="card"><h3>Friends can join</h3><p>Opens your router ports by itself, finds your IP, and can point your own domain at it.</p></div>
+        <div class="card"><h3>Plugins in one click</h3><p>Twelve ready presets plus search of Modrinth, Hangar and CurseForge, and your own folders.</p></div>
+        <div class="card"><h3>Safe by default</h3><p>Auto restart, auto start on a schedule, backups, and a Max storage usage limit that stops the server before your drive fills up.</p></div>
+        <div class="card"><h3>Updates itself</h3><p>Shows what's new and installs the update. Your servers keep working.</p></div>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>From download to playing</h2>
+      <ol class="steps">
+        <li><strong>Open MC Hoster.</strong> Read the terms and tell it your name and Minecraft username. You are made operator on your servers.</li>
+        <li><strong>Pick a server type and version,</strong> name it, set the max players and press Finish.</li>
+        <li><strong>Press Start.</strong> When it says online, copy the address from the Play tab and send it to friends.</li>
+      </ol>
+    </section>
+
+    <section id="plugins">
+      <h2>The Dark plugins</h2>
+      <p class="lead" style="margin-bottom:0">Made for MC Hoster and free with it. Add them in tab 5, they work together.</p>
+      <div class="chips" id="chips"></div>
+    </section>
+
+    <section id="screens">
+      <h2>A look inside</h2>
+      <div class="gallery">
+        <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/3-settings-filled.png" alt="The Settings tab"><figcaption>Settings: players, difficulty, custom IP and auto-start</figcaption></figure>
+        <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/5-plugins.png" alt="The Plugins and Mods tab"><figcaption>Plugins &amp; Mods: presets and search</figcaption></figure>
+        <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/6-config.png" alt="The Config tab"><figcaption>Config: gamerules, MOTD, RAM and more</figcaption></figure>
+        <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/9-storage.png" alt="The Max storage usage tab"><figcaption>Max storage usage: a limit that protects your drive</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="faq">
+      <h2>Questions</h2>
+      <div class="grid">
+        <div class="card"><h3>Is it free?</h3><p>Yes. MC Hoster and the Dark plugins are free.</p></div>
+        <div class="card"><h3>Is my PC safe to use as a server?</h3><p>Opening a server to the internet has risks. Only use plugins and mods from official sites, and keep backups of worlds you care about.</p></div>
+        <div class="card"><h3>Windows says it's unknown software.</h3><p>MC Hoster isn't signed yet. Click More info, then Run anyway, or get it only from this page or the GitHub releases.</p></div>
+        <div class="card"><h3>Is it made by Mojang?</h3><p>No. It's an independent hobby project and isn't connected to Mojang or Microsoft.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>MC Hoster by DarkerDawnFR · <a href="https://github.com/luaslucas422-lab/MC-Hoster" style="color:inherit">Source on GitHub</a></footer>
+</div>
+<script>
+// The page is complete without this: it only shows the newest version number.
+var names=["Dark AFK Zone", "Dark AH", "Dark Announce", "Dark Backup", "Dark Bossbar", "Dark Chat", "Dark Combat", "Dark Crates", "Dark Discord", "Dark Duels", "Dark Essentials", "Dark Fishing", "Dark Hates Griefers", "Dark Homes", "Dark Hub", "Dark Names", "Dark NPCs", "Dark Performance", "Dark Perks", "Dark Ranks", "Dark Rifts", "Dark RTP", "Dark Scoreboard", "Dark Settings", "Dark Shards", "Dark Shop", "Dark Spawners", "Dark Teams", "Dark Tips", "Dark TPA", "No Enchant Limits"];
+var c=document.getElementById("chips");
+names.forEach(function(n){var s=document.createElement("span");s.className="chip";s.textContent=n;c.appendChild(s)});
+try{fetch("https://api.github.com/repos/luaslucas422-lab/MC-Hoster/releases/latest").then(function(r){return r.json()}).then(function(d){
+  if(d&&d.tag_name){document.getElementById("ver").textContent="Version "+d.tag_name.replace(/^v/,"")+" · Free · Windows 10 or 11. No Java or setup needed, MC Hoster gets what it needs."}
+}).catch(function(){})}catch(e){}
+</script>
+</body>
+</html>
