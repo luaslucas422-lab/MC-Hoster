@@ -108,7 +108,8 @@ public class DarkBossbar extends JavaPlugin implements Listener, TabCompleter {
 
     private void update(Player p) {
         BossBar b = bars.get(p.getUniqueId());
-        if (!getConfig().getBoolean("enabled", true) || getConfig().getStringList("hide-in-worlds").contains(p.getWorld().getName())) {
+        if (!getConfig().getBoolean("enabled", true) || getConfig().getStringList("hide-in-worlds").contains(p.getWorld().getName())
+                || !Settings.on(p.getUniqueId(), "bossbar")) {
             if (b != null) b.removeAll();
             bars.remove(p.getUniqueId());
             return;

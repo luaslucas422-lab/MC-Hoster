@@ -155,6 +155,9 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
         int limit = getConfig().getInt("max-listings", 10);
         if (!p.hasPermission("darkah.unlimited") && ah.of(p.getUniqueId()).size() >= limit)
             return say(p, "&cYou can only sell " + limit + " items at once. Take one back in /ah > Your items.");
+        if (hand.hasItemMeta() && hand.getItemMeta() != null && hand.getItemMeta().getPersistentDataContainer()
+                .has(new org.bukkit.NamespacedKey("darkessentials", "starter"), org.bukkit.persistence.PersistentDataType.BYTE))
+            return say(p, "&cStarter items can't be sold on the auction house.");
         for (String banned : getConfig().getStringList("blocked-items"))
             if (hand.getType().name().equalsIgnoreCase(banned)) return say(p, "&cThat item can't be sold here.");
         ItemStack item = hand.clone();

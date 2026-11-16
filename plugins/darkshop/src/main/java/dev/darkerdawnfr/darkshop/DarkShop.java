@@ -26,6 +26,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     private ShopMenus shop;
     private SellMenu sell;
     private Bounties bounties;
+    private Orders orders;
     private Baltop baltop;
 
     @Override
@@ -36,10 +37,11 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         sell = new SellMenu(this);
         bounties = new Bounties(this);
         baltop = new Baltop(this);
+        orders = new Orders(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getServer().getPluginManager().registerEvents(this, this);
-        for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "darkshop")) {
+        for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "orders", "darkshop")) {
             PluginCommand pc = getCommand(c);
             if (pc != null) {
                 pc.setExecutor(this);
@@ -75,7 +77,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         if (word.contains(":")) return;
         PluginCommand ours = getCommand(word);
         if (ours == null) {
-            for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty")) {
+            for (String c : List.of("shop", "sell", "worth", "balance", "pay", "baltop", "eco", "bounty", "orders")) {
                 PluginCommand pc = getCommand(c);
                 if (pc != null && pc.getAliases().contains(word)) ours = pc;
             }
@@ -95,6 +97,15 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     public boolean take(UUID id, double amount) { return money.take(id, amount); }
     public boolean give(UUID id, double amount) { return money.give(id, amount); }
     public String economyMode() { return money.mode(); }
+    // Used by Dark Spawners: what one item sells for in /sell.
+    public double worth(String material) { return getConfig().getDouble("worth." + material, 0); }
+
+    /** Starter gear from Dark Essentials can't be sold or put on the auction house. */
+    public static boolean starter(ItemStack it) {
+        if (it == null || !it.hasItemMeta() || it.getItemMeta() == null) return false;
+        return it.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey("darkessentials", "starter"),
+                org.bukkit.persistence.PersistentDataType.BYTE);
+    }
     // Used by Dark Scoreboard.
     public double bounty(UUID id) { return bounties.get(id); }
     public int baltopRank(UUID id) { return baltop.rank(id); }
@@ -145,6 +156,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 OfflinePlayer t = find(a[0]);
                 double amt = Util.parseMoney(a[1]);
                 if (t == null) return msg(s, "&cNo player called " + a[0] + ".");
+                if (!Settings.on(t.getUniqueId(), "pay")) return msg(s, "&c" + t.getName() + " has payments turned off in /settings.");
                 if (t.getUniqueId().equals(p.getUniqueId())) return msg(s, "&cYou can't pay yourself.");
                 if (Double.isNaN(amt) || amt < 0.01) return msg(s, "&c" + a[1] + " is not a valid amount.");
                 if (!money.take(p.getUniqueId(), amt)) return msg(s, "&cYou don't have " + Util.money(amt) + ".");
@@ -191,6 +203,31 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                             .replace("{target}", t.getName()).replace("{price}", Util.money(amt))
                             .replace("{total}", Util.money(bounties.get(t.getUniqueId()))));
                 }
+            }
+            case "orders" -> {
+                if (!(s instanceof Player p)) return msg(s, "&cOnly players can use orders.");
+                if (a.length > 0 && (a[0].equalsIgnoreCase("new") || a[0].equalsIgnoreCase("create"))) {
+                    Material item;
+                    int at = 1;
+                    if (a.length >= 4) {
+                        item = Util.material(a[1].toUpperCase(Locale.ROOT));
+                        at = 2;
+                    } else item = p.getInventory().getItemInMainHand().getType();
+                    if (a.length < at + 2) return msg(s, "&7Hold the item and type &f/orders new <amount> <price each>&7, or &f/orders new <item> <amount> <price each>");
+                    int amount;
+                    try {
+                        amount = Integer.parseInt(a[at].replace(",", "").replaceAll("(?i)k$", "000"));
+                    } catch (NumberFormatException e) {
+                        return msg(s, "&c" + a[at] + " is not an amount.");
+                    }
+                    double price = Util.parseMoney(a[at + 1]);
+                    String[] why = new String[1];
+                    Orders.Order o = orders.create(p.getUniqueId(), p.getName(), item, amount, price, why);
+                    if (o == null) return msg(s, "&c" + why[0]);
+                    return msg(s, "&aOrder made: &f" + amount + "x " + Util.nice(item) + " &aat &f" + Util.money(price) + " &aeach. &7"
+                            + Util.money(amount * price) + " is held until it's delivered. &8(/orders > Your orders)");
+                }
+                orders.browse(p, 0).open(p);
             }
             case "eco" -> {
                 if (a.length < 3) return msg(s, "&7Usage: /eco <give|take|set> <player> <amount>");
@@ -290,6 +327,29 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 if (baltop.menu(id, 0).getInventory().getItem(49) == null) fails.add("baltop menu");
                 money.forget(id);
                 baltop.refresh();
+                // orders: the money is held, deliverers are paid, the buyer collects, cancelling refunds
+                UUID buyer = UUID.nameUUIDFromBytes("darkshop-order-buyer".getBytes()), seller = UUID.nameUUIDFromBytes("darkshop-order-seller".getBytes());
+                money.set(buyer, 10_000);
+                money.set(seller, 0);
+                String[] why = new String[1];
+                Orders.Order o = orders.create(buyer, "Buyer", Material.DIAMOND, 100, 50, why);
+                if (o == null || money.balance(buyer) != 5000) fails.add("order escrow: " + why[0] + " " + money.balance(buyer));
+                if (o != null) {
+                    if (orders.create(buyer, "Buyer", Material.DIAMOND, 1000, 50, why) != null) fails.add("order without money");
+                    if (orders.deliver(seller, o, 30) != 30 || money.balance(seller) != 1500 || o.waiting != 30) fails.add("deliver");
+                    if (orders.deliver(seller, o, 500) != 70 || o.left() != 0) fails.add("over-deliver");
+                    if (orders.deliver(buyer, o, 1) != 0) fails.add("delivered to own order");
+                    Orders.Order o2 = orders.create(buyer, "Buyer", Material.IRON_INGOT, 10, 100, why);
+                    if (o2 == null || orders.cancel(buyer, o2) != 1000 || money.balance(buyer) != 5000) fails.add("cancel refund");
+                    orders.remove(o.id);
+                }
+                money.forget(buyer);
+                money.forget(seller);
+                ItemStack st = new ItemStack(Material.STONE_SWORD);
+                var sm = st.getItemMeta();
+                sm.getPersistentDataContainer().set(new org.bukkit.NamespacedKey("darkessentials", "starter"), org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                st.setItemMeta(sm);
+                if (!starter(st) || sell.worth(st) != 0 || starter(new ItemStack(Material.STONE_SWORD))) fails.add("starter items");
             }
             Object vault = null;
             try {

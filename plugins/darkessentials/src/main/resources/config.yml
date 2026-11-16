@@ -23,8 +23,16 @@ join:
     - "&b&l  Welcome, &f{player}&b&l!"
     - "&7  /rules  &8|  &7/kit  &8|  &7/spawn  &8|  &7/discord"
     - "&8&m                                        "
-  # The kit new players get by themselves.
-  first-kit: starter
+  # A kit new players get by themselves ("" = none; the starter gear below is given instead).
+  first-kit: ""
+
+# Anyone who spawns in with nothing (new players, and after dying) gets this.
+# It's called "Starter <item>" in gray bold and can't be sold (/sell) or put on /ah.
+starter-gear:
+  enabled: true
+  name: "&7&lStarter {item}"
+  items: ["CHAINMAIL_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "CHAINMAIL_BOOTS", "COOKED_BEEF:16",
+          "STONE_SWORD", "STONE_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
 
 kits:
   starter:

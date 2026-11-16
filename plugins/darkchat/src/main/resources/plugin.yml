@@ -4,7 +4,7 @@ main: dev.darkerdawnfr.darkchat.DarkChat
 api-version: "1.20"
 author: DarkerDawnFR
 description: Better chat - rank prefixes, @mentions, [item], anti-spam, /msg, /ignore, /mute. Made for MC Hoster.
-softdepend: [Vault, VaultUnlocked, LuckPerms]
+softdepend: [DarkSettings, Vault, VaultUnlocked, LuckPerms]
 commands:
   msg:
     description: Private message.

@@ -1,0 +1,13 @@
+# Dark Duels by DarkerDawnFR.
+# Make an arena: stand where player 1 starts and type /duel arena set <name> 1, then /duel arena set <name> 2.
+# Make more arenas so several duels can happen at once.
+
+# Seconds both players stand still before going to the arena.
+countdown-seconds: 5
+# Tell everyone who won.
+announce: true
+# Commands players can still use in a duel.
+allowed-commands: [msg, r, tell, w, duel, duels, duals]
+prefix: "&8[&cDuels&8] "
+
+arenas: {}

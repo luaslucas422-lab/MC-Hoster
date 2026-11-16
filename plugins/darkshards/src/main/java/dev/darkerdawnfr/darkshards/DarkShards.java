@@ -176,36 +176,102 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
 
     // ------------------------------------------------------------------ shop
 
+    /** The shop's pages: 1 = shard tools, then Crate Keys (Dark Crates) and Spawners (Dark Spawners) if installed. */
+    public List<String[]> pages() {
+        List<String[]> out = new ArrayList<>();
+        out.add(new String[]{"", "Shard shop"});
+        for (String[] pl : new String[][]{{"DarkCrates", "Crate Keys"}, {"DarkSpawners", "Spawners"}}) {
+            org.bukkit.plugin.Plugin x = Bukkit.getPluginManager().getPlugin(pl[0]);
+            if (x != null && x.isEnabled()) out.add(pl);
+        }
+        return out;
+    }
+
     public Menu shop(Player p) {
-        Menu m = new Menu(Math.max(3, Math.min(6, getConfig().getInt("shop-rows", 3))), "&8" + Util.small("Shard shop"));
+        return shop(p, 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    public Menu shop(Player p, int page) {
+        List<String[]> pages = pages();
+        int pg = Math.max(0, Math.min(page, pages.size() - 1));
+        String[] info = pages.get(pg);
+        Menu m = new Menu(4, "&8" + Util.small(pg == 0 ? "Shard shop" : "Shard shop - " + info[1]) + " &8(" + (pg + 1) + "/" + pages.size() + ")");
         long mine = shards(p.getUniqueId());
         m.set(4, Util.item(Material.AMETHYST_CLUSTER, "&d✦ " + mine + " shards", "&7Earn shards by playing",
                 "&7(&d" + getConfig().getLong("earn.amount", 1) + "&7 every &d" + getConfig().getInt("earn.minutes", 5) + " min&7)",
                 "&7and killing players (&d" + getConfig().getLong("earn.kill", 5) + "&7 each)."));
-        for (ShardItems.Def d : items.defs().values()) {
-            ItemStack show = items.create(d);
-            var meta = show.getItemMeta();
-            List<String> lore = new ArrayList<>();
-            for (String s : d.lore()) lore.add(Util.color(s.replace("{size}", d.size() + "x" + d.size())));
-            lore.add("");
-            lore.add(Util.color("&7Price: &d✦ " + d.price() + " shards"));
-            lore.add(Util.color("&7Lasts: &f" + hours(d.hours())));
-            lore.add("");
-            lore.add(Util.color(mine >= d.price() ? "&eClick to buy" : "&cYou need " + (d.price() - mine) + " more shards"));
-            meta.setLore(lore);
-            show.setItemMeta(meta);
-            int slot = Math.max(0, Math.min(m.size() - 1, d.slot()));
-            m.set(slot, show, e -> confirm(p, d).open(p));
+        if (pg == 0) {
+            for (ShardItems.Def d : items.defs().values()) {
+                ItemStack show = items.create(d);
+                var meta = show.getItemMeta();
+                List<String> lore = new ArrayList<>();
+                for (String s : d.lore()) lore.add(Util.color(s.replace("{size}", d.size() + "x" + d.size())));
+                lore.add("");
+                lore.add(Util.color("&7Price: &d✦ " + d.price() + " shards"));
+                lore.add(Util.color("&7Lasts: &f" + hours(d.hours())));
+                lore.add("");
+                lore.add(Util.color(mine >= d.price() ? "&eClick to buy" : "&cYou need " + (d.price() - mine) + " more shards"));
+                meta.setLore(lore);
+                show.setItemMeta(meta);
+                int slot = Math.max(9, Math.min(26, d.slot()));
+                m.set(slot, show, e -> confirm(p, d).open(p));
+            }
+        } else {
+            // another plugin's things for sale: {id, item to show, price}
+            org.bukkit.plugin.Plugin owner = Bukkit.getPluginManager().getPlugin(info[0]);
+            List<Object[]> offers = List.of();
+            try {
+                offers = (List<Object[]>) owner.getClass().getMethod("shardOffers").invoke(owner);
+            } catch (Exception ex) {
+                getLogger().warning("Couldn't load the " + info[1] + " page: " + ex);
+            }
+            int[] slots = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25};
+            for (int i = 0; i < offers.size() && i < slots.length; i++) {
+                Object[] o = offers.get(i);
+                String id = (String) o[0];
+                ItemStack show = ((ItemStack) o[1]).clone();
+                long price = ((Number) o[2]).longValue();
+                var meta = show.getItemMeta();
+                List<String> lore = meta.hasLore() && meta.getLore() != null ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                lore.add("");
+                lore.add(Util.color("&7Price: &d✦ " + price + " shards"));
+                lore.add(Util.color("&eLeft-click: buy 1  &8|  &eRight-click: buy 5"));
+                meta.setLore(lore);
+                show.setItemMeta(meta);
+                m.set(slots[i], show, e -> {
+                    int n = e.isRightClick() ? 5 : 1;
+                    if (p.getInventory().firstEmpty() == -1) {
+                        say(p, "&cMake room in your inventory first.");
+                        return;
+                    }
+                    if (!takeShards(p.getUniqueId(), price * n)) {
+                        say(p, "&cYou need &d✦ " + price * n + " shards&c, you have " + shards(p.getUniqueId()) + ".");
+                        p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.6f, 1f);
+                        return;
+                    }
+                    try {
+                        owner.getClass().getMethod("buyOffer", Player.class, String.class, int.class).invoke(owner, p, id, n);
+                        say(p, "&aYou bought " + n + "x " + show.getItemMeta().getDisplayName() + "&a.");
+                        p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1f, 1.2f);
+                    } catch (Exception ex) {
+                        giveShards(p.getUniqueId(), price * n); // refund
+                        say(p, "&cThat couldn't be bought right now.");
+                    }
+                    shop(p, pg).open(p);
+                });
+            }
+            if (offers.isEmpty()) m.set(22, Util.item(Material.PAPER, "&7Nothing here yet"));
         }
-        org.bukkit.plugin.Plugin crates = Bukkit.getPluginManager().getPlugin("DarkCrates");
-        if (crates != null && crates.isEnabled())
-            m.set(m.size() - 5, Util.item(Material.TRIPWIRE_HOOK, "&b&lCrate Keys", "&7Buy keys for the crates", "&7at the hubs with shards.", "", "&eClick for the Keys page"), e -> {
-                try {
-                    crates.getClass().getMethod("openKeyShop", Player.class).invoke(crates, p);
-                } catch (Exception ex) {
-                    say(p, "&cThe Keys page isn't available.");
-                }
-            });
+        for (int i = 27; i < 36; i++) m.set(i, Util.glass());
+        if (pg > 0) m.set(27, Util.item(Material.ARROW, "&fPrevious page", "&7" + pages.get(pg - 1)[1]), e -> shop(p, pg - 1).open(p));
+        if (pg < pages.size() - 1) m.set(35, Util.item(Material.ARROW, "&fNext page", "&7" + pages.get(pg + 1)[1]), e -> shop(p, pg + 1).open(p));
+        for (int i = 0; i < pages.size() && i < 5; i++) {
+            int to = i;
+            Material icon = i == 0 ? Material.AMETHYST_SHARD : pages.get(i)[0].equals("DarkCrates") ? Material.TRIPWIRE_HOOK : Material.SPAWNER;
+            m.set(29 + i * 2 - (pages.size() > 2 ? 0 : -1), Util.item(icon, (i == pg ? "&d&l" : "&7") + pages.get(i)[1], i == pg ? "&7You're here" : "&eClick to go"),
+                    e -> shop(p, to).open(p));
+        }
         m.fill();
         return m;
     }
@@ -265,8 +331,14 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
         String sub = a.length > 0 ? a[0].toLowerCase(Locale.ROOT) : "";
         boolean admin = s.hasPermission("darkshards.admin");
         switch (sub) {
-            case "" , "shop" -> {
-                if (s instanceof Player p) shop(p).open(p);
+            case "" , "shop", "keys", "spawners" -> {
+                if (s instanceof Player p) {
+                    int page = 0;
+                    List<String[]> pages = pages();
+                    for (int i = 0; i < pages.size(); i++)
+                        if (sub.equals("keys") && pages.get(i)[0].equals("DarkCrates") || sub.equals("spawners") && pages.get(i)[0].equals("DarkSpawners")) page = i;
+                    shop(p, page).open(p);
+                }
                 else say(s, "&7/shards balance|give|take|set|giveitem|reload|test");
             }
             case "balance", "bal" -> {
@@ -356,6 +428,16 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
                 if (!tool) fails.add("pickaxe can't mine like a pickaxe");
             }
             for (ShardItems.Def d : items.defs().values()) if (d.hours() != 24) fails.add(d.id() + " lasts " + d.hours() + "h");
+            List<String[]> pg = pages();
+            boolean crates = Bukkit.getPluginManager().getPlugin("DarkCrates") != null, spawn = Bukkit.getPluginManager().getPlugin("DarkSpawners") != null;
+            if (crates && spawn && (pg.size() != 3 || !pg.get(1)[0].equals("DarkCrates") || !pg.get(2)[0].equals("DarkSpawners")))
+                fails.add("pages: tools, keys, spawners expected");
+            for (String[] x : pg) {
+                if (x[0].isEmpty()) continue;
+                org.bukkit.plugin.Plugin o = Bukkit.getPluginManager().getPlugin(x[0]);
+                Object offers = o.getClass().getMethod("shardOffers").invoke(o);
+                if (!(offers instanceof List<?> l) || l.isEmpty()) fails.add(x[1] + " page is empty");
+            }
             giveShards(a, 100);
             if (!takeShards(a, 60) || takeShards(a, 60) || shards(a) != 40) fails.add("shards " + shards(a));
             if (killReward(b, a) != 5 || killReward(b, a) != 5 || killReward(b, b) != 0 || shards(b) != 10) fails.add("kill shards " + shards(b));

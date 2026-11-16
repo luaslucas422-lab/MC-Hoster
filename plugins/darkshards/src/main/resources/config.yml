@@ -19,7 +19,6 @@ effects:
   held-particles: true
   sounds: true
 
-shop-rows: 3
 
 # The shard shop. Every item can be changed: name, material, ability, size, price, hours, slot, lore, speed.
 # ability: pickaxe (mines size x size), shovel (digs size x size), axe (cuts the whole tree), hoe (harvests and replants size x size).

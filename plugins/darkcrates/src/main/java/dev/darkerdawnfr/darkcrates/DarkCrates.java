@@ -276,7 +276,20 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         for (ItemStack rest : p.getInventory().addItem(key(c, n)).values()) p.getWorld().dropItemNaturally(p.getLocation(), rest);
     }
 
-    // used by Dark Shards' Keys page
+    // Dark Shards' Crate Keys page: {id, item to show, price in shards}
+    public List<Object[]> shardOffers() {
+        List<Object[]> out = new ArrayList<>();
+        for (Crate c : crates.values()) if (c.shardPrice() > 0) out.add(new Object[]{c.id(), key(c, 1), c.shardPrice()});
+        return out;
+    }
+
+    public boolean buyOffer(Player p, String id, int amount) {
+        Crate c = crates.get(id);
+        if (c == null) return false;
+        giveKeys(p, c, amount);
+        return true;
+    }
+
     public void giveKeys(Player p, String crate, int n) {
         Crate c = crates.get(crate);
         if (c != null) giveKeys(p, c, n);
@@ -540,7 +553,8 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
     // ------------------------------------------------------------------ the Keys page (opened from /shards)
 
     public void openKeyShop(Player p) {
-        keyShop(p).open(p);
+        if (Bukkit.getPluginManager().getPlugin("DarkShards") != null) p.performCommand("shards keys");
+        else keyShop(p).open(p);
     }
 
     public Menu keyShop(Player p) {

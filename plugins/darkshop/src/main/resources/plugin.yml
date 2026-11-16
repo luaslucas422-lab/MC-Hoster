@@ -4,7 +4,7 @@ main: dev.darkerdawnfr.darkshop.DarkShop
 api-version: "1.20"
 author: DarkerDawnFR
 description: The old DonutSMP shop (End, Nether, Gear, Food), /sell, money, /baltop and /bounty. Made for MC Hoster.
-softdepend: [Vault, VaultUnlocked]
+softdepend: [DarkSettings, Vault, VaultUnlocked]
 loadbefore: [DarkAH]
 commands:
   shop:
@@ -24,6 +24,9 @@ commands:
   bounty:
     description: See all bounties, or /bounty <player> <amount> to put one on someone.
     aliases: [bounties]
+  orders:
+    description: Buy orders - ask for items at a price, or fill other players' orders.
+    aliases: [order]
   eco:
     description: Give, take or set money (ops).
     permission: darkshop.admin

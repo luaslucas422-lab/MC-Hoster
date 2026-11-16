@@ -59,6 +59,7 @@ public class DarkTips extends JavaPlugin implements Listener, TabCompleter {
         String tip = getConfig().getBoolean("random-order", false) ? t.get(ThreadLocalRandom.current().nextInt(t.size())) : t.get(next++ % t.size());
         String line = Util.color(getConfig().getString("prefix", "&b&lTIP &8» &7") + tip);
         for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!Settings.on(p.getUniqueId(), "tips")) continue;
             p.sendMessage(line);
             if (getConfig().getBoolean("sound", true)) p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.4f);
         }

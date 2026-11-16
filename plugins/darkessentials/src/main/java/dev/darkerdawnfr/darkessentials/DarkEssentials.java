@@ -230,6 +230,61 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
         return h > 0 ? h + "h " + (m % 60) + "m" : Math.max(1, m) + "m";
     }
 
+    // ------------------------------------------------------------------ starter gear
+
+    /** Gray bold "Starter ..." gear for anyone who spawns with nothing. It can't be sold or put on /ah. */
+    public List<ItemStack> starterGear() {
+        List<ItemStack> out = new ArrayList<>();
+        org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(this, "starter");
+        for (String s : getConfig().getStringList("starter-gear.items")) {
+            String[] p = s.split(":");
+            Material m = Util.material(p[0]);
+            if (m == null || !m.isItem()) continue;
+            int n = 1;
+            try {
+                if (p.length > 1) n = Integer.parseInt(p[1].trim());
+            } catch (NumberFormatException ignored) {
+            }
+            ItemStack it = new ItemStack(m, Math.max(1, Math.min(n, m.getMaxStackSize())));
+            org.bukkit.inventory.meta.ItemMeta meta = it.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName(Util.color(getConfig().getString("starter-gear.name", "&7&lStarter {item}").replace("{item}", Util.nice(m))));
+                meta.setLore(List.of(Util.color("&8Can't be sold or auctioned")));
+                meta.getPersistentDataContainer().set(key, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
+                it.setItemMeta(meta);
+            }
+            out.add(it);
+        }
+        return out;
+    }
+
+    public static boolean empty(Player p) {
+        for (ItemStack it : p.getInventory().getContents()) if (it != null && it.getType() != Material.AIR) return false;
+        return true;
+    }
+
+    /** Gives the starter gear (armour goes straight on). */
+    public void giveStarter(Player p) {
+        var inv = p.getInventory();
+        for (ItemStack it : starterGear()) {
+            String n = it.getType().name();
+            if (n.endsWith("_HELMET") && inv.getHelmet() == null) inv.setHelmet(it);
+            else if (n.endsWith("_CHESTPLATE") && inv.getChestplate() == null) inv.setChestplate(it);
+            else if (n.endsWith("_LEGGINGS") && inv.getLeggings() == null) inv.setLeggings(it);
+            else if (n.endsWith("_BOOTS") && inv.getBoots() == null) inv.setBoots(it);
+            else inv.addItem(it);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void respawned(PlayerRespawnEvent e) {
+        if (!getConfig().getBoolean("starter-gear.enabled", true)) return;
+        Player p = e.getPlayer();
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (p.isOnline() && empty(p)) giveStarter(p);
+        }, 2);
+    }
+
     // ------------------------------------------------------------------ join / leave
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -244,6 +299,10 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
         if (title != null && !title.isEmpty())
             p.sendTitle(Util.color(title.replace("{player}", p.getName())), Util.color(sub.replace("{player}", p.getName())), 10, 60, 20);
         for (String line : getConfig().getStringList("join.motd")) p.sendMessage(Util.color(line.replace("{player}", p.getName())));
+        if (getConfig().getBoolean("starter-gear.enabled", true))
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                if (p.isOnline() && !p.isDead() && empty(p)) giveStarter(p);
+            }, 4);
         if (first) {
             if (data.isSet("spawn") && getConfig().getBoolean("spawn.new-players-to-spawn", true))
                 Bukkit.getScheduler().runTaskLater(this, () -> p.teleport(spawn()), 2);
@@ -396,6 +455,22 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             data.set("kits." + id + ".starter", System.currentTimeMillis());
             if (kitWait(id, "starter") != -1) fails.add("starter can be claimed twice");
             rememberBack(id, new Location(w, 1, 64, 1));
+            List<ItemStack> gear = starterGear();
+            if (gear.size() < 9) fails.add("starter gear has " + gear.size() + " items");
+            for (ItemStack it : gear) {
+                String n = org.bukkit.ChatColor.stripColor(it.getItemMeta().getDisplayName());
+                if (!n.startsWith("Starter ") || !it.getItemMeta().getDisplayName().startsWith(org.bukkit.ChatColor.GRAY.toString() + org.bukkit.ChatColor.BOLD))
+                    fails.add("starter name " + it.getItemMeta().getDisplayName());
+                if (!it.getItemMeta().getPersistentDataContainer().has(new org.bukkit.NamespacedKey(this, "starter"), org.bukkit.persistence.PersistentDataType.BYTE))
+                    fails.add("starter tag");
+            }
+            if (gear.stream().noneMatch(i -> i.getType() == Material.CHAINMAIL_CHESTPLATE)
+                    || gear.stream().noneMatch(i -> i.getType() == Material.COOKED_BEEF && i.getAmount() == 16)) fails.add("starter gear contents");
+            org.bukkit.plugin.Plugin shop = Bukkit.getPluginManager().getPlugin("DarkShop");
+            if (shop != null) {
+                Object w2 = shop.getClass().getMethod("starter", ItemStack.class).invoke(null, gear.get(0));
+                if (!Boolean.TRUE.equals(w2)) fails.add("Dark Shop doesn't see starter items");
+            }
             if (backOf(id) == null) fails.add("/back");
         } catch (Throwable t) {
             fails.add(t.toString());

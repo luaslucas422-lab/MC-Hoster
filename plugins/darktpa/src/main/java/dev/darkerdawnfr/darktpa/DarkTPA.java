@@ -178,6 +178,7 @@ public class DarkTPA extends JavaPlugin implements Listener, TabCompleter {
                 if (t == null) t = Bukkit.getPlayer(a[0]);
                 if (t == null) return say(p, "&c" + a[0] + " isn't online.");
                 if (t.equals(p)) return say(p, "&cYou can't teleport to yourself.");
+                if (!Settings.on(t.getUniqueId(), "tpa")) return say(p, "&c" + t.getName() + " doesn't take teleport requests (/settings).");
                 boolean here = name.equals("tpahere");
                 Request r = request(p.getUniqueId(), t.getUniqueId(), here);
                 if (autoAccept(t.getUniqueId())) {

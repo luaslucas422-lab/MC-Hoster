@@ -1,0 +1,21 @@
+# Dark Settings by DarkerDawnFR: /settings, each player turns things on or off for themselves.
+# Settings only show up when the plugin they belong to is installed (e.g. TPA Requests needs Dark TPA).
+
+# What new players start with.
+defaults:
+  nightvision: false
+  mobspawns: true
+  scoreboard: true
+  bossbar: true
+  chat: true
+  msgs: true
+  mentions: true
+  tpa: true
+  pay: true
+  tips: true
+
+# Settings you don't want in the menu, e.g. [mobspawns]
+hidden: []
+
+# With Mob Spawns off, no monsters spawn naturally where you're the closest player within this many blocks.
+mob-spawns-radius: 64

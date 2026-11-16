@@ -176,11 +176,13 @@ public class DarkChat extends JavaPlugin implements Listener, TabCompleter {
         String msg = p.hasPermission("darkchat.bypass") ? e.getMessage() : clean(e.getMessage());
         if (p.hasPermission("darkchat.color")) msg = Util.color(msg);
         // ignored players don't see it
-        e.getRecipients().removeIf(r -> ignores.getOrDefault(r.getUniqueId(), Set.of()).contains(p.getUniqueId()));
+        e.getRecipients().removeIf(r -> ignores.getOrDefault(r.getUniqueId(), Set.of()).contains(p.getUniqueId())
+                || !r.equals(p) && !Settings.on(r.getUniqueId(), "chat"));
         List<Player> pinged = getConfig().getBoolean("mentions.enabled", true) ? mentions(msg, p) : List.of();
         for (Player m : pinged) {
             msg = msg.replaceAll("(?i)(?<![A-Za-z0-9_])@?" + Pattern.quote(m.getName()) + "(?![A-Za-z0-9_])",
                     Matcher.quoteReplacement(Util.color(getConfig().getString("mentions.color", "&e&l")) + "@" + m.getName() + ChatColor.RESET));
+            if (!Settings.on(m.getUniqueId(), "mentions")) continue;
             Bukkit.getScheduler().runTask(this, () -> {
                 m.playSound(m.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.6f);
                 m.sendTitle("", Util.color("&e" + p.getName() + " &7mentioned you"), 0, 30, 10);
@@ -229,6 +231,10 @@ public class DarkChat extends JavaPlugin implements Listener, TabCompleter {
 
     private void whisper(CommandSender from, Player to, String text) {
         UUID fromId = from instanceof Player fp ? fp.getUniqueId() : null;
+        if (fromId != null && !Settings.on(to.getUniqueId(), "msgs") && !from.hasPermission("darkchat.admin")) {
+            say(from, "&c" + to.getName() + " has private messages turned off.");
+            return;
+        }
         if (fromId != null && ignores.getOrDefault(to.getUniqueId(), Set.of()).contains(fromId)) {
             say(from, "&c" + to.getName() + " is ignoring you.");
             return;

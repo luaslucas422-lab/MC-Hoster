@@ -90,7 +90,8 @@ public class DarkScoreboard extends JavaPlugin implements Listener, TabCompleter
     }
 
     public void update(Player p) {
-        boolean on = getConfig().getBoolean("scoreboard.enabled", true) && !hidden.contains(p.getUniqueId());
+        boolean on = getConfig().getBoolean("scoreboard.enabled", true) && !hidden.contains(p.getUniqueId())
+                && Settings.on(p.getUniqueId(), "scoreboard");
         if (on) {
             Board b = boards.computeIfAbsent(p.getUniqueId(), k -> new Board(getConfig().getBoolean("scoreboard.hide-numbers", true)));
             b.update(hooks.apply(p, p, getConfig().getString("scoreboard.title", "")), lines(p));

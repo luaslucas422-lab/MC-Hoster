@@ -10,7 +10,7 @@ stop-elytra: false
 # Worlds with no combat tag, e.g. [hub]
 disabled-worlds: []
 # Commands you can't use in combat (teleports).
-blocked-commands: [home, homes, h, sethome, hub, hubs, lobby, rtp, wild, randomtp, rtpq, rtpqueue, tpa, tpahere, tpaccept, tpyes, tp, tphere, spawn, warp, warps, back, ec, enderchest]
+blocked-commands: [home, homes, h, sethome, hub, hubs, lobby, rtp, wild, randomtp, rtpq, rtpqueue, tpa, tpahere, tpaccept, tpyes, tp, tphere, spawn, warp, warps, back, ec, enderchest, duel, duels, duals]
 
 prefix: "&8[&4Combat&8] "
 messages:

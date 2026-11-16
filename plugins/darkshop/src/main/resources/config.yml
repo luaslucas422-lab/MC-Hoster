@@ -147,6 +147,12 @@ worth:
 bounty:
   min: 100
 
+# /orders: buy orders. The money is held when the order is made.
+orders:
+  max-orders: 5
+  max-amount: 100000
+  min-price: 0.1
+
 messages:
   prefix: "&8[&dDark Shop&8] "
   not-enough: "&cYou don't have enough money. You need &f{price}&c."
@@ -156,3 +162,8 @@ messages:
   nothing-sold: "&7None of those items can be sold, so you got them back."
   bounty-placed: "&c{player} &7put a &a{price} &7bounty on &c{target}&7! &8(total {total})"
   bounty-claimed: "&c{killer} &7killed &c{target} &7and got the &a{price} &7bounty!"
+  order-delivered: "&aYou delivered &f{amount}x {item} &aand got &f{price}&a."
+  order-filled: "&f{player} &7delivered &f{amount}x {item} &7to your order. &8(/orders > Your orders)"
+  order-nothing: "&7None of those were {item}, so you got them back."
+  order-collected: "&aYou collected &f{amount}x {item}&a."
+  order-cancelled: "&7Order cancelled. &a{price} &7came back to you."
