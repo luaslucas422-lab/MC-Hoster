@@ -1129,6 +1129,18 @@ class Wizard:
             time.sleep(1)
             if core.port_free(cfg.port, cfg.prov.bedrock):
                 return True
+        if pid and prog and prog.lower() in core.SERVER_EXES:
+            # a Minecraft server we don't know, most likely one an older MC Hoster left running
+            if messagebox.askyesno("A server is still running",
+                                   f"A Minecraft server ({prog}, process {pid}) is still running and using port {cfg.port}. "
+                                   "It's probably one an older MC Hoster left running after it was closed.\n\n"
+                                   f"Stop it now and start {cfg.name}?", parent=self.root):
+                self.log(f"» Stopping the old server (process {pid}).")
+                core.kill_tree(pid)
+                for _ in range(20):
+                    if core.port_free(cfg.port, cfg.prov.bedrock):
+                        return True
+                    time.sleep(0.5)
         new = core.next_free_port(cfg.port, cfg.prov.bedrock)
         who = f"{prog} (process {pid})" if prog else "another program"
         if not messagebox.askyesno("Port in use", f"Port {cfg.port} is being used by {who}.\n\n"
@@ -1335,6 +1347,19 @@ def main(start_folder: str | None = None):
                                    f"\"{lo.cfg.name}\" is still running in the background, from before MC Hoster was closed.\n\n"
                                    "Stop it now? (Yes is best: a server without MC Hoster can't be stopped or seen.)", parent=root):
                 core.stop_leftover(lo)
+        if start_folder or left:
+            return
+        # a server an older MC Hoster left running (it didn't keep track of them)
+        for port, udp in ((core.PORT, False), (core.BEDROCK_PORT, True)):
+            if core.port_free(port, udp):
+                continue
+            pid = core.port_owner(port, udp)
+            prog = core.process_name(pid) if pid else None
+            if prog and prog.lower() in core.SERVER_EXES and messagebox.askyesno(
+                    "A server is still running",
+                    f"A Minecraft server ({prog}, process {pid}) is still running on port {port}, probably left running "
+                    "by an older MC Hoster after it was closed.\n\nStop it now?", parent=root):
+                core.kill_tree(pid)
     root.after(300, check_leftovers)
     if start_folder:  # started by the scheduler
         try:
