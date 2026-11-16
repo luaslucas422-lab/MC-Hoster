@@ -1,0 +1,25 @@
+name: DarkNames
+version: ${project.version}
+main: dev.darkerdawnfr.darknames.DarkNames
+api-version: "1.20"
+author: DarkerDawnFR
+description: Rename items in any colour, with gradients and animated names. Made for MC Hoster.
+commands:
+  darknames:
+    description: Rename the item you hold (/dn), /dn rename [name], /dn reset.
+    aliases: [dn, dm, names]
+permissions:
+  darknames.use:
+    description: Rename items with /dn.
+    default: true
+  darknames.gradients:
+    description: Gradient names.
+    default: true
+  darknames.animated:
+    description: Animated names.
+    default: true
+  darknames.codes:
+    description: Type your own colour codes (&a, &#RRGGBB, <gradient:...>).
+    default: true
+  darknames.admin:
+    default: op

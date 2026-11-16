@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkteams", "darkhatesgriefers", "darkafkzone"]  # Dark RS Add-on is tested in --addons (RoseStacker)
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkteams", "darkhatesgriefers", "darkafkzone", "darknames"]  # Dark RS Add-on is tested in --addons (RoseStacker)
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -31,7 +31,7 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darkannounce": ("darkannounce test", "DARKANNOUNCE"), "darkspawners": ("spawners test", "DARKSPAWNERS"),
               "darksettings": ("settings test", "DARKSETTINGS"), "darkduels": ("duel test", "DARKDUELS"),
               "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS"),
-              "darkvcaddon": ("vc test", "DARKVCADDON"), "darkteams": ("darkteams test", "DARKTEAMS"), "darkhatesgriefers": ("dhg test", "DARKHATESGRIEFERS"), "darkafkzone": ("afkzone test", "DARKAFKZONE"),
+              "darkvcaddon": ("vc test", "DARKVCADDON"), "darkteams": ("darkteams test", "DARKTEAMS"), "darkhatesgriefers": ("dhg test", "DARKHATESGRIEFERS"), "darkafkzone": ("afkzone test", "DARKAFKZONE"), "darknames": ("dn test", "DARKNAMES"),
               "darkrsaddon": ("stacking test", "DARKRSADDON")}
 
 
@@ -128,6 +128,10 @@ def run(args: list[str]) -> int:
         assert core.ServerConfig.load(Path(t.folder)).name == "Renamed Server"
         assert "port" in core.explain_exit(["[Server thread/WARN]: **** FAILED TO BIND TO PORT!"]).lower()
         assert "Java" in core.explain_exit(["java.lang.UnsupportedClassVersionError: has been compiled by a more recent version of the Java Runtime"])
+        pe = core.plugin_errors(["[10:00:01 ERROR]: Error occurred while enabling DarkShop v1.0.0 (Is it up to date?)",
+                                 "java.lang.NullPointerException: Cannot invoke \"String.length()\"", "\tat dev.x.Y.z(Y.java:1)"])
+        assert "DarkShop" in pe and "NullPointerException" in pe["DarkShop"], pe
+        assert core.plugin_errors(["[10:00:01 INFO]: Done (3.1s)! For help"]) == {}
         assert core.explain_exit(["Done (3.1s)! For help"]) is None and "!" in core.explain_exit([], "C:/x/My SMP!")
         cfg.nether, cfg.end = True, True
         core.write_server_files(cfg)

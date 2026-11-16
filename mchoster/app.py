@@ -1206,6 +1206,10 @@ class Wizard:
         self.step_label.config(text="The first start makes the world, give it a minute.")
         self.progress.config(mode="indeterminate")
         self.progress.start(12)
+        try:
+            addons.refresh_bundled(self.cfg, self.log)
+        except Exception as e:
+            self.log(f"! Couldn't check the Dark plugins: {e}")
         sp = core.ServerProcess(self.cfg)
         sp.on_line = lambda l: self.q.put(("log", l, sp))
         sp.on_ready = lambda: self.q.put(("ready", sp))
@@ -1434,6 +1438,12 @@ class Wizard:
                     self.step_label.config(text=("Open Minecraft → Play → Servers → Add Server." if self.cfg.prov.bedrock
                                                  else "Open Minecraft → Multiplayer → Add Server, and paste the IP."))
                     self.show_ip_box()
+                    broken = core.plugin_errors(self.server.tail)
+                    if broken:
+                        messagebox.showwarning("Plugins didn't start",
+                                               "These plugins failed to start, so their commands won't work:\n\n"
+                                               + "\n".join(f"• {n}: {why}" for n, why in broken.items())
+                                               + "\n\nThe console has the details. Send me (or the plugin's maker) the red lines.")
                 elif k == "ip":
                     self.ip_vars[ev[1]].set(ev[2])
                 elif k == "port":

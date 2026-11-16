@@ -114,6 +114,8 @@ ADDONS = [
           {"bukkit": [["bundled:DarkHatesGriefers.jar"]]}, note="Made by DarkerDawnFR. Let someone build: /dhg allow <player>"),
     Addon("darkafkzone", "Dark AFK Zone", "An AFK zone: 10 shards every minute you stand in it. /afkzone to go there.",
           {"bukkit": [["bundled:DarkAFKZone.jar"], ["bundled:DarkShards.jar"]]}, note="Comes with Dark Shards. Make it: /afkzone set 1, set 2, create"),
+    Addon("darknames", "Dark Names", "Rename what you hold in any colour: 18 colours, 9 gradients, 6 animations, bold/italic... /dn",
+          {"bukkit": [["bundled:DarkNames.jar"]]}, note="Made by DarkerDawnFR. /dn rename, /dn reset"),
     Addon("darkrsaddon", "Dark RS Add-on", "Players turn RoseStacker stacking on/off in /settings; the first player in a chunk decides.",
           {"bukkit": [["bundled:DarkRSAddon.jar"], ["mr:rosestacker", "hangar:RoseStacker"]]}, note="Installs RoseStacker too"),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
@@ -241,6 +243,40 @@ def _bundled_outdated(addon: Addon, cfg: core.ServerConfig) -> bool:
                 except Exception:
                     return True
     return False
+
+
+def refresh_bundled(cfg: core.ServerConfig, log=print) -> list[str]:
+    """Before every start: the Dark plugins on the server become the ones inside this MC Hoster
+    (after updating MC Hoster, servers get the new plugins without pressing Apply). Returns the files changed."""
+    import shutil
+    changed = []
+    if cfg.prov.kind != "bukkit":
+        return changed
+    folder = Path(cfg.folder) / cfg.prov.addon_folder
+    names = set()
+    for a in ADDONS:
+        if a.id in cfg.addons:
+            for candidates in a.files_for(cfg.prov.kind):
+                for c in candidates:
+                    if c.startswith("bundled:"):
+                        names.add(c.split(":", 1)[1])
+    for name in sorted(names):
+        try:
+            src = bundled_jar(name)
+        except NotFound:
+            continue
+        dst = folder / name
+        try:
+            if dst.exists() and dst.read_bytes() == src.read_bytes():
+                continue
+            folder.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, dst)
+            changed.append(name)
+        except OSError as e:
+            log(f"! Couldn't update {name}: {e}")
+    if changed:
+        log("Updated the Dark plugins: " + ", ".join(n.removesuffix(".jar") for n in changed))
+    return changed
 
 
 def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, str, str]]:

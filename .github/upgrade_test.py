@@ -60,6 +60,9 @@ if not cfg.prov.bedrock and (not cfg.java or not Path(cfg.java).exists()):
     assert found, "the Java this server used is gone and no other was found"
     cfg.java = str(found[0])
     cfg.save()
+changed = addons.refresh_bundled(cfg)  # what the window does before every start
+print("Dark plugins updated on start:", changed)
+assert changed, "the old server kept the old Dark plugins"
 ok1, bad1 = run(cfg, 60, "opened")
 # then Apply & restart (setup again + the new bundled plugins)
 core.setup_server(cfg, log=lambda l: print("  new setup: " + l))

@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -1398,6 +1398,26 @@ EXIT_REASONS = [
     (r"Encountered an unexpected exception|Exception in server tick loop|This crash report has been saved",
      "The server crashed. The crash report is in the crash-reports folder of the server."),
 ]
+
+
+def plugin_errors(lines: list[str]) -> dict[str, str]:
+    """Plugins that failed to load or enable: {name: first line of the error}."""
+    out: dict[str, str] = {}
+    pats = [r"Error occurred while enabling (\S+)", r"Could not load '(?:plugins[/\\])?([^']+?)(?:\.jar)?'",
+            r"Could not load plugin '?([^' ]+)", r"Ambiguous plugin name `?([^`' ]+)"]
+    for i, line in enumerate(lines):
+        for pat in pats:
+            m = re.search(pat, line)
+            if m:
+                name = m.group(1).split(" v")[0]
+                why = line.split(")", 1)[-1].strip(" :") if "(" in line else ""
+                for nxt in lines[i + 1:i + 4]:  # the exception's message is usually on the next lines
+                    t = nxt.strip()
+                    if t and not t.startswith("at ") and ("Exception" in t or "Error" in t):
+                        why = t[-160:]
+                        break
+                out.setdefault(name, why or "see the console")
+    return out
 
 
 def explain_exit(lines: list[str], folder: str = "") -> str | None:
