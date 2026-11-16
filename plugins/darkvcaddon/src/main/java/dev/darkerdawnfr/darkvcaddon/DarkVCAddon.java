@@ -116,7 +116,10 @@ public class DarkVCAddon extends JavaPlugin implements Listener, TabCompleter {
         apply(p);
         if (!agreed(p.getUniqueId()) && getConfig().getBoolean("remind-on-join", true))
             Bukkit.getScheduler().runTaskLater(this, () -> {
-                if (p.isOnline() && !agreed(p.getUniqueId())) say(p, getConfig().getString("reminder", "&7Want voice chat? Type &f/voicechat agree&7."));
+                if (p.isOnline() && !agreed(p.getUniqueId()) && !p.hasPermission("darkvc.bypass")) {
+                    say(p, getConfig().getString("reminder", "&7Want voice chat? Type &f/voicechat agree&7."));
+                    if (voiceChatInstalled()) say(p, "&8Until then nobody can hear you, even if your mic icon lights up.");
+                }
             }, 100);
     }
 
@@ -178,11 +181,23 @@ public class DarkVCAddon extends JavaPlugin implements Listener, TabCompleter {
             case "agree", "rules" -> {
                 if (s instanceof Player p) popup(p).open(p);
             }
-            case "revoke", "give" -> {
+            case "status", "check" -> {
+                Player t = a.length > 1 && admin ? Bukkit.getPlayerExact(a[1]) : s instanceof Player p ? p : null;
+                if (t == null) return say(s, "&7Usage: /vc status" + (admin ? " [player]" : ""));
+                say(s, "&f" + t.getName() + "&7: " + (agreed(t.getUniqueId()) ? "&aagreed to the rules" : "&cnot agreed yet")
+                        + (t.hasPermission("darkvc.bypass") ? " &8(bypass)" : ""));
+                for (String perm : getConfig().getStringList("voicechat-permissions"))
+                    say(s, "&8 - &7" + perm + ": " + (t.hasPermission(perm) ? "&aallowed" : "&cblocked"));
+                if (!voiceChatInstalled()) say(s, "&cSimple Voice Chat isn't installed on the server.");
+                else if (!agreed(t.getUniqueId())) say(s, "&8Your mic icon can still light up, but nobody hears you until you agree.");
+            }
+            case "revoke", "reset", "give" -> {
                 if (!admin) return true;
                 if (a.length < 2) return say(s, "&7Usage: /vc " + sub + " <player>");
                 UUID id = Bukkit.getOfflinePlayer(a[1]).getUniqueId();
                 setAgreed(id, sub.equals("give"));
+                Player tp = Bukkit.getPlayer(id);
+                if (tp != null && !sub.equals("give")) say(tp, "&cYour voice chat was turned off. Type &f/voicechat agree &cto get it back.");
                 say(s, "&7" + a[1] + (sub.equals("give") ? " has voice chat now." : " lost voice chat (they can /voicechat agree again)."));
             }
             case "reload" -> {
@@ -194,7 +209,7 @@ public class DarkVCAddon extends JavaPlugin implements Listener, TabCompleter {
             case "test" -> {
                 if (admin) test(s);
             }
-            default -> say(s, "&f/voicechat agree &7- get voice chat" + (admin ? " &8| /vc give|revoke <player>" : ""));
+            default -> say(s, "&f/voicechat agree &7- get voice chat  &f/vc status &7- check yours" + (admin ? " &8| /vc give|revoke|status <player>" : ""));
         }
         return true;
     }
@@ -212,6 +227,17 @@ public class DarkVCAddon extends JavaPlugin implements Listener, TabCompleter {
             if (getConfig().getStringList("popup.rules").size() < 3) fails.add("rules");
             if (!getConfig().getStringList("voicechat-permissions").contains("voicechat.speak")) fails.add("permissions");
             if (!voiceChatInstalled()) fails.add("Simple Voice Chat isn't installed");
+            org.bukkit.permissions.Permission sp = Bukkit.getPluginManager().getPermission("voicechat.speak");
+            if (voiceChatInstalled() && sp == null) fails.add("Simple Voice Chat has no voicechat.speak permission");
+            // what a player who didn't agree gets: the same attachment on an op-like permissible
+            org.bukkit.permissions.PermissibleBase pb = new org.bukkit.permissions.PermissibleBase(new org.bukkit.permissions.ServerOperator() {
+                public boolean isOp() { return true; }
+                public void setOp(boolean v) { }
+            });
+            org.bukkit.permissions.PermissionAttachment at = pb.addAttachment(this);
+            for (String perm : getConfig().getStringList("voicechat-permissions")) at.setPermission(perm, false);
+            pb.recalculatePermissions();
+            if (pb.hasPermission("voicechat.speak") || (sp != null && pb.hasPermission(sp))) fails.add("speak not blocked");
         } catch (Throwable t) {
             fails.add(t.toString());
         }
@@ -224,8 +250,10 @@ public class DarkVCAddon extends JavaPlugin implements Listener, TabCompleter {
     public List<String> onTabComplete(CommandSender s, Command cmd, String alias, String[] a) {
         List<String> out = new ArrayList<>();
         if (a.length == 1) {
-            out.add("agree");
+            out.addAll(List.of("agree", "status"));
             if (s.hasPermission("darkvc.admin")) out.addAll(List.of("give", "revoke", "reload"));
+        } else if (a.length == 2 && s.hasPermission("darkvc.admin")) {
+            for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         }
         return out;
     }

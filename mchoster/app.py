@@ -363,22 +363,25 @@ class Wizard:
         self.dims_hint = ttk.Label(dims, text="", style="Hint.TLabel")
         self.dims_hint.pack(side="left")
         self.row(f, 8, "Dimensions:", dims)
+        self.owner_var = tk.StringVar(value="")
+        _, self.owner_hint = self.row(f, 9, "Your name:", ttk.Entry(f, textvariable=self.owner_var, width=30),
+                                      "Your Minecraft name: you get op and OWNER")
 
         sch = ttk.Frame(f)
         self.sched_label = ttk.Label(sch, text="Off")
         self.sched_label.pack(side="left")
         ttk.Button(sch, text="Schedule…", command=self.schedule_dialog, width=12).pack(side="right")
-        self.row(f, 9, "Auto-start:", sch)
+        self.row(f, 10, "Auto-start:", sch)
         dom = ttk.Frame(f)
         self.domain_label = ttk.Label(dom, text=domain.describe({}))
         self.domain_label.pack(side="left")
         ttk.Button(dom, text="Set up…", command=self.domain_dialog, width=12).pack(side="right")
-        self.row(f, 10, "Custom IP:", dom)
+        self.row(f, 11, "Custom IP:", dom)
 
-        ttk.Separator(f).grid(row=11, column=0, columnspan=3, sticky="we", pady=8)
+        ttk.Separator(f).grid(row=12, column=0, columnspan=3, sticky="we", pady=8)
         self.gh0st_var = tk.BooleanVar(value=True)
         self.gh0st_cb = ttk.Checkbutton(f, text="Install Gh0st AC anticheat on the server (free version)", variable=self.gh0st_var)
-        self.gh0st_cb.grid(row=12, column=0, columnspan=3, sticky="w")
+        self.gh0st_cb.grid(row=13, column=0, columnspan=3, sticky="w")
         self.eula_row = ttk.Frame(f)
         self.eula_var = tk.BooleanVar(value=False)
         self.eula_cb = ttk.Checkbutton(self.eula_row, text="I agree to the", variable=self.eula_var, command=self.update_buttons)
@@ -387,7 +390,7 @@ class Wizard:
         link.pack(side="left")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aka.ms/MinecraftEULA"))
         ttk.Label(self.eula_row, text="(needed to run any server)", style="Hint.TLabel").pack(side="left", padx=6)
-        self.eula_row.grid(row=13, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self.eula_row.grid(row=14, column=0, columnspan=3, sticky="w", pady=(4, 0))
         self.players_changed(10)
 
     def settings_for_provider(self):
@@ -960,6 +963,7 @@ class Wizard:
         c.nether = self.nether_var.get() or c.prov.bedrock
         c.end = self.end_var.get() or c.prov.bedrock or c.prov.kind == "fabric"
         c.gh0stac = self.gh0st_var.get()
+        c.owner = self.owner_var.get().strip()
         mc = Path(self.mc_var.get().strip().strip('"'))
         c.minecraft_dir = str(mc) if self.mc_var.get().strip() and self.mc_ok(mc) else ""
         c.add_to_list = self.add_list_var.get() and bool(c.minecraft_dir)
@@ -969,6 +973,10 @@ class Wizard:
 
     def ready_to_go(self) -> bool:
         if not self.check_over_100():
+            return False
+        name = self.owner_var.get().strip()
+        if name and not core.valid_player_name(name):
+            messagebox.showerror("Your name", "That isn't a Minecraft name (3-16 letters, numbers or _).\nChange it in tab 3, or leave it empty.")
             return False
         for what, err in (("Auto-start", self.sched.get("enabled") and schedule.validate(self.sched)),
                           ("Custom IP", self.domain.get("enabled") and domain.validate(self.domain))):
@@ -1063,6 +1071,7 @@ class Wizard:
         self.nether_var.set(c.nether)
         self.end_var.set(c.end)
         self.gh0st_var.set(c.gh0stac)
+        self.owner_var.set(c.owner or "")
         self.sched = dict(c.schedule or {})
         self.sched_label.config(text=schedule.describe(self.sched))
         self.domain = dict(c.domain or {})
@@ -1218,6 +1227,13 @@ class Wizard:
         self.upnp, self.opened_ports = (up, opened) if opened else (None, [])
         self.q.put(("ip", "public", ((pub if bed else core.server_address(cfg, pub)) if pub else "couldn't find it")))
         lines = []
+        if "darkranks" in cfg.addons and not bed:
+            try:
+                f = Path(cfg.folder) / cfg.prov.addon_folder / "DarkRanks" / "owner.txt"
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text(cfg.owner if core.valid_player_name(cfg.owner) else "", encoding="utf-8")
+            except OSError:
+                pass
         if "darkbossbar" in cfg.addons and not bed:
             # Dark Bossbar shows {ip}: the custom address, or the public one
             addr = domain.join_address(cfg.domain, cfg) if cfg.domain.get("enabled") else (core.server_address(cfg, pub) if pub else "")
@@ -1312,6 +1328,11 @@ class Wizard:
                     self.progress.stop()
                     self.progress.config(mode="determinate", value=100)
                     self.play_title.config(text=f"{self.cfg.name} is online!")
+                    if core.valid_player_name(self.cfg.owner) and not self.cfg.prov.bedrock:
+                        try:
+                            self.server.send(f"op {self.cfg.owner}")
+                        except Exception:
+                            pass
                     self.step_label.config(text=("Open Minecraft → Play → Servers → Add Server." if self.cfg.prov.bedrock
                                                  else "Open Minecraft → Multiplayer → Add Server, and paste the IP."))
                     self.show_ip_box()

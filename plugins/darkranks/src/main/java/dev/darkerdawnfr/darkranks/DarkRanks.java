@@ -121,6 +121,17 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             getConfig().set("config-version", 5);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 6) {
+            // the owner rank gets everything ops get
+            if (getConfig().isSet("ranks.owner")) {
+                List<String> l = new ArrayList<>(getConfig().getStringList("ranks.owner.permissions"));
+                if (!l.contains("*")) l.add("*");
+                getConfig().set("ranks.owner.permissions", l);
+            }
+            if (!getConfig().isSet("owners")) getConfig().set("owners", new ArrayList<String>());
+            getConfig().set("config-version", 6);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();
@@ -223,14 +234,55 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
         Rank r = rankOf(p.getUniqueId());
         PermissionAttachment a = p.addAttachment(this);
         if (r != null) for (String perm : permissions(r)) {
-            if (perm.startsWith("-")) a.setPermission(perm.substring(1), false);
-            else a.setPermission(perm, true);
+            boolean on = !perm.startsWith("-");
+            String node = on ? perm : perm.substring(1);
+            for (String x : expand(node)) a.setPermission(x, on);
         }
         attachments.put(p.getUniqueId(), a);
         p.recalculatePermissions();
         try {
             p.updateCommands();
         } catch (Throwable ignored) {
+        }
+    }
+
+    /** "*" = everything ops get (every plugin's op permissions); "plugin.*" = every permission starting with "plugin.". */
+    public Set<String> expand(String node) {
+        Set<String> out = new LinkedHashSet<>();
+        out.add(node);
+        if (node.equals("*")) {
+            for (org.bukkit.permissions.Permission p : Bukkit.getPluginManager().getPermissions())
+                if (p.getDefault() == org.bukkit.permissions.PermissionDefault.OP) out.add(p.getName());
+        } else if (node.endsWith(".*")) {
+            String pre = node.substring(0, node.length() - 1).toLowerCase(Locale.ROOT);
+            for (org.bukkit.permissions.Permission p : Bukkit.getPluginManager().getPermissions())
+                if (p.getName().toLowerCase(Locale.ROOT).startsWith(pre)) out.add(p.getName());
+        }
+        return out;
+    }
+
+    /** The server owner's name(s): MC Hoster writes owner.txt, or list them under "owners" in config.yml. */
+    public List<String> owners() {
+        List<String> out = new ArrayList<>(getConfig().getStringList("owners"));
+        File f = new File(getDataFolder(), "owner.txt");
+        if (f.exists()) try {
+            for (String l : java.nio.file.Files.readAllLines(f.toPath())) if (!l.isBlank()) out.add(l.trim());
+        } catch (IOException ignored) {
+        }
+        return out;
+    }
+
+    /** Owners get the owner rank when they join (once they have something lower). */
+    private void ownerCheck(Player p) {
+        Rank owner = ranks.get(getConfig().getString("owner-rank", "owner").toLowerCase(Locale.ROOT));
+        if (owner == null) return;
+        boolean isOwner = false;
+        for (String n : owners()) if (n.equalsIgnoreCase(p.getName()) || n.equalsIgnoreCase(p.getUniqueId().toString())) isOwner = true;
+        if (!isOwner) return;
+        Rank now = rankOf(p.getUniqueId());
+        if (now == null || now.weight() < owner.weight()) {
+            setRank(p.getUniqueId(), owner);
+            p.sendMessage(Util.color("&8[&cRanks&8] &7You're the server owner, so you're now " + owner.name() + "&7. Edit things with &f/shop edit&7, &f/rank edit&7..."));
         }
     }
 
@@ -251,6 +303,7 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void join(PlayerJoinEvent e) {
+        ownerCheck(e.getPlayer());
         apply(e.getPlayer());
     }
 
@@ -552,6 +605,8 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             if (!perms.contains("darkperks.craft") || !perms.contains("darkperks.fly") || !perms.contains("darkperks.trail")) fails.add("legend perms " + perms);
             if (permissions(ranks.get("vip")).contains("darkperks.fly")) fails.add("vip shouldn't fly");
             if (!perms.contains("darkshop.multiplier.legend") || !perms.contains("darkshop.multiplier.vip")) fails.add("no sell boost");
+            if (!permissions(ranks.get("owner")).contains("*") || !expand("*").contains("darkranks.admin")) fails.add("owner doesn't get everything");
+            if (expand("*").contains("darkvc.bypass")) fails.add("* gives bypass permissions");
             if (!permissions(ranks.get("vip")).contains("darkperks.ec")) fails.add("vip should have /ec");
             if (!perms.contains("darkhomes.homes.20") || !perms.contains("darkessentials.starter.legend")) fails.add("legend homes/kit");
             if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");

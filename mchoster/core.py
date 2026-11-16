@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -736,6 +736,7 @@ class ServerConfig:
     nether: bool = True   # the Nether can be closed (allow-nether)
     end: bool = True      # the End can be closed (Paper/Spigot: bukkit.yml allow-end)
     gh0stac: bool = True
+    owner: str = ""       # the owner's Minecraft name: made op, and gets Dark Ranks' owner rank
     icon_path: str = ""
     minecraft_dir: str = ""      # .minecraft for Java, the minecraftpe folder for Bedrock
     add_to_list: bool = True
@@ -1240,6 +1241,10 @@ def next_free_port(port: int, udp: bool = False) -> int:
         if port_free(p, udp):
             return p
     return port
+
+
+def valid_player_name(n: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9_]{3,16}", n or ""))
 
 
 def port_owner(port: int, udp: bool = False) -> int | None:

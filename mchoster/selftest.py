@@ -108,6 +108,11 @@ def run(args: list[str]) -> int:
         assert core.read_properties(d / "server.properties")["allow-nether"] == "false"
         if provider.kind == "bukkit":
             assert "allow-end: false" in (d / "bukkit.yml").read_text(), "bukkit.yml allow-end not written"
+        assert core.valid_player_name("Geo_123") and not core.valid_player_name("ab") and not core.valid_player_name("bad name")
+        cfg.owner = "Geo"
+        cfg.save()
+        assert core.ServerConfig.load(d).owner == "Geo", "owner name not saved"
+        cfg.owner = ""
         cfg.nether, cfg.end = True, True
         core.write_server_files(cfg)
         assert core.read_properties(d / "server.properties")["allow-nether"] == "true"

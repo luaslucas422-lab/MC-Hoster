@@ -6,8 +6,11 @@
 # inherit = also gets every permission of that rank.
 # permissions = like LuckPerms. The Dark Perks commands (darkperks.*) are only for ranks.
 
-config-version: 5
+config-version: 6
 default-rank: member
+# The server owner(s): they get the owner rank when they join. MC Hoster fills this in from Settings > "Your name".
+owners: []
+owner-rank: owner
 
 # /media: what someone needs to get the Media rank (shown in the item's lore). Change it freely.
 media:
@@ -123,5 +126,6 @@ ranks:
     shop: false
     icon: NETHERITE_SWORD
     inherit: admin
-    permissions: []
+    # * = everything ops get (/shop edit, /rank edit, ...)
+    permissions: ["*"]
     perks: ["&7Owner"]

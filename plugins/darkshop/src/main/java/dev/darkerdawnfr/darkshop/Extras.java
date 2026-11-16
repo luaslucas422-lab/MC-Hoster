@@ -123,6 +123,9 @@ public class Extras {
         out.add(new String[]{"NETHERITE_SWORD", "&cBounty", Util.money(plugin.bounty(id))});
         Object shards = call("DarkShards", "shards", id);
         if (shards != null) out.add(new String[]{"AMETHYST_SHARD", "&dShards", "✦ " + shards});
+        if (plugin.playtime().enabled() && p.isOnline())
+            out.add(new String[]{"EMERALD", "&aPlaytime money", Util.money(plugin.playtime().amount(stat(p, Statistic.PLAY_ONE_MINUTE) / 72000.0))
+                    + " in " + plugin.playtime().left(id) + "m"});
         Object rankName = call("DarkRanks", "rankName", id);
         if (rankName != null) out.add(new String[]{"NAME_TAG", "&6Rank", String.valueOf(rankName)});
         long first = p.getFirstPlayed();

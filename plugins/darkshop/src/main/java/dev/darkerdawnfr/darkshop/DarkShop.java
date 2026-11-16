@@ -45,6 +45,8 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         editor = new ShopEditor(this, shop);
         premiumEditor = new ShopEditor(this, premium);
         extras = new Extras(this);
+        playtime = new Playtime(this);
+        getServer().getPluginManager().registerEvents(playtime, this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getServer().getPluginManager().registerEvents(this, this);
@@ -98,12 +100,20 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     /** Adds things from newer versions (more /sell items, the premium shop) without touching what you changed. */
     private void migrate() {
         int v = getConfig().getInt("config-version", 1);
-        if (v >= 4) return;
+        if (v >= 5) return;
+        var d5 = getConfig().getDefaults();
+        if (d5 != null && !getConfig().isSet("playtime-rewards") && d5.isSet("playtime-rewards"))
+            getConfig().set("playtime-rewards", d5.get("playtime-rewards"));
+        if (v >= 4) {
+            getConfig().set("config-version", 5);
+            saveConfig();
+            return;
+        }
         var d4 = getConfig().getDefaults();
         if (d4 != null && !getConfig().isSet("sell-multipliers") && d4.isSet("sell-multipliers"))
             getConfig().set("sell-multipliers", d4.get("sell-multipliers"));
         if (v >= 3) {
-            getConfig().set("config-version", 4);
+            getConfig().set("config-version", 5);
             saveConfig();
             return;
         }
@@ -111,7 +121,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         if (d3 != null) for (String k : List.of("rules", "money-tags"))
             if (!getConfig().isSet(k) && d3.isSet(k)) getConfig().set(k, d3.get(k));
         if (v >= 2) {
-            getConfig().set("config-version", 4);
+            getConfig().set("config-version", 5);
             saveConfig();
             return;
         }
@@ -123,7 +133,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
             for (String k : List.of("premium", "worth-hint"))
                 if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
         }
-        getConfig().set("config-version", 4);
+        getConfig().set("config-version", 5);
         saveConfig();
     }
 
@@ -156,6 +166,12 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
 
     public ShopMenus shop() {
         return shop;
+    }
+
+    private Playtime playtime;
+
+    public Playtime playtime() {
+        return playtime;
     }
 
     public Money money() {
@@ -217,7 +233,8 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
             case "shop" -> {
                 if (!(s instanceof Player p)) return msg(s, "&cOnly players can open the shop.");
                 if (a.length > 0 && a[0].equalsIgnoreCase("edit")) {
-                    if (!p.hasPermission("darkshop.admin")) return msg(s, "&cOnly ops can edit the shop.");
+                    if (!p.hasPermission("darkshop.admin"))
+                        return msg(s, "&cOnly ops can edit the shop. &7Put your name in MC Hoster (Settings > Your name) or type &fop " + p.getName() + " &7in its console.");
                     boolean prem = a.length > 1 && a[1].equalsIgnoreCase("premium");
                     (prem ? premiumEditor : editor).main(p).open(p);
                     return true;
@@ -407,6 +424,13 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            UUID pt = UUID.randomUUID();
+            if (playtime.amount(0) != 1000 || playtime.amount(10) != 1200 || playtime.amount(100000) != 5000) fails.add("playtime amounts " + playtime.amount(10));
+            double got = 0;
+            for (int i = 0; i < 29; i++) got += playtime.count(pt, 10, true);
+            got += playtime.count(pt, 10, false); // AFK minute doesn't count
+            if (got != 0 || playtime.left(pt) != 1) fails.add("playtime counted wrong");
+            if (playtime.count(pt, 10, true) != 1200 || playtime.left(pt) != 30) fails.add("playtime reward not paid at 30 minutes");
             if (getConfig().getDouble("sell-multipliers.legend", 0) != 1.25 || !SellMenu.x(1.25).equals("1.25x") || !SellMenu.x(2).equals("2x"))
                 fails.add("sell multipliers");
             if (getConfig().getStringList("rules").size() < 3) fails.add("rules");

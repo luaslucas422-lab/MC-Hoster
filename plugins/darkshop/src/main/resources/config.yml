@@ -1,4 +1,4 @@
-config-version: 4
+config-version: 5
 
 # Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
 # Change prices here, then /darkshop reload.
@@ -310,6 +310,18 @@ orders:
 
 # Show what the item you hold sells for above the hotbar when you switch to it (players can turn it off in /settings).
 worth-hint: true
+
+# Money for playing: every "every-minutes" of real playing (not AFK) you get base + per-hour-played x hours you've
+# played on the server, up to max. 1000 at the start, 1200 after 10 hours, 3000 after 100 hours, 5000 max.
+playtime-rewards:
+  enabled: true
+  every-minutes: 30
+  base: 1000
+  per-hour-played: 20
+  max: 5000
+  # Not moving, chatting or clicking for this long = AFK (AFK time doesn't count).
+  afk-minutes: 5
+  message: "&a+{amount} &7for playing {minutes} minutes &8(you've played {hours}h)"
 
 # /sell boost for ranks (permission darkshop.multiplier.<name>, the best one counts). 1.1 = 10% more money.
 sell-multipliers:
