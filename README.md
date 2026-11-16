@@ -22,7 +22,7 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
    - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
@@ -35,12 +35,15 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark Hub**: `/hub` menu with a bed per hub (own names, 100 players each) and a Random Hub button at the end. Ops set them with `/hubset <number> [name]`. You respawn at your hub if you have no bed.
    - **Dark Combat**: 20-second combat tag in dark colours above the hotbar; no teleporting, logging out kills you. `/combat time <seconds>` changes it.
    - **Dark Shards**: shards for playing and killing players, `/shards` shop with 24-hour shard tools (the Shard Pickaxe is an amethyst shard that mines 3x3), purple particles and amethyst sounds. Every item is editable in its config.
+   - **Dark Rifts** (original): a purple rift opens somewhere in the world every 45 minutes. Stand in it to charge it, but it only charges while one player holds it, and mobs come in waves. Whoever held it longest gets money, shards and loot. `/rift` shows where it is and points your compass at it.
    - Every teleport (home, hub, tpa, tp, rtp) is a 5-second countdown you can't move in, and is blocked in combat.
    - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).
 
    Downloaded for your exact version (Modrinth, Hangar, GeyserMC), with their required libraries. Unticking removes them. Their ports (voice chat 24454 UDP, Geyser 19132 UDP, BlueMap 8100) are opened too.
 
 **After Finish, every tab can be clicked.** Change anything in 1, 2, 3 or 5 and press **Apply & restart**: the server stops (world saved), the changes are applied, and it starts again. In tab 1 you can update to a newer version (never older, that would break the world).
+
+**A server can't keep running after MC Hoster closes.** It's tied to MC Hoster, so closing MC Hoster (or a crash, or ending it in Task Manager) stops it too. A server left running by an older MC Hoster is found when MC Hoster opens and before every start, and you can stop it. If something else is using the port, MC Hoster offers another port.
 
 ### Auto-start (scheduler)
 Settings → Auto-start → **Schedule…**: **Once** (a date), **Daily**, **Weekly** (pick days), **Monthly** (that day every month) or **Yearly** (that date every year), at a time you pick. It makes a Windows scheduled task (`MC Hoster\<server>`) that opens MC Hoster and starts the server, if the PC is on.
