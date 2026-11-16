@@ -299,6 +299,16 @@ def java_major(exe: str | Path) -> int | None:
     return major
 
 
+def java_is_32bit(exe: str | Path) -> bool:
+    """32-bit Java can't use more than about 1.5 GB, so a server with more RAM dies right away."""
+    try:
+        r = subprocess.run([str(exe), "-version"], capture_output=True, text=True, timeout=20, creationflags=NO_WINDOW)
+    except Exception:
+        return False
+    out = r.stderr + r.stdout
+    return bool(re.search(r"\b32-Bit\b", out, re.I)) or ("64-Bit" not in out and "Client VM" in out)
+
+
 def _java_candidates(mc_dir: Path | None) -> list[Path]:
     exe = "java.exe" if WINDOWS else "java"
     c: list[Path] = []
@@ -337,6 +347,8 @@ def find_java(min_major: int, mc_dir: Path | None = None, jdk: bool = False) -> 
         if jdk and not is_jdk(p):
             continue
         m = java_major(p)
+        if m and java_is_32bit(p):
+            continue
         if m and m >= min_major and (best is None or m < best[1]):  # the closest version is the safest
             best = (p, m)
     return best
@@ -1283,7 +1295,7 @@ def setup_server(cfg: ServerConfig, log=print, progress=None, step=None) -> Serv
     need = required_java(cfg.version)
     jdk = provider.id == "spigot"  # BuildTools compiles, so it needs a JDK, not just a JRE
     current = java_major(cfg.java) if cfg.java and Path(cfg.java).exists() else None
-    if current and current >= need and (not jdk or is_jdk(Path(cfg.java))):
+    if current and current >= need and (not jdk or is_jdk(Path(cfg.java))) and not java_is_32bit(cfg.java):
         log(f"Using Java {current}: {cfg.java}")
     else:
         found = find_java(need, mc_dir if not provider.bedrock else None, jdk)
@@ -1518,7 +1530,9 @@ EXIT_REASONS = [
      "The world is still open in another server (an older MC Hoster may still be running it). "
      "Close the other MC Hoster, or restart your PC, then start again."),
     (r"OutOfMemoryError|Could not reserve enough space|Could not create the Java Virtual Machine",
-     "Not enough memory for the server. Close other programs, or lower Max players in tab 3."),
+     "Not enough memory for the server. Close other programs, lower Max players in tab 3, or set "
+     "'Memory for the server' in the Config tab. (If this keeps happening, click Apply & start in tab 3 "
+     "so MC Hoster picks a 64-bit Java.)"),
     (r"agree to the EULA|eula\.txt",
      "The Minecraft EULA isn't accepted. Tick it in tab 3 and click Apply & start."),
     (r"Failed to load properties|Failed to load level|Exception reading .*level\.dat|Failed to read level",
