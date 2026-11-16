@@ -1,6 +1,6 @@
 # Dark Chat by DarkerDawnFR.
 
-# How chat looks. {rank} = the rank prefix from LuckPerms (or any plugin, through Vault), {player}, {message}, {world}.
+# How chat looks. {rank} = the rank prefix from Dark Ranks (or LuckPerms through Vault), {player}, {message}, {world}.
 format: "{rank}&f{player} &8» &7{message}"
 
 mentions:

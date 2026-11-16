@@ -97,6 +97,14 @@ public class DarkChat extends JavaPlugin implements Listener, TabCompleter {
     // ------------------------------------------------------------------ rank prefixes (LuckPerms etc. through Vault)
 
     public String rankPrefix(Player p) {
+        org.bukkit.plugin.Plugin ranks = Bukkit.getPluginManager().getPlugin("DarkRanks");
+        if (ranks != null && ranks.isEnabled()) {
+            try {
+                Object r = ranks.getClass().getMethod("prefix", Player.class).invoke(ranks, p);
+                if (r != null) return String.valueOf(r);
+            } catch (Throwable ignored) {
+            }
+        }
         try {
             Class<?> chat = Class.forName("net.milkbowl.vault.chat.Chat");
             RegisteredServiceProvider<?> rsp = Bukkit.getServicesManager().getRegistration(chat);

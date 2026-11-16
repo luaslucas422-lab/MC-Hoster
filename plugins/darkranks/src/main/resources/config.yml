@@ -1,0 +1,112 @@
+# Dark Ranks by DarkerDawnFR. Easiest: /rank edit in game (ops).
+#
+# prefix  = what shows before a player's name in chat and the tab list, with any icon you like (✦ ✪ ♛ ★ ▶ ☠ ⚡ ❤).
+# weight  = how good the rank is (higher = better). You can only buy ranks above yours.
+# shop    = sold in /rank shop for `price` (Dark Shop money).
+# inherit = also gets every permission of that rank.
+# permissions = like LuckPerms. The Dark Perks commands (darkperks.*) are only for ranks.
+
+default-rank: member
+# Tell everyone when someone buys a rank (with Dark Announce: a thank-you with fireworks).
+announce-buys: true
+message-prefix: "&8[&6Ranks&8] "
+
+ranks:
+  member:
+    name: "&7Member"
+    prefix: ""
+    weight: 0
+    shop: false
+    icon: PAPER
+    permissions: []
+    perks: []
+
+  # ---- the 5 ranks in /rank shop
+  vip:
+    name: "&a&lVIP"
+    prefix: "&a&l✦ VIP &r"
+    weight: 10
+    price: 50000
+    shop: true
+    icon: EMERALD
+    inherit: member
+    permissions: [darkperks.craft, darkperks.hat, darkhomes.homes.6]
+    perks: ["&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f6 homes"]
+  vip+:
+    name: "&2&lVIP+"
+    prefix: "&2&l✦ VIP+ &r"
+    weight: 20
+    price: 150000
+    shop: true
+    icon: EMERALD_BLOCK
+    inherit: vip
+    permissions: [darkperks.ec, darkperks.feed, darkhomes.homes.7]
+    perks: ["&7Everything in VIP", "&f/ec &7- ender chest anywhere", "&f/feed &7- fill your hunger", "&f7 homes"]
+  mvp:
+    name: "&b&lMVP"
+    prefix: "&b&l✪ MVP &r"
+    weight: 30
+    price: 400000
+    shop: true
+    icon: DIAMOND
+    inherit: vip+
+    permissions: [darkperks.fly, darkperks.nick, darkhomes.homes.8]
+    perks: ["&7Everything in VIP+", "&f/fly &7- fly (not in combat)", "&f/nick &7- a coloured nickname", "&f8 homes"]
+  mvp+:
+    name: "&3&lMVP+"
+    prefix: "&3&l✪ MVP+ &r"
+    weight: 40
+    price: 1000000
+    shop: true
+    icon: DIAMOND_BLOCK
+    inherit: mvp
+    permissions: [darkperks.repair, darkperks.glow, darkchat.color, darkhomes.homes.9]
+    perks: ["&7Everything in MVP", "&f/repair &7- fix the item you hold", "&f/glow &7- glow for everyone", "&fColours in chat with & codes", "&f9 homes"]
+  legend:
+    name: "&6&lLEGEND"
+    prefix: "&6&l★ LEGEND &r"
+    weight: 50
+    price: 2500000
+    shop: true
+    icon: NETHER_STAR
+    inherit: mvp+
+    permissions: [darkperks.heal, darkperks.trail, darkah.unlimited, darkrtp.bypass]
+    perks: ["&7Everything in MVP+", "&f/heal &7- full health", "&f/trail &7- particle trails", "&fSell unlimited items on /ah", "&fNo /rtp cooldown"]
+
+  # ---- staff ranks: only given with /rank add <player> <rank>
+  media:
+    name: "&d&lMEDIA"
+    prefix: "&d&l▶ MEDIA &r"
+    weight: 60
+    shop: false
+    icon: RED_DYE
+    inherit: legend
+    permissions: []
+    perks: ["&7For content creators"]
+  mod:
+    name: "&9&lMOD"
+    prefix: "&9&l⚔ MOD &r"
+    weight: 70
+    shop: false
+    icon: IRON_SWORD
+    inherit: legend
+    permissions: [darkchat.admin, darkchat.bypass, darktpa.admin]
+    perks: ["&7Moderator"]
+  admin:
+    name: "&c&lADMIN"
+    prefix: "&c&l⚡ ADMIN &r"
+    weight: 80
+    shop: false
+    icon: GOLDEN_SWORD
+    inherit: mod
+    permissions: [darkperks.*]
+    perks: ["&7Administrator"]
+  owner:
+    name: "&4&lOWNER"
+    prefix: "&4&l♛ OWNER &r"
+    weight: 90
+    shop: false
+    icon: NETHERITE_SWORD
+    inherit: admin
+    permissions: []
+    perks: ["&7Owner"]

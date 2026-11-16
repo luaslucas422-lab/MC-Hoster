@@ -49,6 +49,11 @@ public class DarkScoreboard extends JavaPlugin implements Listener, TabCompleter
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        // tab names now show the rank in front
+        if ("&f{player} &7{ping}ms".equals(getConfig().getString("tab.name-format"))) {
+            getConfig().set("tab.name-format", "{rank}&f{player} &7{ping}ms");
+            saveConfig();
+        }
         hiddenFile = new File(getDataFolder(), "hidden.yml");
         for (String s : YamlConfiguration.loadConfiguration(hiddenFile).getStringList("hidden")) {
             try {

@@ -53,6 +53,8 @@ public class Hooks {
         HELP.put("homes", "how many homes you set");
         HELP.put("rift", "where the rift is, or none");
         HELP.put("keyall", "time until the next Key All");
+        HELP.put("rank", "your rank's tag, like ♛ OWNER");
+        HELP.put("rankname", "your rank's name");
         HELP.put("listings", "your /ah listings");
         HELP.put("ah_total", "all /ah listings");
         HELP.put("rtp_queue", "players in /rtpq");
@@ -61,7 +63,7 @@ public class Hooks {
         HELP.put("time", "the time now");
     }
 
-    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts, crates;
+    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts, crates, ranks;
     private Object vault;
 
     public void hook() {
@@ -75,6 +77,7 @@ public class Hooks {
         homes = enabled("DarkHomes");
         rifts = enabled("DarkRifts");
         crates = enabled("DarkCrates");
+        ranks = enabled("DarkRanks");
         vault = null;
         if (enabled("Vault") != null || enabled("VaultUnlocked") != null) {
             try {
@@ -102,6 +105,7 @@ public class Hooks {
         if (homes != null) out.add("Dark Homes");
         if (rifts != null) out.add("Dark Rifts");
         if (crates != null) out.add("Dark Crates");
+        if (ranks != null) out.add("Dark Ranks");
         if (vault != null) out.add("Vault");
         if (papi != null) out.add("PlaceholderAPI");
         return out;
@@ -111,6 +115,7 @@ public class Hooks {
     public boolean available(String line) {
         if (line.contains("{shards}") && shards == null) return false;
         if (line.contains("{keyall}") && crates == null) return false;
+        if (line.contains("{rankname}") && ranks == null) return false;
         if (line.contains("{bounty}") && shop == null) return false;
         if (line.contains("{baltop}") && shop == null) return false;
         if (line.contains("{rift}") && rifts == null) return false;
@@ -185,6 +190,11 @@ public class Hooks {
             if (text.contains("{homes}")) {
                 Object m = homes != null ? call(homes, "of", id) : null;
                 text = rep(text, "homes", m instanceof java.util.Map<?, ?> map ? String.valueOf(map.size()) : "0");
+            }
+            if (text.contains("{rank")) {
+                Object r = ranks != null ? call(ranks, "prefix", id) : null;
+                Object n = ranks != null ? call(ranks, "rankName", id) : null;
+                text = rep(rep(text, "rank", r == null ? "" : String.valueOf(r)), "rankname", n == null ? "" : String.valueOf(n));
             }
             if (text.contains("{keyall}")) {
                 Object k = crates != null ? call(crates, "keyAllIn") : null;

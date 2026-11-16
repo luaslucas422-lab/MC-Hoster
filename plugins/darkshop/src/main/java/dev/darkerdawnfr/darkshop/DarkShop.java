@@ -27,6 +27,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     private SellMenu sell;
     private Bounties bounties;
     private Orders orders;
+    private ShopEditor editor;
     private Baltop baltop;
 
     @Override
@@ -38,6 +39,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         bounties = new Bounties(this);
         baltop = new Baltop(this);
         orders = new Orders(this);
+        editor = new ShopEditor(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getServer().getPluginManager().registerEvents(this, this);
@@ -88,6 +90,10 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         e.setMessage("/darkshop:" + msg.substring(1));
     }
 
+    public ShopMenus shop() {
+        return shop;
+    }
+
     public Money money() {
         return money;
     }
@@ -124,6 +130,11 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         switch (name) {
             case "shop" -> {
                 if (!(s instanceof Player p)) return msg(s, "&cOnly players can open the shop.");
+                if (a.length > 0 && a[0].equalsIgnoreCase("edit")) {
+                    if (!p.hasPermission("darkshop.admin")) return msg(s, "&cOnly ops can edit the shop.");
+                    editor.main(p).open(p);
+                    return true;
+                }
                 shop.main().open(p);
             }
             case "sell" -> {
@@ -293,6 +304,17 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            String cfgBackup = getConfig().saveToString();
+            editor.setPrice("end", Material.DIAMOND_BLOCK, 12345);
+            reloadConfig();
+            shop.reload();
+            if (shop.categories().get("end").items().stream().noneMatch(en -> en.material() == Material.DIAMOND_BLOCK && en.price() == 12345))
+                fails.add("shop editor price didn't stick");
+            editor.removeItem("end", Material.DIAMOND_BLOCK);
+            if (shop.categories().get("end").items().stream().anyMatch(en -> en.material() == Material.DIAMOND_BLOCK)) fails.add("shop editor remove");
+            java.nio.file.Files.writeString(new java.io.File(getDataFolder(), "config.yml").toPath(), cfgBackup);
+            reloadConfig();
+            shop.reload();
             if (Util.parseMoney("1.5k") != 1500 || !Util.money(2_500_000).equals("$2.5M")) fails.add("money text");
             if (money.builtIn()) {
                 UUID id = UUID.nameUUIDFromBytes("darkshop-test".getBytes());

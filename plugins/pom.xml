@@ -23,6 +23,8 @@
     <module>darkcrates</module>
     <module>darkannounce</module>
     <module>darkduels</module>
+    <module>darkperks</module>
+    <module>darkranks</module>
     <module>darksettings</module>
     <module>darkspawners</module>
     <module>darkbossbar</module>
