@@ -1,2 +1,2 @@
-selftest: success, addons: success, scheduler: success, orphans: success
-commit: ebb74f60ff936143ade698f684d03b4959109133
+selftest: failure, addons: success, scheduler: success, orphans: success
+commit: 7a1c6c9ddf0d82184a24d058828d20bbcbe615b6
