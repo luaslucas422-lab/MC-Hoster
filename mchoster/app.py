@@ -18,7 +18,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import addons, core, domain, icondraw, respack, schedule, updater
+from . import addons, core, domain, icondraw, online, profile, respack, schedule, updater
 from .core import PROVIDERS, PROVIDER_BY_NAME, ServerConfig
 
 GREEN, YELLOW, ORANGE, RED = "#2e9e44", "#c9a400", "#e07b00", "#cc2b2b"
@@ -40,8 +40,8 @@ def open_folder(path: str):
 
 
 class Wizard:
-    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config", "Experimental"]
-    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG, EXPERIMENTAL = range(7)
+    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config", "Experimental", "Hosted servers"]
+    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG, EXPERIMENTAL, HOSTED = range(8)
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -66,8 +66,17 @@ class Wizard:
         self._style()
         self._icon()
 
+        self.header = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
+        self.header.pack(fill="x")
+        ttk.Label(self.header, text=core.APP_NAME, style="Title.TLabel").pack(side="left")
+        ttk.Label(self.header, text=f" {core.VERSION} · by {core.AUTHOR}", style="Hint.TLabel").pack(side="left", pady=(6, 0))
+        self.side_var = tk.StringVar(value="hosting")
+        for text, val in (("Server sharing", "sharing"), ("Server hosting", "hosting")):
+            ttk.Radiobutton(self.header, text=text, value=val, variable=self.side_var, style="Toolbutton",
+                            command=self.show_side).pack(side="right", padx=(6, 0))
         self.outer = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
         self.outer.pack(fill="both", expand=True)
+        self.share_frame = None
         self.nb = ttk.Notebook(self.outer)
         self.nb.pack(fill="both", expand=True)
         self.pages = []
@@ -79,7 +88,6 @@ class Wizard:
 
         self.bar = ttk.Frame(root, padding=PAD)
         self.bar.pack(fill="x")
-        ttk.Label(self.bar, text=f"MC Hoster {core.VERSION} · by {core.AUTHOR}", style="Hint.TLabel").pack(side="left")
         self.next_btn = ttk.Button(self.bar, text="Next", command=self.next, style="Accent.TButton", width=15)
         self.next_btn.pack(side="right")
         self.back_btn = ttk.Button(self.bar, text="Back", command=self.back, width=10)
@@ -92,6 +100,9 @@ class Wizard:
         self._page_addons(self.pages[4])
         self._page_config(self.pages[5])
         self._page_experimental(self.pages[6])
+        self._page_hosted(self.pages[7])
+        if profile.load().get("mc") and not self.owner_var.get():
+            self.owner_var.set(profile.load()["mc"])  # you are made operator on every server you set up
         self.show(0)
         self.root.after(60, self._drain)
         self.root.after(1000, self._restart_tick)
@@ -176,7 +187,11 @@ class Wizard:
         bottom.grid(row=7, column=0, columnspan=3, sticky="we")
         ttk.Button(bottom, text="My servers…", command=self.my_servers).pack(side="left")
         ttk.Button(bottom, text="Check for updates", command=lambda: self.check_updates(False)).pack(side="left", padx=(8, 0))
-        ttk.Label(bottom, text=f"v{core.VERSION}", style="Hint.TLabel").pack(side="left", padx=(8, 0))
+        ttk.Button(bottom, text="Update logs", command=self.update_logs).pack(side="left", padx=(8, 0))
+        ttk.Button(bottom, text="Send feedback", command=self.feedback_dialog).pack(side="left", padx=(8, 0))
+        self.inbox_btn = ttk.Button(bottom, text="Feedback inbox", command=self.inbox_dialog)
+        if profile.is_owner():
+            self.inbox_btn.pack(side="left", padx=(8, 0))
         self.new_btn = ttk.Button(bottom, text="New server…", command=self.new_server)
         self.load_versions()
 
@@ -1260,6 +1275,9 @@ class Wizard:
             i = self.nb.index("current")
         except tk.TclError:
             return
+        if i == self.HOSTED:  # the list of hosted servers can be looked at any time and changes nothing
+            self.refresh_hosted()
+            return
         if i == self.page:
             return
         if not self.edit or self.busy:
@@ -1270,7 +1288,7 @@ class Wizard:
     def show(self, i):
         self.page = i
         for j in range(len(self.pages)):
-            enabled = (self.edit and not self.busy) or j == i
+            enabled = (self.edit and not self.busy) or j == i or j == self.HOSTED
             self.nb.tab(j, state="normal" if enabled else "disabled")
         try:
             cur = self.nb.index("current")
@@ -1473,7 +1491,7 @@ class Wizard:
             w.destroy()
         Wizard(self.root)
 
-    def open_existing(self, cfg: ServerConfig):
+    def open_existing(self, cfg: ServerConfig, start: bool = True):
         self.cfg = cfg
         self.page = self.PLAY
         self.enter_edit_mode()
@@ -1492,6 +1510,12 @@ class Wizard:
                 return
             cfg.java = str(found[0])
             cfg.save()
+        if not start:  # "Open": look at it and change settings, but don't start it
+            self.show(self.PLAY)
+            self.play_title.config(text=f"{cfg.name} is offline")
+            self.startstop_btn.config(text="Start server", state="normal")
+            self.update_buttons()
+            return
         self.run_server()
 
     def my_servers(self):
@@ -1509,7 +1533,7 @@ class Wizard:
         btns = ttk.Frame(frm)
         btns.pack(fill="x", pady=(8, 0))
 
-        def go():
+        def go(start=True):
             sel = lb.curselection()
             if not sel:
                 return
@@ -1519,8 +1543,9 @@ class Wizard:
                     return
                 self.server.stop(60)
                 self._close_ports()
-            self.open_existing(servers[sel[0]])
+            self.open_existing(servers[sel[0]], start)
         ttk.Button(btns, text="Open & start", style="Accent.TButton", command=go).pack(side="right")
+        ttk.Button(btns, text="Open", command=lambda: go(False)).pack(side="right", padx=6)
         ttk.Button(btns, text="Open folder", command=lambda: lb.curselection() and open_folder(servers[lb.curselection()[0]].folder)).pack(side="right", padx=6)
         lb.bind("<Double-Button-1>", lambda e: go())
 
@@ -1720,6 +1745,368 @@ class Wizard:
                 (w.grid if on else w.grid_remove)()
         self.ip_box.grid(row=3, column=0, sticky="we", pady=(8, 0))
 
+
+    # ------------------------------------------------------------------ the two sides: hosting and sharing
+    def show_side(self):
+        sharing = self.side_var.get() == "sharing"
+        if sharing:
+            self.outer.pack_forget()
+            self.bar.pack_forget()
+            if self.share_frame is None:
+                self.share_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD))
+                self._build_sharing(self.share_frame)
+            self.share_frame.pack(fill="both", expand=True)
+            self.refresh_posts()
+        else:
+            if self.share_frame is not None:
+                self.share_frame.pack_forget()
+            self.outer.pack(fill="both", expand=True)
+            self.bar.pack(fill="x")
+
+    def _offline_text(self, e) -> str:
+        return str(e) if str(e) else "Couldn't reach the MC Hoster service."
+
+    def _build_sharing(self, f):
+        top = ttk.Frame(f)
+        top.pack(fill="x")
+        ttk.Label(top, text="Server sharing", style="Title.TLabel").pack(side="left")
+        ttk.Button(top, text="Refresh", command=self.refresh_posts).pack(side="right")
+        ttk.Button(top, text="New post…", style="Accent.TButton", command=self.new_post_dialog).pack(side="right", padx=6)
+        ttk.Label(f, text="Share the servers you host and see what others are hosting. This doesn't change your server.",
+                  style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        box = ttk.Frame(f)
+        box.pack(fill="both", expand=True)
+        self.posts_text = tk.Text(box, wrap="word", relief="flat", padx=10, pady=8, height=18, width=80)
+        sb = ttk.Scrollbar(box, command=self.posts_text.yview)
+        self.posts_text.config(yscrollcommand=sb.set, state="disabled")
+        self.posts_text.tag_configure("title", font=(self.base_font[0], self.base_font[1] + 2, "bold"))
+        self.posts_text.tag_configure("meta", foreground="#6b6b6b")
+        self.posts_text.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        self._set_posts_text("Loading…")
+
+    def _set_posts_text(self, text: str, items: list | None = None):
+        t = self.posts_text
+        t.config(state="normal")
+        t.delete("1.0", "end")
+        if items:
+            for it in items:
+                t.insert("end", it.get("title", "") + "\n", "title")
+                who = it.get("name", "?") + (f" ({it['mc']})" if it.get("mc") else "")
+                srv = f" · server: {it['server']}" if it.get("server") else ""
+                t.insert("end", f"{who}{srv} · {time.strftime('%d %b %Y', time.localtime(it.get('ts', 0)))}\n", "meta")
+                t.insert("end", (it.get("body") or "") + "\n\n")
+        else:
+            t.insert("end", text)
+        t.config(state="disabled")
+
+    def refresh_posts(self):
+        def work():
+            try:
+                self.q.put(("posts", online.posts(), None))
+            except online.Offline as e:
+                self.q.put(("posts", None, self._offline_text(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def new_post_dialog(self):
+        top, f = self.dialog("New post")
+        ttk.Label(f, text="Share a server or say something", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Title:").pack(anchor="w", pady=(8, 0))
+        title = tk.StringVar()
+        ttk.Entry(f, textvariable=title, width=60).pack(fill="x")
+        ttk.Label(f, text="Server name (optional):").pack(anchor="w", pady=(8, 0))
+        srv = tk.StringVar(value=self.cfg.name if self.edit else "")
+        ttk.Entry(f, textvariable=srv, width=60).pack(fill="x")
+        ttk.Label(f, text="What do you want to say?").pack(anchor="w", pady=(8, 0))
+        body = tk.Text(f, width=60, height=8, wrap="word")
+        body.pack(fill="x")
+        ttk.Label(f, text="Don't share your IP or anything private.", style="Hint.TLabel").pack(anchor="w", pady=(4, 0))
+        status = ttk.Label(f, text="")
+        status.pack(anchor="w")
+
+        def send():
+            if len(title.get().strip()) < 2:
+                status.config(text="Give it a title.", style="Bad.TLabel")
+                return
+            status.config(text="Posting…", style="Hint.TLabel")
+
+            def work():
+                try:
+                    online.add_post(title.get().strip(), body.get("1.0", "end").strip(), srv.get().strip())
+                    self.q.put(("post_done", top, None))
+                except online.Offline as e:
+                    self.q.put(("post_done", top, self._offline_text(e)))
+            self._post_status = status
+            threading.Thread(target=work, daemon=True).start()
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(8, 0))
+        ttk.Button(btns, text="Post", style="Accent.TButton", command=send).pack(side="right")
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right", padx=6)
+
+    # ------------------------------------------------------------------ tab 8: servers hosted with MC Hoster
+    def _page_hosted(self, f):
+        f.columnconfigure(0, weight=1)
+        f.rowconfigure(2, weight=1)
+        ttk.Label(f, text="Servers hosted with MC Hoster", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(f, text="Servers other people chose to list. It only shows the icon, name and who made it, never an IP.",
+                  style="Hint.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
+        style = ttk.Style(self.root)
+        style.configure("Hosted.Treeview", rowheight=40)
+        self.hosted_tree = ttk.Treeview(f, columns=("kind", "owner", "players"), style="Hosted.Treeview", height=7)
+        self.hosted_tree.heading("#0", text="Server")
+        self.hosted_tree.heading("kind", text="Type")
+        self.hosted_tree.heading("owner", text="Made by")
+        self.hosted_tree.heading("players", text="Max players")
+        self.hosted_tree.column("#0", width=200)
+        self.hosted_tree.column("kind", width=130)
+        self.hosted_tree.column("owner", width=150)
+        self.hosted_tree.column("players", width=80, anchor="e")
+        self.hosted_tree.grid(row=2, column=0, sticky="nsew")
+        self.hosted_msg = ttk.Label(f, text="", style="Hint.TLabel", wraplength=520, justify="left")
+        self.hosted_msg.grid(row=3, column=0, sticky="w", pady=(6, 0))
+        bar = ttk.Frame(f)
+        bar.grid(row=4, column=0, sticky="we", pady=(6, 0))
+        ttk.Button(bar, text="Refresh", command=self.refresh_hosted).pack(side="left")
+        self.list_btn = ttk.Button(bar, text="List my server here", command=self.list_my_server)
+        self.list_btn.pack(side="left", padx=6)
+        ttk.Button(bar, text="Remove my server", command=self.unlist_my_server).pack(side="left")
+        self._hosted_imgs = []
+
+    def refresh_hosted(self):
+        self.hosted_msg.config(text="Loading…")
+
+        def work():
+            try:
+                self.q.put(("hosted", online.hosted(), None))
+            except online.Offline as e:
+                self.q.put(("hosted", None, self._offline_text(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _fill_hosted(self, items):
+        import base64
+        t = self.hosted_tree
+        t.delete(*t.get_children())
+        self._hosted_imgs = []
+        for it in items:
+            img = ""
+            try:
+                if it.get("icon"):
+                    ph = tk.PhotoImage(data=base64.b64decode(it["icon"]))
+                    k = max(1, ph.width() // 32)
+                    ph = ph.subsample(k, k)
+                    self._hosted_imgs.append(ph)
+                    img = ph
+            except Exception:
+                img = ""
+            mc = f" ({it['mc']})" if it.get("mc") else ""
+            kw = {"image": img} if img else {}
+            t.insert("", "end", text="  " + it.get("name", "?"), values=(f"{it.get('kind', '')} {it.get('version', '')}",
+                                                                          it.get("owner", "?") + mc, it.get("players", "")), **kw)
+        self.hosted_msg.config(text="" if items else "No servers are listed yet. Be the first: set up a server, then click "
+                                                     "\"List my server here\".")
+
+    def list_my_server(self):
+        if not self.edit:
+            messagebox.showinfo("Hosted servers", "Set up your server first, then list it here.")
+            return
+        import base64
+        c = self.cfg
+        icon = ""
+        try:
+            png = Path(c.folder) / "server-icon.png"
+            if png.exists():
+                icon = base64.b64encode(png.read_bytes()).decode()
+        except OSError:
+            pass
+        if not messagebox.askyesno("List my server", f"Show \"{c.name}\" ({c.prov.name} {c.version}) with its icon and your name in "
+                                   "the list of servers hosted with MC Hoster?\n\nYour IP is never shown."):
+            return
+
+        def work():
+            try:
+                online.publish_hosted(c.name, c.prov.name, c.version, c.players, icon)
+                self.q.put(("hosted_done", "Listed. It stays for 3 days, open MC Hoster again to keep it there.", None))
+            except online.Offline as e:
+                self.q.put(("hosted_done", None, self._offline_text(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def unlist_my_server(self):
+        if not self.edit:
+            return
+
+        def work():
+            try:
+                online.unpublish_hosted(self.cfg.name)
+                self.q.put(("hosted_done", "Removed from the list.", None))
+            except online.Offline as e:
+                self.q.put(("hosted_done", None, self._offline_text(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    # ------------------------------------------------------------------ feedback, update logs
+    def feedback_dialog(self):
+        top, f = self.dialog("Send feedback")
+        ttk.Label(f, text="Send feedback to DarkerDawnFR", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="A bug, an idea, a plugin you want. Only the maker of MC Hoster can read it.",
+                  style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        kind = tk.StringVar(value="Idea")
+        row = ttk.Frame(f)
+        row.pack(anchor="w")
+        for k in ("Idea", "Bug", "Other"):
+            ttk.Radiobutton(row, text=k, value=k, variable=kind).pack(side="left", padx=(0, 10))
+        body = tk.Text(f, width=64, height=9, wrap="word")
+        body.pack(fill="x", pady=6)
+        status = ttk.Label(f, text="")
+        status.pack(anchor="w")
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(6, 0))
+
+        def send():
+            text = body.get("1.0", "end").strip()
+            if len(text) < 3:
+                status.config(text="Write something first.", style="Bad.TLabel")
+                return
+            send_btn.state(["disabled"])
+            status.config(text="Sending…", style="Hint.TLabel")
+
+            def work():
+                try:
+                    online.send_feedback(text, kind.get().lower())
+                    self.q.put(("feedback_done", (top, status, send_btn), None))
+                except online.Offline as e:
+                    self.q.put(("feedback_done", (top, status, send_btn), self._offline_text(e)))
+            threading.Thread(target=work, daemon=True).start()
+        send_btn = ttk.Button(btns, text="Send", style="Accent.TButton", command=send)
+        send_btn.pack(side="right")
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right", padx=6)
+
+    def inbox_dialog(self):
+        p = profile.load()
+        key = p.get("admin_key", "")
+        if not key:
+            from tkinter import simpledialog
+            key = simpledialog.askstring("Feedback inbox", "Your admin key (set on the online service):", show="*", parent=self.root) or ""
+            if not key:
+                return
+        top, f = self.dialog("Feedback inbox")
+        txt = tk.Text(f, width=84, height=22, wrap="word", padx=8, pady=6)
+        txt.pack(fill="both", expand=True)
+        txt.insert("1.0", "Loading…")
+
+        def work():
+            try:
+                items = online.inbox(key)
+                profile.save(admin_key=key)
+                self.q.put(("inbox", (txt, items), None))
+            except online.Offline as e:
+                profile.save(admin_key="")
+                self.q.put(("inbox", (txt, None), self._offline_text(e)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def update_logs(self):
+        top, f = self.dialog("Update logs")
+        ttk.Label(f, text="What changed in every update", style="Title.TLabel").pack(anchor="w", pady=(0, 6))
+        body = ttk.Frame(f)
+        body.pack(fill="both", expand=True)
+        lb = tk.Listbox(body, width=14, height=18, activestyle="none", exportselection=False)
+        lb.pack(side="left", fill="y")
+        txt = tk.Text(body, width=70, height=18, wrap="word", padx=8, pady=6, relief="flat")
+        sb = ttk.Scrollbar(body, command=txt.yview)
+        txt.config(yscrollcommand=sb.set, state="disabled")
+        sb.pack(side="right", fill="y")
+        txt.pack(side="left", fill="both", expand=True, padx=(8, 0))
+        state = {"items": []}
+
+        def show(_=None):
+            sel = lb.curselection()
+            if not sel or not state["items"]:
+                return
+            it = state["items"][sel[0]]
+            txt.config(state="normal")
+            txt.delete("1.0", "end")
+            txt.insert("1.0", f"MC Hoster {it['version']}   ({it['date']})\n\n" + (updater.plain(it["notes"]) or "(no notes)"))
+            txt.config(state="disabled")
+        lb.bind("<<ListboxSelect>>", show)
+
+        def fill(items):
+            if not top.winfo_exists():
+                return
+            txt.config(state="normal")
+            txt.delete("1.0", "end")
+            if items is None:
+                txt.insert("1.0", "Couldn't reach GitHub. Check your internet and try again.")
+            else:
+                state["items"] = items
+                for it in items:
+                    lb.insert("end", "v" + it["version"])
+                if items:
+                    lb.selection_set(0)
+                    txt.config(state="disabled")
+                    show()
+                    return
+                txt.insert("1.0", "No updates are listed yet.")
+            txt.config(state="disabled")
+        self._upd_logs = fill
+        threading.Thread(target=lambda: self.q.put(("update_logs", updater.releases())), daemon=True).start()
+
+    # ------------------------------------------------------------------ first start: terms, then your names
+    def first_run(self):
+        p = profile.load()
+        if profile.done(p):
+            return
+        top = tk.Toplevel(self.root)
+        top.title("Welcome to MC Hoster")
+        top.transient(self.root)
+        top.resizable(False, False)
+        top.grab_set()
+        f = ttk.Frame(top, padding=PAD + 4)
+        f.pack(fill="both", expand=True)
+        ttk.Label(f, text="Terms and Conditions", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Read and tick the box to continue.", style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        box = ttk.Frame(f)
+        box.pack(fill="both", expand=True)
+        txt = tk.Text(box, width=74, height=16, wrap="word", padx=8, pady=6, relief="flat")
+        sb = ttk.Scrollbar(box, command=txt.yview)
+        txt.config(yscrollcommand=sb.set)
+        txt.insert("1.0", profile.TERMS)
+        txt.config(state="disabled")
+        txt.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        agree = tk.BooleanVar(value=bool(p.get("terms")))
+        ttk.Checkbutton(f, text="I have read and agree to the terms", variable=agree).pack(anchor="w", pady=(8, 0))
+
+        ttk.Separator(f).pack(fill="x", pady=8)
+        ttk.Label(f, text="What should we call you in the app?").pack(anchor="w")
+        name = tk.StringVar(value=p.get("name", ""))
+        ttk.Entry(f, textvariable=name, width=36).pack(anchor="w")
+        ttk.Label(f, text="Used when you talk about servers in Server sharing.", style="Hint.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Your Minecraft username:").pack(anchor="w", pady=(8, 0))
+        mc = tk.StringVar(value=p.get("mc", ""))
+        ttk.Entry(f, textvariable=mc, width=36).pack(anchor="w")
+        ttk.Label(f, text="You are made operator (admin) on every server you set up.", style="Hint.TLabel").pack(anchor="w")
+        err = ttk.Label(f, text="", style="Bad.TLabel")
+        err.pack(anchor="w", pady=(6, 0))
+
+        def go():
+            if not agree.get():
+                err.config(text="Tick the box to agree to the terms.")
+            elif not profile.valid_display_name(name.get()):
+                err.config(text="Pick a name between 2 and 24 letters.")
+            elif not core.valid_player_name(mc.get().strip()):
+                err.config(text="That isn't a Minecraft name (3-16 letters, numbers or _).")
+            else:
+                profile.save(terms=True, name=name.get().strip(), mc=mc.get().strip())
+                if not self.owner_var.get().strip():
+                    self.owner_var.set(mc.get().strip())
+                if profile.is_owner() and not self.inbox_btn.winfo_ismapped():
+                    self.inbox_btn.pack(side="left", padx=(8, 0))
+                top.destroy()
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(6, 0))
+        ttk.Button(btns, text="Continue", style="Accent.TButton", command=go).pack(side="right")
+        ttk.Button(btns, text="Close MC Hoster", command=lambda: (top.destroy(), self.root.destroy())).pack(side="right", padx=6)
+        top.protocol("WM_DELETE_WINDOW", lambda: (top.destroy(), self.root.destroy()))
+        self._first = top
+
     # ------------------------------------------------------------------ updates
     def check_updates(self, quiet: bool):
         """quiet = the check when MC Hoster opens: only says something if there is an update."""
@@ -1810,6 +2197,51 @@ class Wizard:
                                            f"Downloading… {done / 1048576:.1f} MB")
                         if total:
                             u["bar"].config(value=done * 100 / total)
+                elif k == "posts":
+                    if self.share_frame is not None and self.posts_text.winfo_exists():
+                        self._set_posts_text(ev[2] or "No posts yet. Be the first!", ev[1])
+                elif k == "post_done":
+                    if ev[2]:
+                        if getattr(self, "_post_status", None) and self._post_status.winfo_exists():
+                            self._post_status.config(text=ev[2], style="Bad.TLabel")
+                    else:
+                        ev[1].destroy()
+                        self.refresh_posts()
+                elif k == "hosted":
+                    if ev[2]:
+                        self.hosted_msg.config(text=ev[2])
+                    else:
+                        self._fill_hosted(ev[1])
+                elif k == "hosted_done":
+                    if ev[2]:
+                        messagebox.showinfo("Hosted servers", ev[2])
+                    else:
+                        self.refresh_hosted()
+                        messagebox.showinfo("Hosted servers", ev[1])
+                elif k == "feedback_done":
+                    top, status, btn = ev[1]
+                    if top.winfo_exists():
+                        if ev[2]:
+                            status.config(text=ev[2], style="Bad.TLabel")
+                            btn.state(["!disabled"])
+                        else:
+                            top.destroy()
+                            messagebox.showinfo("Send feedback", "Sent. Thank you!")
+                elif k == "inbox":
+                    txt, items = ev[1]
+                    if txt.winfo_exists():
+                        txt.delete("1.0", "end")
+                        if ev[2]:
+                            txt.insert("1.0", ev[2])
+                        else:
+                            for it in items or []:
+                                txt.insert("end", f"{it['name']} ({it['mc']}) · {it['kind']} · v{it['version']} · "
+                                                  f"{time.strftime('%d %b %H:%M', time.localtime(it['ts']))}\n{it['text']}\n\n")
+                            if not items:
+                                txt.insert("1.0", "No feedback yet.")
+                elif k == "update_logs":
+                    if getattr(self, "_upd_logs", None):
+                        self._upd_logs(ev[1])
                 elif k == "upd_ready":
                     self._close_ports()
                     self.root.destroy()
@@ -1960,6 +2392,8 @@ def main(start_folder: str | None = None):
                     "by an older MC Hoster after it was closed.\n\nStop it now?", parent=root):
                 core.kill_tree(pid)
     root.after(300, check_leftovers)
+    if not start_folder:
+        root.after(150, w.first_run)
     if not start_folder:
         root.after(2500, lambda: w.check_updates(True))
     if start_folder:  # started by the scheduler

@@ -5,10 +5,11 @@ No network: version lists and the server are faked, so it only tests the window 
 from __future__ import annotations
 
 import tempfile
+import time
 import tkinter as tk
 from pathlib import Path
 
-from . import core
+from . import core, profile, updater
 from .app import Wizard
 
 
@@ -19,6 +20,9 @@ def run(outdir: str) -> int:
                                     if p.kind == "fabric" else core.FALLBACK_VERSIONS[:])
     from tkinter import messagebox
     messagebox.askyesno = lambda *a, **k: True  # the "more than 100 players" questions
+    updater.releases = lambda count=30: [
+        {"version": "3.0.0", "date": "2026-11-17", "notes": "## MC Hoster 3.0.0\n- **Server sharing** and **Hosted servers**\n- Send feedback\n- Update logs"},
+        {"version": "2.1.1", "date": "2026-11-16", "notes": "- RAM on the players slider is honest now\n- Fixed the not enough memory crash"}]
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
@@ -124,6 +128,30 @@ def run(outdir: str) -> int:
         w.show_ip_box()
         w.startstop_btn.config(state="normal")
 
+    def last_top():
+        return [c for c in root.winfo_children() if isinstance(c, tk.Toplevel)][-1]
+
+    def hosted_tab():
+        import base64
+        w._fill_hosted([{"name": "Lucas's SMP", "owner": "Lucas", "mc": "DarkerDawnFR", "kind": "Paper", "version": "1.21.11",
+                         "players": 20, "icon": base64.b64encode(icon.read_bytes()).decode()},
+                        {"name": "Chill Survival", "owner": "Sam", "mc": "SamBuilds", "kind": "Fabric", "version": "1.21.11", "players": 8}])
+        w.nb.select(w.HOSTED)
+
+    def sharing_side():
+        w.nb.select(w.page)
+        w.side_var.set("sharing")
+        w.show_side()
+        w._set_posts_text("", [
+            {"title": "Come join Lucas's SMP!", "name": "Lucas", "mc": "DarkerDawnFR", "server": "Lucas's SMP", "ts": time.time(),
+             "body": "Survival with shops, ranks, crates and fishing. Whitelist is open."},
+            {"title": "Best plugins for a small server?", "name": "Sam", "mc": "SamBuilds", "server": "", "ts": time.time() - 90000,
+             "body": "I only have 4 friends online. What should I add first?"}])
+
+    def hosting_side():
+        w.side_var.set("hosting")
+        w.show_side()
+
     steps = [
         lambda: grab("1-server-paper"),
         lambda: pick("Bedrock"),
@@ -155,6 +183,20 @@ def run(outdir: str) -> int:
         lambda: grab("6-config"),
         lambda: (w.exp_text.insert("1.0", "say Welcome to Lucas's SMP!\ntime set day\n# a note\n"), w.show(w.EXPERIMENTAL)),
         lambda: grab("7-experimental"),
+        hosted_tab,
+        lambda: grab("8-hosted"),
+        sharing_side,
+        lambda: grab("9-sharing"),
+        hosting_side,
+        w.feedback_dialog,
+        lambda: grab("10-feedback", last_top()),
+        lambda: last_top().destroy(),
+        w.update_logs,
+        lambda: grab("11-update-logs", last_top()),
+        lambda: last_top().destroy(),
+        w.first_run,
+        lambda: grab("12-welcome", w._first),
+        lambda: w._first.destroy(),
     ]
 
     def go(i=0):
@@ -171,5 +213,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 14
+    want = 19
     return 0 if len(shots) == want else 1

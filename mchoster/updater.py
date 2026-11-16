@@ -40,6 +40,17 @@ def latest() -> dict | None:
             "url": exe.get("browser_download_url") if exe else None, "size": exe.get("size", 0) if exe else 0}
 
 
+def releases(count: int = 30) -> list[dict] | None:
+    """[{"version", "date", "notes"}] newest first, or None if GitHub can't be reached."""
+    try:
+        d = json.loads(core.http_get(f"https://api.github.com/repos/{REPO}/releases?per_page={count}", timeout=15,
+                                     headers={"Accept": "application/vnd.github+json"}))
+    except Exception:
+        return None
+    return [{"version": r.get("tag_name", "").lstrip("v"), "date": (r.get("published_at") or "")[:10],
+             "notes": r.get("body") or ""} for r in d if not r.get("draft")]
+
+
 def plain(md: str) -> str:
     """Release notes (Markdown) as plain text for the window."""
     out = []
@@ -96,13 +107,14 @@ def download(info: dict, progress=None) -> Path:
 
 def swap_script(new: Path, exe: Path, pids: list[int]) -> str:
     sleep = "ping -n 2 127.0.0.1 >nul"  # "timeout" needs a console, this script has none
-    waits = "".join(f':wait{p}\r\ntasklist /FI "PID eq {p}" 2>nul | find "{p}" >nul && ({sleep} & goto wait{p})\r\n' for p in pids)
+    waits = "".join(f':wait{p}\r\ntasklist /FI "PID eq {p}" 2>nul | find " {p} " >nul && ({sleep} & goto wait{p})\r\n' for p in pids)
     return (
         "@echo off\r\n"
         + waits +
         f'for /l %%i in (1,1,30) do (move /y "{new}" "{exe}" >nul 2>&1 && goto moved || {sleep})\r\n'
         ":moved\r\n"
-        f'start "" "{exe}"\r\n'
+        f'{sleep} & {sleep} & {sleep}\r\n'  # let the old copy's temp files go before the new one opens
+        f'start "" /d "{exe.parent}" "{exe}"\r\n'
         '(goto) 2>nul & del "%~f0"\r\n'
     )
 
@@ -113,5 +125,9 @@ def install(new: Path) -> None:
     bat = Path(tempfile.gettempdir()) / "mchoster-update.bat"
     # the .exe is a small launcher (parent) around this Python process: wait for both to close
     bat.write_text(swap_script(new, exe, [os.getpid(), os.getppid()]), encoding="mbcs" if core.WINDOWS else "utf-8", errors="replace")
+    # The old copy's PyInstaller settings must not reach the new one, or it opens its files in the folder that is
+    # being deleted and crashes (the "updating just crashes" bug).
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("_PYI", "_MEI")) and k != "_MEIPASS2"}
+    env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     subprocess.Popen(["cmd", "/c", str(bat)], creationflags=0x08000000 | 0x00000200,  # no window, own process group
-                     close_fds=True, cwd=str(exe.parent))
+                     close_fds=True, cwd=str(exe.parent), env=env)
