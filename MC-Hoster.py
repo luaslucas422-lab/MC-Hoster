@@ -8,6 +8,7 @@
     python MC-Hoster.py --addons-test <type> <version>
                                            checks every Plugins & Mods preset can be downloaded
     python MC-Hoster.py --schedule-test    creates, checks and deletes a Windows scheduled task
+    python MC-Hoster.py --orphan-test      a server can't outlive MC Hoster, and old ones are found and stopped
 """
 import sys
 
@@ -23,6 +24,12 @@ def main():
     if args[:1] == ["--schedule-test"]:
         from mchoster.selftest import schedule_test
         sys.exit(schedule_test())
+    if args[:1] == ["--orphan-test"]:
+        from mchoster.selftest import orphan_test
+        sys.exit(orphan_test())
+    if args[:1] == ["--hold-server"]:  # used by --orphan-test: start a server, then die without stopping it
+        from mchoster.selftest import hold_server
+        sys.exit(hold_server(args[1]))
     if args[:1] == ["--tour"]:
         from mchoster.tour import run
         sys.exit(run(args[1] if len(args) > 1 else "screenshots"))

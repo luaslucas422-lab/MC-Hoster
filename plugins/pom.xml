@@ -18,6 +18,7 @@
     <module>darkhub</module>
     <module>darkshards</module>
     <module>darkhomes</module>
+    <module>darkrifts</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

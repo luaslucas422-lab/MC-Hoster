@@ -77,6 +77,8 @@ ADDONS = [
           {"bukkit": [["bundled:DarkCombat.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
     Addon("darkshards", "Dark Shards", "Shards from playing and kills; /shards shop with 24-hour shard tools (amethyst Shard Pickaxe).",
           {"bukkit": [["bundled:DarkShards.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
+    Addon("darkrifts", "Dark Rifts", "Original: rifts open around the world. Hold one alone through mob waves for money, shards and loot.",
+          {"bukkit": [["bundled:DarkRifts.jar"]]}, note="Made by DarkerDawnFR, not a DonutSMP copy. Best with Dark Shop + Dark Shards"),
     Addon("luckperms", "LuckPerms", "Ranks and permissions (/lp editor).",
           {"bukkit": [["mr:luckperms"]], "fabric": [["mr:luckperms"]]}),
     Addon("worldedit", "WorldEdit", "Build fast: //wand, //set, //copy, //paste.",

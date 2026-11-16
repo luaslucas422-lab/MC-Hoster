@@ -5,6 +5,7 @@ Gh0st AC loaded.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -17,12 +18,13 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
               "darktpa": ("darktpa test", "DARKTPA"), "darkhub": ("darkhub test", "DARKHUB"),
-              "darkcombat": ("combat test", "DARKCOMBAT"), "darkshards": ("shards test", "DARKSHARDS")}
+              "darkcombat": ("combat test", "DARKCOMBAT"), "darkshards": ("shards test", "DARKSHARDS"),
+              "darkrifts": ("rift test", "DARKRIFTS")}
 
 
 def run(args: list[str]) -> int:
@@ -213,3 +215,111 @@ def schedule_test() -> int:
     assert schedule.validate({"enabled": True, "repeat": "Once", "time": "10:00", "date": "2020-01-01"}), "past date accepted"
     print("PASSED: scheduler")
     return 0
+
+
+def _quick_server(name: str) -> core.ServerConfig:
+    mc = Path(tempfile.mkdtemp(prefix="mc-")) / ".minecraft"
+    mc.mkdir(parents=True)
+    (mc / "launcher_profiles.json").write_text("{}")
+    cfg = core.ServerConfig(name=name, provider="paper", version="1.21.11", players=10, gh0stac=False,
+                            minecraft_dir=str(mc), eula=True)
+    cfg.folder = str(core.new_server_folder(name))  # in My Servers, like the window does
+    core.setup_server(cfg, log=lambda l: print("  " + l))
+    cfg.save()
+    return cfg
+
+
+def _wait_for(pred, seconds: float) -> bool:
+    end = time.time() + seconds
+    while time.time() < end:
+        if pred():
+            return True
+        time.sleep(0.5)
+    return pred()
+
+
+def hold_server(folder: str) -> int:
+    """Starts a server like the window does, waits for Done, then ends this process without stopping it."""
+    cfg = core.ServerConfig.load(Path(folder))
+    ready = threading.Event()
+    srv = core.ServerProcess(cfg, on_ready=ready.set)
+    srv.start()
+    ok = ready.wait(300)
+    print("HELD" if ok else "NOT READY", srv.proc.pid, flush=True)
+    os._exit(0 if ok else 1)
+
+
+def orphan_test() -> int:
+    """The bug: a server kept running after MC Hoster closed, so every other server found its port taken."""
+    import subprocess
+    if not core.WINDOWS:
+        print("skipped: not Windows")
+        return 0
+    a = _quick_server("Orphan A")
+    b = _quick_server("Orphan B")
+    fails = []
+
+    # 1. MC Hoster ends without stopping the server: the server must end with it
+    out = subprocess.run([sys.executable, "-u", sys.argv[0], "--hold-server", a.folder], capture_output=True, text=True, timeout=400)
+    print("  hold:", out.stdout.strip(), out.stderr.strip()[-300:])
+    if "HELD" not in out.stdout:
+        fails.append("server A never started")
+    pid = int(out.stdout.split()[-1]) if "HELD" in out.stdout else 0
+    if not _wait_for(lambda: core.port_free(25565), 20):
+        fails.append("server A kept running after MC Hoster ended")
+        if pid:
+            core.kill_tree(pid)
+    else:
+        print("  ok: server A stopped together with MC Hoster")
+
+    # 2. A server left running by an old MC Hoster (no job): it's found and stopped
+    a_cfg = core.ServerConfig.load(Path(a.folder))
+    proc = subprocess.Popen(core.server_args(a_cfg), cwd=a.folder, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, creationflags=core.NO_WINDOW)
+    (Path(a.folder) / core.PID_FILE).write_text(json.dumps({"pid": proc.pid}))
+    if not _wait_for(lambda: not core.port_free(25565), 240):
+        fails.append("old-style server A didn't start")
+    left = core.leftovers()
+    print("  leftovers:", [(l.cfg.name, l.pid) for l in left])
+    if not any(l.pid == proc.pid for l in left):
+        fails.append("leftover server not found")
+    pid_, prog, mine = core.who_has_port(b)
+    print("  port 25565 owner:", pid_, prog, mine.name if mine else None)
+    if mine is None or mine.name != "Orphan A" or pid_ != proc.pid:
+        fails.append("didn't see that Orphan A has the port")
+    for l in left:
+        core.stop_leftover(l)
+    if not _wait_for(lambda: core.port_free(25565), 20):
+        fails.append("leftover not stopped")
+    if core.leftovers():
+        fails.append("leftover still listed")
+
+    # 3. Something else has the port: another one is picked
+    import socket as so
+    blocker = so.socket()
+    blocker.bind(("0.0.0.0", 25565))
+    blocker.listen()
+    if core.port_free(25565):
+        fails.append("busy port looked free")
+    new = core.next_free_port(25565)
+    core.change_port(b, new)
+    print("  port taken by this test, B moves to", new)
+    if core.read_properties(Path(b.folder) / "server.properties").get("server-port") != str(new):
+        fails.append("server.properties port not changed")
+
+    # 4. Server B now starts and is reachable
+    ready = threading.Event()
+    srv = core.ServerProcess(b, on_ready=ready.set)
+    srv.start()
+    if not ready.wait(300):
+        fails.append("server B didn't start")
+    elif core.port_free(new):
+        fails.append("server B isn't on its port")
+    srv.stop(60)
+    blocker.close()
+    if (Path(b.folder) / core.PID_FILE).exists():
+        fails.append("pid file not cleaned up")
+    for c in (a, b):
+        shutil.rmtree(c.folder, ignore_errors=True)
+    print("FAILED: " + "; ".join(fails) if fails else "PASSED: orphan test")
+    return 1 if fails else 0

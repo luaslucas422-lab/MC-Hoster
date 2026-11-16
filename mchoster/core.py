@@ -1131,6 +1131,181 @@ def ports_for(cfg: ServerConfig, extra: list | None = None) -> list[tuple[int, s
     return ports
 
 
+# --------------------------------------------------------------------------- servers left running
+
+_JOB = None
+
+
+def _kill_with_us(proc: subprocess.Popen) -> None:
+    """Windows: put the server in a job that closes with MC Hoster, so it can never keep running
+    after MC Hoster is closed, crashes, or is ended in Task Manager."""
+    global _JOB
+    if not WINDOWS:
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateJobObjectW.restype = wintypes.HANDLE
+        k32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+        k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        if _JOB is None:
+            class Basic(ctypes.Structure):
+                _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                            ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                            ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                            ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD), ("SchedulingClass", wintypes.DWORD)]
+
+            class IoCounters(ctypes.Structure):
+                _fields_ = [(n, ctypes.c_uint64) for n in ("r", "w", "o", "rb", "wb", "ob")]
+
+            class Extended(ctypes.Structure):
+                _fields_ = [("Basic", Basic), ("Io", IoCounters), ("ProcessMemoryLimit", ctypes.c_size_t),
+                            ("JobMemoryLimit", ctypes.c_size_t), ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                            ("PeakJobMemoryUsed", ctypes.c_size_t)]
+            job = k32.CreateJobObjectW(None, None)
+            info = Extended()
+            info.Basic.LimitFlags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            if not k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+                return
+            _JOB = job
+        k32.AssignProcessToJobObject(_JOB, int(proc._handle))
+    except Exception:
+        pass
+
+
+PID_FILE = "mchoster.pid"
+SERVER_EXES = ("java.exe", "javaw.exe", "bedrock_server.exe", "java", "bedrock_server")
+
+
+def _run(args: list[str]) -> str:
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=15, creationflags=NO_WINDOW,
+                              errors="replace").stdout
+    except Exception:
+        return ""
+
+
+def process_name(pid: int) -> str | None:
+    """The program name of a running process, None if it isn't running."""
+    if WINDOWS:
+        out = _run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"]).strip()
+        m = re.match(r'"([^"]+)","(\d+)"', out)
+        return m.group(1) if m and int(m.group(2)) == pid else None
+    try:
+        return Path(f"/proc/{pid}/comm").read_text().strip()
+    except OSError:
+        return None
+
+
+def port_free(port: int, udp: bool = False) -> bool:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM if udp else socket.SOCK_STREAM)
+    try:
+        if not udp and WINDOWS:
+            s.setsockopt(socket.SOL_SOCKET, getattr(socket, "SO_EXCLUSIVEADDRUSE", 0xFFFFFFFB), 1)
+        s.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
+    finally:
+        s.close()
+
+
+def next_free_port(port: int, udp: bool = False) -> int:
+    for p in range(port + 1, port + 200):
+        if port_free(p, udp):
+            return p
+    return port
+
+
+def port_owner(port: int, udp: bool = False) -> int | None:
+    """PID of the program using a port (Windows), None if unknown."""
+    if not WINDOWS:
+        return None
+    for line in _run(["netstat", "-ano", "-p", "UDP" if udp else "TCP"]).splitlines():
+        parts = line.split()
+        if len(parts) < 4 or not parts[0].upper().startswith("UDP" if udp else "TCP"):
+            continue
+        if parts[1].rsplit(":", 1)[-1] == str(port) and (udp or parts[3].upper() == "LISTENING"):
+            try:
+                return int(parts[-1])
+            except ValueError:
+                pass
+    return None
+
+
+def kill_tree(pid: int) -> None:
+    if WINDOWS:
+        _run(["taskkill", "/PID", str(pid), "/T", "/F"])
+    else:
+        try:
+            os.kill(pid, 9)
+        except OSError:
+            pass
+
+
+@dataclass
+class Leftover:
+    cfg: "ServerConfig"
+    pid: int
+
+
+def leftovers() -> list[Leftover]:
+    """MC Hoster servers that are still running without a window (MC Hoster was closed or crashed)."""
+    out = []
+    for cfg in my_servers():
+        f = Path(cfg.folder) / PID_FILE
+        if not f.exists():
+            continue
+        try:
+            pid = int(json.loads(f.read_text())["pid"])
+        except Exception:
+            f.unlink(missing_ok=True)
+            continue
+        name = process_name(pid)
+        if name and name.lower() in SERVER_EXES and (pid != os.getpid()):
+            out.append(Leftover(cfg, pid))
+        else:
+            f.unlink(missing_ok=True)
+    return out
+
+
+def stop_leftover(lo: Leftover, wait: float = 20) -> bool:
+    kill_tree(lo.pid)
+    end = time.time() + wait
+    while time.time() < end and process_name(lo.pid):
+        time.sleep(0.5)
+    (Path(lo.cfg.folder) / PID_FILE).unlink(missing_ok=True)
+    return not process_name(lo.pid)
+
+
+def who_has_port(cfg: "ServerConfig") -> tuple[int | None, str | None, "ServerConfig | None"]:
+    """If the server's port is taken: (pid, program, the MC Hoster server using it or None)."""
+    udp = cfg.prov.bedrock
+    if port_free(cfg.port, udp):
+        return None, None, None
+    pid = port_owner(cfg.port, udp)
+    mine = None
+    for lo in leftovers():
+        if lo.pid == pid or pid is None:
+            mine = lo.cfg
+            pid = lo.pid
+            break
+    return pid, (process_name(pid) if pid else None), mine
+
+
+def change_port(cfg: "ServerConfig", port: int) -> None:
+    cfg.port = port
+    props = {"server-port": str(port)}
+    if cfg.prov.bedrock:
+        props["server-portv6"] = str(port + 1)
+    else:
+        props["query.port"] = str(port)
+    update_properties(Path(cfg.folder) / "server.properties", props)
+    cfg.save()
+
+
 class ServerProcess:
     DONE = re.compile(r"INFO\]: Done \(\d+[.,]\d+s\)! For help|Server started\.")  # not a plugin's own "Done (...)"
 
@@ -1155,6 +1330,12 @@ class ServerProcess:
         self.proc = subprocess.Popen(server_args(self.cfg), cwd=self.cfg.folder, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
                                      encoding="utf-8", errors="replace", bufsize=1, creationflags=NO_WINDOW)
+        _kill_with_us(self.proc)
+        try:
+            (Path(self.cfg.folder) / PID_FILE).write_text(json.dumps({"pid": self.proc.pid, "port": self.cfg.port,
+                                                                       "started": time.time()}))
+        except OSError:
+            pass
         threading.Thread(target=self._pump, daemon=True).start()
 
     def _pump(self):
@@ -1165,7 +1346,14 @@ class ServerProcess:
             if not self.ready and self.DONE.search(line):
                 self.ready = True
                 self.on_ready()
-        self.on_exit(p.wait())
+        code = p.wait()
+        try:
+            f = Path(self.cfg.folder) / PID_FILE
+            if f.exists() and json.loads(f.read_text()).get("pid") == p.pid:
+                f.unlink()
+        except Exception:
+            pass
+        self.on_exit(code)
 
     def send(self, cmd: str):
         if self.running:
@@ -1182,4 +1370,8 @@ class ServerProcess:
         try:
             self.proc.wait(wait)
         except subprocess.TimeoutExpired:
-            self.proc.kill()
+            kill_tree(self.proc.pid)
+            try:
+                self.proc.wait(10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()

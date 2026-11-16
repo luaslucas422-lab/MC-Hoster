@@ -12,6 +12,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import webbrowser
 from pathlib import Path
@@ -1108,16 +1109,58 @@ class Wizard:
         lb.bind("<Double-Button-1>", lambda e: go())
 
     # ------------------------------------------------------------------ running the server
+    def free_port_or_ask(self) -> bool:
+        """Before starting: is something already using the port? Usually an old server left running. False = don't start."""
+        cfg = self.cfg
+        pid, prog, mine = core.who_has_port(cfg)
+        if not pid and not mine and core.port_free(cfg.port, cfg.prov.bedrock):
+            return True
+        if mine is not None:
+            same = Path(mine.folder) == Path(cfg.folder)
+            what = "This server is" if same else f"Your server \"{mine.name}\" is"
+            if not messagebox.askyesno("A server is still running",
+                                       f"{what} still running in the background (MC Hoster was closed without stopping it), "
+                                       f"so it's using port {cfg.port}.\n\nStop it now and start {cfg.name}?", parent=self.root):
+                return False
+            self.log(f"» Stopping {mine.name}, which was still running in the background.")
+            for lo in core.leftovers():
+                if lo.pid == pid or Path(lo.cfg.folder) == Path(mine.folder):
+                    core.stop_leftover(lo)
+            time.sleep(1)
+            if core.port_free(cfg.port, cfg.prov.bedrock):
+                return True
+        new = core.next_free_port(cfg.port, cfg.prov.bedrock)
+        who = f"{prog} (process {pid})" if prog else "another program"
+        if not messagebox.askyesno("Port in use", f"Port {cfg.port} is being used by {who}.\n\n"
+                                   f"Use port {new} for {cfg.name} instead? The address becomes "
+                                   f"{core.server_address(cfg, 'localhost').split(':')[0]}:{new}.", parent=self.root):
+            return False
+        core.change_port(cfg, new)
+        self.log(f"» Port {new} is used from now on, because something else has the old one.")
+        threading.Thread(target=lambda: core.add_to_list(cfg, log=lambda l: None), daemon=True).start()
+        return True
+
     def run_server(self):
         self.busy = False
+        if not self.free_port_or_ask():
+            self.show(self.PLAY)
+            self.play_title.config(text=f"{self.cfg.name} is offline")
+            self.startstop_btn.config(text="Start server", state="normal")
+            self.update_buttons()
+            return
+        # every server uses "localhost", so the Multiplayer list shows whichever one ran last: keep it this one
+        cfg = self.cfg
+        threading.Thread(target=lambda: core.add_to_list(cfg, log=lambda l: None), daemon=True).start()
         self.show(self.PLAY)
         self.play_title.config(text=f"Starting {self.cfg.name}…")
         self.step_label.config(text="The first start makes the world, give it a minute.")
         self.progress.config(mode="indeterminate")
         self.progress.start(12)
-        self.server = core.ServerProcess(self.cfg, on_line=lambda l: self.q.put(("log", l)),
-                                         on_ready=lambda: self.q.put(("ready",)),
-                                         on_exit=lambda code: self.q.put(("exited", code)))
+        sp = core.ServerProcess(self.cfg)
+        sp.on_line = lambda l: self.q.put(("log", l, sp))
+        sp.on_ready = lambda: self.q.put(("ready", sp))
+        sp.on_exit = lambda code: self.q.put(("exited", code, sp))
+        self.server = sp
         try:
             self.server.start()
         except Exception as e:
@@ -1192,6 +1235,10 @@ class Wizard:
                     self._set_versions(ev[1], ev[2], ev[3])
                 elif k == "log":
                     self.log(ev[1])
+                    if len(ev) > 2 and ev[2] is self.server and ("FAILED TO BIND TO PORT" in ev[1] or "Address already in use" in ev[1]):
+                        messagebox.showwarning("Port in use", f"Port {self.cfg.port} is already taken, so the server can't start. "
+                                               "Another server is probably still running: close it, or start again and "
+                                               "MC Hoster will offer to stop it or use another port.")
                 elif k == "step":
                     i, n, t = ev[1], ev[2], ev[3]
                     self.progress.stop()
@@ -1219,6 +1266,8 @@ class Wizard:
                         self.show(self.PLAY)
                     messagebox.showerror("MC Hoster", ev[1])
                 elif k == "ready":
+                    if ev[-1] is not self.server:
+                        continue  # an older server that was replaced
                     self.progress.stop()
                     self.progress.config(mode="determinate", value=100)
                     self.play_title.config(text=f"{self.cfg.name} is online!")
@@ -1230,6 +1279,8 @@ class Wizard:
                 elif k == "port":
                     self.port_label.config(text=ev[1], style="Ok.TLabel" if ev[2] else "Hint.TLabel")
                 elif k == "exited":
+                    if len(ev) > 2 and ev[2] is not self.server:
+                        continue  # the old server finished stopping after another one started
                     self.progress.stop()
                     self._close_ports()
                     self.play_title.config(text=f"{self.cfg.name} is offline")
@@ -1272,6 +1323,19 @@ def main(start_folder: str | None = None):
     w = Wizard(root)
     root.update_idletasks()
     root.minsize(max(660, root.winfo_reqwidth()), max(560, root.winfo_reqheight()))
+    def check_leftovers():
+        try:
+            left = core.leftovers()
+        except Exception:
+            return
+        for lo in left:
+            if start_folder and Path(lo.cfg.folder) == Path(start_folder):
+                continue
+            if messagebox.askyesno("A server is still running",
+                                   f"\"{lo.cfg.name}\" is still running in the background, from before MC Hoster was closed.\n\n"
+                                   "Stop it now? (Yes is best: a server without MC Hoster can't be stopped or seen.)", parent=root):
+                core.stop_leftover(lo)
+    root.after(300, check_leftovers)
     if start_folder:  # started by the scheduler
         try:
             w.open_existing(ServerConfig.load(Path(start_folder)))
