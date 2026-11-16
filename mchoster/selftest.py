@@ -187,11 +187,14 @@ def run(args: list[str]) -> int:
     if ok and not provider.bedrock:
         for c in core.ready_commands(cfg):
             srv.send(c)
-        time.sleep(4)
-        joined = "\n".join(lines)
-        for key, _label, default, names in core.GAMERULES:
-            if key in cfg.tweaks:
-                rules_ok[key] = any(re.search(r"(?i)" + re.escape(n) + r".{0,30}(is now set to|now set|set to)", joined) for n in names)
+        for _ in range(20):  # some servers print the answers a bit later
+            time.sleep(1)
+            joined = "\n".join(lines)
+            for key, _label, default, names in core.GAMERULES:
+                if key in cfg.tweaks:
+                    rules_ok[key] = any(re.search(r"(?i)" + re.escape(n) + r".{0,30}(is now set to|now set|set to)", joined) for n in names)
+            if rules_ok and all(rules_ok.values()):
+                break
         print("gamerules set:", rules_ok)
     if ok:
         srv.send("list")

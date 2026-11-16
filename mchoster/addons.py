@@ -387,6 +387,9 @@ def install(addon: Addon, cfg: core.ServerConfig, log=print) -> list[str]:
         seen.add(dep)
         try:
             url, name, deps, note = _modrinth(dep, loaders, cfg.version, cfg.prov.kind == "fabric")
+            if any(name.lower().startswith(p.split(":", 1)[1].lower()) for p in skip):
+                log(f"  = {name} not needed (already there)")
+                continue
             if not (folder / name).exists():
                 core.download(url, folder / name)
             files.append(name)

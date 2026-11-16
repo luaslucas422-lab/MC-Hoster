@@ -65,6 +65,13 @@ def curseforge_pack(link: str) -> dict:
         if d.get("files") or d.get("download"):
             break
         time.sleep(3)
+    urls = d.get("urls") or {}
+    got = str(urls.get("curseforge") or urls.get("project") or "")
+    kind = str(d.get("type") or "")
+    if got and not got.rstrip("/").lower().endswith("/" + m.group(2).lower()):
+        raise LookupError(f"CurseForge's lookup gave another project ({d.get('title')}). Download the pack and use Direct link, or Modrinth")
+    if kind and "pack" not in kind.lower() and "customization" not in kind.lower():
+        raise LookupError(f"that isn't a resource pack ({kind})")
     files = d.get("files") or []
     f = d.get("download") or (files[0] if files else None)
     if not f:
@@ -74,6 +81,7 @@ def curseforge_pack(link: str) -> dict:
     fid, name = int(f["id"]), f["name"]
     url = f"https://mediafilez.forgecdn.net/files/{fid // 1000}/{fid % 1000}/{urllib.parse.quote(name)}"
     return {"url": url, "sha1": "", "name": d.get("title", m.group(2)), "version": f.get("display", ""), "source": "CurseForge",
+            "cf_type": kind, "cf_url": got,
             "page": f"https://www.curseforge.com/minecraft/{m.group(1)}/{m.group(2)}"}
 
 
