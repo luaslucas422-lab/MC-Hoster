@@ -112,7 +112,8 @@ public class DarkBackup extends JavaPlugin implements TabCompleter {
             w.save();
             autosave.put(w, w.isAutoSave());
             w.setAutoSave(false); // nothing is written while we copy
-            worlds.add(w.getWorldFolder());
+            File root = root(w);
+            if (!worlds.contains(root)) worlds.add(root);
         }
         String name = "backup-" + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date()) + ".zip";
         File out = new File(folder(), name);
@@ -146,6 +147,18 @@ public class DarkBackup extends JavaPlugin implements TabCompleter {
         });
     }
 
+    /**
+     * The folder that holds the world's level.dat. On 26.x the Nether and End live inside the main world folder,
+     * so this is the world folder itself (or a folder above it).
+     */
+    public static File root(World w) {
+        File container = Bukkit.getWorldContainer().getAbsoluteFile();
+        File f = w.getWorldFolder().getAbsoluteFile();
+        for (File x = f; x != null && !x.equals(container); x = x.getParentFile())
+            if (new File(x, "level.dat").exists()) return x;
+        return f;
+    }
+
     /** Zips the world folders; returns how many files couldn't be read (e.g. session.lock). */
     private static int zip(List<File> worlds, File out) throws IOException {
         int skipped = 0;
@@ -153,7 +166,7 @@ public class DarkBackup extends JavaPlugin implements TabCompleter {
         File tmp = new File(out.getParentFile(), out.getName() + ".part");
         try (ZipOutputStream z = new ZipOutputStream(Files.newOutputStream(tmp.toPath()))) {
             for (File w : worlds) {
-                Path base = w.toPath().getParent();
+                Path base = Bukkit.getWorldContainer().getAbsoluteFile().toPath();
                 try (Stream<Path> files = Files.walk(w.toPath())) {
                     for (Path p : (Iterable<Path>) files::iterator) {
                         if (Files.isDirectory(p) || p.getFileName().toString().equals("session.lock")) continue;
@@ -243,8 +256,11 @@ public class DarkBackup extends JavaPlugin implements TabCompleter {
             if (zip == null || !zip.exists()) fails.add("no backup made");
             else {
                 try (ZipFile z = new ZipFile(zip)) {
-                    for (World w : Bukkit.getWorlds())
-                        if (z.getEntry(w.getWorldFolder().getName() + "/level.dat") == null) fails.add(w.getName() + "/level.dat missing");
+                    Path base = Bukkit.getWorldContainer().getAbsoluteFile().toPath();
+                    for (World w : Bukkit.getWorlds()) {
+                        String e = base.relativize(root(w).toPath()).toString().replace('\\', '/') + "/level.dat";
+                        if (z.getEntry(e) == null) fails.add(e + " missing");
+                    }
                 } catch (IOException e) {
                     fails.add("zip unreadable: " + e);
                 }
