@@ -179,14 +179,14 @@ public final class Colors {
             case "flicker" -> {
                 Color[] fire = {parse("#FF2000"), parse("#FF7A00"), parse("#FFD000")};
                 return paint(text, i -> {
-                    Random r = new Random(frame / 2 * 31 + i * 7L);
+                    Random r = new Random((frame / 2) * 0x9E3779B97F4A7C15L + i * 0xBF58476D1CE4E5B9L);
                     return mix(fire[r.nextInt(3)], fire[r.nextInt(3)], r.nextDouble());
                 }, fmt);
             }
             case "glitch" -> {
                 Color base = cs.isEmpty() ? parse("#55FFFF") : cs.get(0);
-                Random r = new Random(frame / 3);
-                boolean on = r.nextInt(4) == 0; // now and then
+                Random r = new Random((frame / 3) * 0x9E3779B97F4A7C15L + 12345);
+                boolean on = r.nextInt(3) == 0; // now and then
                 StringBuilder b = new StringBuilder();
                 int i = 0;
                 for (int off = 0; off < text.length(); ) {

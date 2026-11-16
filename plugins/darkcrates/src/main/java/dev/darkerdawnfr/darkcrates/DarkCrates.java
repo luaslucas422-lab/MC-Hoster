@@ -1039,7 +1039,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             b.setType(Material.ENDER_CHEST);
             setCrate(b, "rare");
             if (crateAt(b) == null || !crateAt(b).id().equals("rare")) fails.add("crate not placed");
-            long holos = w.getNearbyEntities(b.getLocation(), 3, 3, 3).stream().filter(e -> e.getScoreboardTags().contains(HOLO)).count();
+            long holos = w.getEntitiesByClass(ArmorStand.class).stream().filter(e -> e.getScoreboardTags().contains(HOLO)).count();
             if (holos < 1) fails.add("no hologram");
             if (!removeCrate(b) || crateAt(b) != null) fails.add("crate not removed");
             // keys are used (clicked) and then counted for their crate
