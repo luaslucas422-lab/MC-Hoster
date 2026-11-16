@@ -1660,6 +1660,21 @@ class Wizard:
             addons.refresh_bundled(self.cfg, self.log)
         except Exception as e:
             self.log(f"! Couldn't check the Dark plugins: {e}")
+        if not self.cfg.prov.bedrock and self.cfg.java and Path(self.cfg.java).exists() and core.java_is_32bit(self.cfg.java):
+            # servers made before 2.1.1 may still use a 32-bit Java, which can't give the server its memory
+            self.log("» This server used a 32-bit Java, which can't hold a Minecraft server. Getting a 64-bit one…")
+            try:
+                need = core.required_java(self.cfg.version)
+                jdk = self.cfg.provider == "spigot"
+                found = core.find_java(need, Path(self.cfg.minecraft_dir) if self.cfg.minecraft_dir else None, jdk)
+                self.cfg.java = str(found[0]) if found else str(core.download_java(need, None, self.log, jdk))
+                self.cfg.save()
+            except Exception as e:
+                self.log(f"! Couldn't get a 64-bit Java: {e}")
+        if not self.cfg.prov.bedrock:
+            free = core.free_ram_mb()
+            self.log(f"» Memory: the server gets {core.heap_for_start(self.cfg)} MB"
+                     + (f" ({free} MB is free on this PC)" if free else ""))
         sp = core.ServerProcess(self.cfg)
         sp.on_line = lambda l: self.q.put(("log", l, sp))
         sp.on_ready = lambda: self.q.put(("ready", sp))

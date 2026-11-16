@@ -458,6 +458,43 @@ def get_fabric_api(version: str, mods: Path, progress=None) -> None:
 
 # --------------------------------------------------------------------------- PC info
 
+def free_ram_mb() -> int | None:
+    """RAM that is free right now (other programs, like Minecraft itself, are using the rest)."""
+    try:
+        if WINDOWS:
+            import ctypes
+
+            class MEMSTAT(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("sullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            s = MEMSTAT()
+            s.dwLength = ctypes.sizeof(MEMSTAT)
+            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(s))
+            return int(min(s.ullAvailPhys, s.ullAvailPageFile) // (1024 * 1024))
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable"):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    return None
+
+
+def heap_for_start(cfg: "ServerConfig") -> int:
+    """The -Xmx to start with: what was chosen, but never more than the PC has free right now (an automatic
+    amount only; a number typed in the Config tab is used as is)."""
+    mb = cfg.ram_mb
+    if tweak(cfg, "ram_mb", 0):
+        return mb
+    free = free_ram_mb()
+    if free:
+        mb = min(mb, max(768, int(free * 0.75)))
+    return max(768, (mb // 128) * 128)
+
+
 def total_ram_mb() -> int:
     try:
         if WINDOWS:
@@ -1207,14 +1244,15 @@ def write_server_files(cfg: ServerConfig) -> None:
 def server_args(cfg: ServerConfig) -> list[str]:
     if cfg.prov.bedrock:
         return [str(bedrock_exe(Path(cfg.folder)))]
-    args = [cfg.java, f"-Xms{min(1024, cfg.ram_mb)}M", f"-Xmx{cfg.ram_mb}M"]
+    heap = heap_for_start(cfg)
+    args = [cfg.java, f"-Xms{min(512, heap)}M", f"-Xmx{heap}M"]
     if tweak(cfg, "aikar", False):  # Aikar's flags: smoother garbage collection
         args += ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200", "-XX:+UnlockExperimentalVMOptions",
                  "-XX:+DisableExplicitGC", "-XX:+AlwaysPreTouch", "-XX:G1NewSizePercent=30", "-XX:G1MaxNewSizePercent=40",
                  "-XX:G1HeapRegionSize=8M", "-XX:G1ReservePercent=20", "-XX:G1HeapWastePercent=5", "-XX:G1MixedGCCountTarget=4",
                  "-XX:InitiatingHeapOccupancyPercent=15", "-XX:G1MixedGCLiveThresholdPercent=90", "-XX:G1RSetUpdatingPauseTimePercent=5",
                  "-XX:SurvivorRatio=32", "-XX:+PerfDisableSharedMem", "-XX:MaxTenuringThreshold=1", "-Daikars.new.flags=true"]
-    elif cfg.ram_mb >= 4096:
+    elif heap >= 4096:
         args += ["-XX:+UseG1GC", "-XX:+ParallelRefProcEnabled", "-XX:MaxGCPauseMillis=200"]
     args += ["-jar", "server.jar", "nogui"]
     return args
@@ -1570,8 +1608,9 @@ def explain_exit(lines: list[str], folder: str = "") -> str | None:
         return f"The server folder has one of {BAD_PATH_CHARS} in its path, and Java can't start a server there. " \
                "Open the server again (My servers…) and MC Hoster renames the folder."
     for pat, why in EXIT_REASONS:
-        if re.search(pat, text, re.I):
-            return why
+        hits = [l.strip() for l in lines[-300:] if re.search(pat, l, re.I)]
+        if hits:  # show the real line too, so it's clear what Java actually said
+            return f"{why}\n\nJava said: {hits[-1][:200]}"
     return None
 
 
