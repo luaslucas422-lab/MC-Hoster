@@ -157,7 +157,8 @@ public class Orders {
             Order o = all.get(pg * 45 + i);
             boolean mine = o.owner.equals(p.getUniqueId());
             m.set(i, Util.item(o.item, 1, "&f" + Util.nice(o.item), List.of("&7Pays: &a" + Util.money(o.price) + " &7each",
-                    "&7Wanted: &f" + o.delivered + "&7/&f" + o.amount, "&7By: &f" + o.ownerName, "",
+                    "&7Wanted: &f" + o.delivered + "&7/&f" + o.amount, "&7By: &f" + o.ownerName,
+                    "&7/sell value: &e" + Util.money(plugin.getConfig().getDouble("worth." + o.item.name(), 0)) + " &7each", "",
                     mine ? "&7Your own order" : "&eClick to deliver")), e -> {
                 if (!mine) deliverMenu(p, o).open(p);
             });

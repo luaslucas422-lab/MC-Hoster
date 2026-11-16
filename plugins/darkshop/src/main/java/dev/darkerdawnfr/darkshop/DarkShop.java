@@ -23,23 +23,26 @@ import java.util.UUID;
  */
 public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.event.Listener {
     private Money money;
-    private ShopMenus shop;
+    private ShopMenus shop, premium;
     private SellMenu sell;
     private Bounties bounties;
     private Orders orders;
-    private ShopEditor editor;
+    private ShopEditor editor, premiumEditor;
     private Baltop baltop;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         money = new Money(this);
+        migrate();
         shop = new ShopMenus(this);
+        premium = new ShopMenus(this, "premium.categories", true);
         sell = new SellMenu(this);
         bounties = new Bounties(this);
         baltop = new Baltop(this);
         orders = new Orders(this);
-        editor = new ShopEditor(this);
+        editor = new ShopEditor(this, shop);
+        premiumEditor = new ShopEditor(this, premium);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(bounties, this);
         getServer().getPluginManager().registerEvents(this, this);
@@ -90,6 +93,47 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         e.setMessage("/darkshop:" + msg.substring(1));
     }
 
+    /** Adds things from newer versions (more /sell items, the premium shop) without touching what you changed. */
+    private void migrate() {
+        int v = getConfig().getInt("config-version", 1);
+        if (v >= 2) return;
+        var defs = getConfig().getDefaults();
+        if (defs != null) {
+            var worth = defs.getConfigurationSection("worth");
+            if (worth != null) for (String k : worth.getKeys(false))
+                if (!getConfig().isSet("worth." + k)) getConfig().set("worth." + k, worth.get(k));
+            for (String k : List.of("premium", "worth-hint"))
+                if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
+        }
+        getConfig().set("config-version", 2);
+        saveConfig();
+    }
+
+    public ShopMenus premium() {
+        return premium;
+    }
+
+    /** What the item in your hand sells for, above the hotbar (when you switch to it). */
+    @org.bukkit.event.EventHandler
+    public void held(org.bukkit.event.player.PlayerItemHeldEvent e) {
+        if (!getConfig().getBoolean("worth-hint", true)) return;
+        Player p = e.getPlayer();
+        if (!Settings.on(p.getUniqueId(), "worth")) return;
+        ItemStack it = p.getInventory().getItem(e.getNewSlot());
+        if (it == null || it.getType() == Material.AIR) return;
+        double w = sell.worth(it);
+        if (w <= 0) return;
+        String text = Util.color("&7" + Util.nice(it.getType()) + " sells for &a" + Util.money(w) + (it.getAmount() > 1 ? " &8(&a" + Util.money(w * it.getAmount()) + " &8for " + it.getAmount() + ")" : ""));
+        try {
+            p.spigot().sendMessage(net.md_5.bungee.api.ChatMessageType.ACTION_BAR, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(text));
+        } catch (Throwable t) {
+            try {
+                p.sendActionBar(text);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     public ShopMenus shop() {
         return shop;
     }
@@ -132,10 +176,16 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 if (!(s instanceof Player p)) return msg(s, "&cOnly players can open the shop.");
                 if (a.length > 0 && a[0].equalsIgnoreCase("edit")) {
                     if (!p.hasPermission("darkshop.admin")) return msg(s, "&cOnly ops can edit the shop.");
-                    editor.main(p).open(p);
+                    boolean prem = a.length > 1 && a[1].equalsIgnoreCase("premium");
+                    (prem ? premiumEditor : editor).main(p).open(p);
                     return true;
                 }
-                shop.main().open(p);
+                if (a.length > 0 && a[0].equalsIgnoreCase("premium")) {
+                    if (!p.hasPermission("darkshop.premium")) return msg(s, "&6/shop premium &7is for ranks: better deals and more things. See &f/rank shop&7.");
+                    premium.main(p).open(p);
+                    return true;
+                }
+                shop.main(p).open(p);
             }
             case "sell" -> {
                 if (!(s instanceof Player p)) return msg(s, "&cOnly players can sell.");
@@ -260,6 +310,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 if (sub.equals("reload")) {
                     reloadConfig();
                     shop.reload();
+                    premium.reload();
                     money.hook();
                     msg(s, "&aReloaded. Money: " + money.mode());
                 } else if (sub.equals("test")) {
@@ -292,18 +343,22 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         List<String> fails = new ArrayList<>();
         try {
             if (shop.categories().size() < 4) fails.add("only " + shop.categories().size() + " categories");
-            Menu main = shop.main();
+            Menu main = shop.main(null);
             if (main.getInventory().getItem(10) == null) fails.add("main menu empty");
             for (ShopMenus.Category c : shop.categories().values()) {
                 if (c.items().isEmpty()) fails.add(c.id() + " has no items");
-                shop.category(c);
+                shop.category(null, c);
                 if (!c.items().isEmpty()) {
-                    Menu am = shop.amount(c, c.items().get(0), 10);
+                    Menu am = shop.amount(null, c, c.items().get(0), 10);
                     ItemStack shown = am.getInventory().getItem(13);
                     if (shown == null || shown.getAmount() != 10) fails.add("amount menu shows wrong amount");
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            if (premium.categories().size() < 2) fails.add("premium shop has " + premium.categories().size() + " categories");
+            premium.main(null);
+            int sellable = getConfig().getConfigurationSection("worth").getKeys(false).size();
+            if (sellable < 150) fails.add("only " + sellable + " items can be sold");
             String cfgBackup = getConfig().saveToString();
             editor.setPrice("end", Material.DIAMOND_BLOCK, 12345);
             reloadConfig();

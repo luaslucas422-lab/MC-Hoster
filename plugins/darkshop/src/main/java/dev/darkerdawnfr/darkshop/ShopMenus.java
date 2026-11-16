@@ -21,15 +21,47 @@ public class ShopMenus {
     private final Map<String, Category> categories = new LinkedHashMap<>();
     private final List<String> missing = new ArrayList<>();
 
+    private final String root;
+    private final boolean premium;
+
     public ShopMenus(DarkShop plugin) {
+        this(plugin, "categories", false);
+    }
+
+    /** root = where the categories are in config.yml; premium = /shop premium (rank discounts). */
+    public ShopMenus(DarkShop plugin, String root, boolean premium) {
         this.plugin = plugin;
+        this.root = root;
+        this.premium = premium;
         reload();
+    }
+
+    public String root() {
+        return root;
+    }
+
+    /** Percent off for this player in the premium shop: the best "discounts" entry they have the permission for. */
+    public double discount(Player p) {
+        if (!premium || p == null) return 0;
+        double best = 0;
+        org.bukkit.configuration.ConfigurationSection d = plugin.getConfig().getConfigurationSection("premium.discounts");
+        if (d != null) for (String perm : d.getKeys(false))
+            if (p.hasPermission("darkshop.discount." + perm)) best = Math.max(best, d.getDouble(perm));
+        return Math.max(0, Math.min(90, best));
+    }
+
+    public double price(Player p, Entry en) {
+        return Math.round(en.price() * (100 - discount(p))) / 100.0;
+    }
+
+    private String title(String t) {
+        return "&8" + Util.small(premium ? t.replace("Shop", "Premium shop") : t);
     }
 
     public void reload() {
         categories.clear();
         missing.clear();
-        ConfigurationSection cs = plugin.getConfig().getConfigurationSection("categories");
+        ConfigurationSection cs = plugin.getConfig().getConfigurationSection(root);
         if (cs == null) return;
         for (String id : cs.getKeys(false)) {
             ConfigurationSection c = cs.getConfigurationSection(id);
@@ -62,35 +94,43 @@ public class ShopMenus {
         return missing;
     }
 
-    public Menu main() {
-        Menu m = new Menu(3, "&8" + Util.small("Shop"));
+    public Menu main(Player v) {
+        Menu m = new Menu(3, title("Shop"));
         for (Category c : categories.values()) {
             int slot = Math.max(0, Math.min(26, c.slot()));
             m.set(slot, Util.item(c.icon(), 1, c.name(), List.of(c.lore(), "", "&eClick to open")),
-                    e -> category(c).open((Player) e.getWhoClicked()));
+                    e -> category(v, c).open((Player) e.getWhoClicked()));
         }
+        if (premium) m.set(22, Util.item(Material.NETHER_STAR, "&6&lYour discount: " + (int) discount(v) + "%",
+                "&7Better ranks get bigger discounts.", "&7See &f/rank shop"));
         m.fill();
         return m;
     }
 
-    public Menu category(Category c) {
+    public Menu category(Player v, Category c) {
         int rows = Math.min(6, Math.max(3, (c.items().size() + 6) / 7 + 2));
-        Menu m = new Menu(rows, "&8" + Util.small("Shop - " + strip(c.name())));
+        Menu m = new Menu(rows, title("Shop - " + strip(c.name())));
         m.border();
         int i = 0;
         for (int slot = 10; slot < rows * 9 - 9 && i < c.items().size(); slot++) {
             if (slot % 9 == 0 || slot % 9 == 8) continue;
             Entry en = c.items().get(i++);
-            m.set(slot, Util.item(en.material(), 1, "&f" + Util.nice(en.material()),
-                            List.of("&7Price: &a" + Util.money(en.price()), "", "&eClick to buy")),
-                    e -> amount(c, en, 1).open((Player) e.getWhoClicked()));
+            double worth = plugin.getConfig().getDouble("worth." + en.material().name(), 0);
+            List<String> lore = new java.util.ArrayList<>();
+            if (premium && discount(v) > 0) lore.add("&7Price: &8&m" + Util.money(en.price()) + "&r &a" + Util.money(price(v, en)));
+            else lore.add("&7Price: &a" + Util.money(price(v, en)));
+            if (worth > 0) lore.add("&7Sells for: &e" + Util.money(worth));
+            lore.add("");
+            lore.add("&eClick to buy");
+            m.set(slot, Util.item(en.material(), 1, "&f" + Util.nice(en.material()), lore),
+                    e -> amount(v, c, en, 1).open((Player) e.getWhoClicked()));
         }
         m.set(rows * 9 - 5, Util.item(Material.ARROW, "&cBack", "&7Back to all categories"),
-                e -> main().open((Player) e.getWhoClicked()));
+                e -> main(v).open((Player) e.getWhoClicked()));
         return m;
     }
 
-    public Menu amount(Category c, Entry en, int amount) {
+    public Menu amount(Player v, Category c, Entry en, int amount) {
         int max = Math.max(1, plugin.getConfig().getInt("max-buy", 2304));
         int n = Math.max(1, Math.min(max, amount));
         Menu m = new Menu(3, "&8" + Util.small("Buying " + Util.nice(en.material())));
@@ -98,15 +138,15 @@ public class ShopMenus {
         for (int i = 0; i < 3; i++) {
             int d = steps[i];
             m.set(10 + i, Util.item(Material.RED_STAINED_GLASS_PANE, Math.abs(d), "&cRemove " + -d, List.of()),
-                    e -> amount(c, en, n + d).open((Player) e.getWhoClicked()));
+                    e -> amount(v, c, en, n + d).open((Player) e.getWhoClicked()));
             m.set(16 - i, Util.item(Material.LIME_STAINED_GLASS_PANE, Math.abs(d), "&aAdd " + -d, List.of()),
-                    e -> amount(c, en, n - d).open((Player) e.getWhoClicked()));
+                    e -> amount(v, c, en, n - d).open((Player) e.getWhoClicked()));
         }
         m.set(13, Util.item(en.material(), Math.min(n, en.material().getMaxStackSize()), "&f" + Util.nice(en.material()),
-                List.of("&7Amount: &f" + n, "&7Total: &a" + Util.money(en.price() * n))));
+                List.of("&7Amount: &f" + n, "&7Total: &a" + Util.money(price(v, en) * n))));
         m.set(21, Util.item(Material.RED_STAINED_GLASS_PANE, "&c&lCancel", "&7Back to " + strip(c.name())),
-                e -> category(c).open((Player) e.getWhoClicked()));
-        m.set(23, Util.item(Material.LIME_STAINED_GLASS_PANE, "&a&lConfirm", "&7Buy &f" + n + "x &7for &a" + Util.money(en.price() * n)),
+                e -> category(v, c).open((Player) e.getWhoClicked()));
+        m.set(23, Util.item(Material.LIME_STAINED_GLASS_PANE, "&a&lConfirm", "&7Buy &f" + n + "x &7for &a" + Util.money(price(v, en) * n)),
                 e -> {
                     Player p = (Player) e.getWhoClicked();
                     if (buy(p, en, n)) p.closeInventory();
@@ -117,7 +157,7 @@ public class ShopMenus {
 
     /** Buys n of an item for a player: checks space and money first. */
     public boolean buy(Player p, Entry en, int n) {
-        double total = Math.round(en.price() * n * 100) / 100.0;
+        double total = Math.round(price(p, en) * n * 100) / 100.0;
         if (space(p, en.material()) < n) {
             p.sendMessage(plugin.msg("inventory-full"));
             return false;

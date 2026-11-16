@@ -191,12 +191,26 @@ public class AhMenus {
         ItemStack it = l.item.clone();
         List<String> extra = new ArrayList<>(List.of("", "&7Price: &a" + Util.money(l.price), "&7Seller: &f" + l.sellerName,
                 "&7Expires in: &f" + time(l.expires - System.currentTimeMillis())));
+        double worth = worth(l.item);
+        if (worth > 0) extra.add(3, "&7/sell value: &e" + Util.money(worth * l.item.getAmount()));
         if (action != null) {
             extra.add("");
             extra.add(action);
         }
         addLore(it, extra);
         return it;
+    }
+
+    /** What one item sells for in Dark Shop's /sell (0 if not sellable or Dark Shop isn't installed). */
+    public static double worth(ItemStack it) {
+        org.bukkit.plugin.Plugin shop = org.bukkit.Bukkit.getPluginManager().getPlugin("DarkShop");
+        if (shop == null || !shop.isEnabled() || it.hasItemMeta() && it.getItemMeta() != null && (it.getItemMeta().hasDisplayName() || it.getItemMeta().hasEnchants())) return 0;
+        try {
+            Object w = shop.getClass().getMethod("worth", String.class).invoke(shop, it.getType().name());
+            return w instanceof Number n ? n.doubleValue() : 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private static void addLore(ItemStack it, List<String> lines) {

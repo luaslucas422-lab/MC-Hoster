@@ -13,6 +13,7 @@ defaults:
   tpa: true
   pay: true
   tips: true
+  worth: true
 
 # Settings you don't want in the menu, e.g. [mobspawns]
 hidden: []

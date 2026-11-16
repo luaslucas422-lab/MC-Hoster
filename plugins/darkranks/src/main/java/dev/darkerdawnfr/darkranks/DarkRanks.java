@@ -55,16 +55,34 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        if (getConfig().getInt("config-version", 1) < 2) {
+            // newer version: ranks get /shop premium, and /media has its requirements
+            String[][] add = {{"vip", "darkshop.premium"}, {"vip", "darkshop.discount.vip"}, {"vip+", "darkshop.discount.vipplus"},
+                    {"mvp", "darkshop.discount.mvp"}, {"mvp+", "darkshop.discount.mvpplus"}, {"legend", "darkshop.discount.legend"}};
+            for (String[] x : add) {
+                String path = "ranks." + x[0] + ".permissions";
+                if (!getConfig().isSet("ranks." + x[0])) continue;
+                List<String> l = new ArrayList<>(getConfig().getStringList(path));
+                if (!l.contains(x[1])) l.add(x[1]);
+                getConfig().set(path, l);
+            }
+            var defs = getConfig().getDefaults();
+            if (defs != null && !getConfig().isSet("media") && defs.isSet("media")) getConfig().set("media", defs.get("media"));
+            getConfig().set("config-version", 2);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();
         ask = new Ask(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(this, this);
-        PluginCommand pc = getCommand("rank");
-        if (pc != null) {
-            pc.setExecutor(this);
-            pc.setTabCompleter(this);
+        for (String c : List.of("rank", "media")) {
+            PluginCommand pc = getCommand(c);
+            if (pc != null) {
+                pc.setExecutor(this);
+                pc.setTabCompleter(this);
+            }
         }
         for (Player p : Bukkit.getOnlinePlayers()) apply(p);
     }
@@ -388,8 +406,31 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
         return p.hasPlayedBefore() ? p : null;
     }
 
+    /** /media: what you need for the Media rank. */
+    public Menu media(Player p) {
+        Menu m = new Menu(3, "&8" + Util.small("Media rank"));
+        Rank media = ranks.get("media");
+        String tag = media == null ? "&d&l▶ MEDIA " : media.prefix();
+        List<String> req = new ArrayList<>(List.of("&7To get " + tag + "&7you need:", ""));
+        for (String r : getConfig().getStringList("media.requirements")) req.add("&8• " + r);
+        m.set(13, Util.item(Material.RED_DYE, 1, tag.trim().isEmpty() ? "&d&lMEDIA" : tag, req));
+        List<String> how = new ArrayList<>(getConfig().getStringList("media.how-to-apply"));
+        m.set(11, Util.item(Material.WRITABLE_BOOK, 1, "&fHow to apply", how));
+        List<String> perks = new ArrayList<>(getConfig().getStringList("media.perks"));
+        m.set(15, Util.item(Material.NETHER_STAR, 1, "&fWhat you get", perks));
+        Rank mine = rankOf(p.getUniqueId());
+        if (mine == media && media != null) m.set(22, Util.item(Material.LIME_DYE, "&aYou're Media!", "&7Thanks for making content."));
+        m.fill();
+        return m;
+    }
+
     @Override
     public boolean onCommand(CommandSender s, Command cmd, String label, String[] a) {
+        if (cmd.getName().equalsIgnoreCase("media")) {
+            if (s instanceof Player p) media(p).open(p);
+            else for (String r : getConfig().getStringList("media.requirements")) s.sendMessage(Util.color(r));
+            return true;
+        }
         String sub = a.length > 0 ? a[0].toLowerCase(Locale.ROOT) : "shop";
         boolean admin = s.hasPermission("darkranks.admin");
         switch (sub) {
@@ -460,6 +501,8 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             Set<String> perms = permissions(legend);
             if (!perms.contains("darkperks.craft") || !perms.contains("darkperks.fly") || !perms.contains("darkperks.trail")) fails.add("legend perms " + perms);
             if (permissions(ranks.get("vip")).contains("darkperks.fly")) fails.add("vip shouldn't fly");
+            if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");
+            if (getConfig().getStringList("media.requirements").size() < 2) fails.add("media requirements");
             if (!ChatColor.stripColor(prefix(id)).isBlank()) fails.add("member prefix should be empty");
             setRank(id, ranks.get("owner"));
             if (!ChatColor.stripColor(prefix(id)).contains("OWNER")) fails.add("owner prefix " + prefix(id));

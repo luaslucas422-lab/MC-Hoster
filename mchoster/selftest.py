@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -30,7 +30,8 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darktips": ("tips test", "DARKTIPS"), "darkbossbar": ("bar test", "DARKBOSSBAR"),
               "darkannounce": ("darkannounce test", "DARKANNOUNCE"), "darkspawners": ("spawners test", "DARKSPAWNERS"),
               "darksettings": ("settings test", "DARKSETTINGS"), "darkduels": ("duel test", "DARKDUELS"),
-              "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS")}
+              "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS"),
+              "darkvcaddon": ("vc test", "DARKVCADDON")}
 
 
 def run(args: list[str]) -> int:

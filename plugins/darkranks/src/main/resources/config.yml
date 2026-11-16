@@ -6,7 +6,22 @@
 # inherit = also gets every permission of that rank.
 # permissions = like LuckPerms. The Dark Perks commands (darkperks.*) are only for ranks.
 
+config-version: 2
 default-rank: member
+
+# /media: what someone needs to get the Media rank (shown in the item's lore). Change it freely.
+media:
+  requirements:
+    - "&f500+ &7subscribers or followers"
+    - "&f1 video &7or stream on this server"
+    - "&7Videos must show the server's name / IP"
+    - "&7Be active and follow the rules"
+  how-to-apply:
+    - "&7Post your channel in our Discord (&f/discord&7)"
+    - "&7and ask staff for the &d&lMEDIA &7rank."
+  perks:
+    - "&d&l▶ MEDIA &7tag in chat and tab"
+    - "&7Everything LEGEND has"
 # Tell everyone when someone buys a rank (with Dark Announce: a thank-you with fireworks).
 announce-buys: true
 message-prefix: "&8[&6Ranks&8] "
@@ -30,8 +45,8 @@ ranks:
     shop: true
     icon: EMERALD
     inherit: member
-    permissions: [darkperks.craft, darkperks.hat, darkhomes.homes.6]
-    perks: ["&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f6 homes"]
+    permissions: [darkperks.craft, darkperks.hat, darkhomes.homes.6, darkshop.premium, darkshop.discount.vip]
+    perks: ["&f/shop premium &7- 5% off", "&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f6 homes"]
   vip+:
     name: "&2&lVIP+"
     prefix: "&2&l✦ VIP+ &r"
@@ -40,8 +55,8 @@ ranks:
     shop: true
     icon: EMERALD_BLOCK
     inherit: vip
-    permissions: [darkperks.ec, darkperks.feed, darkhomes.homes.7]
-    perks: ["&7Everything in VIP", "&f/ec &7- ender chest anywhere", "&f/feed &7- fill your hunger", "&f7 homes"]
+    permissions: [darkperks.ec, darkperks.feed, darkhomes.homes.7, darkshop.discount.vipplus]
+    perks: ["&7Everything in VIP", "&f/shop premium &7- 7.5% off", "&f/ec &7- ender chest anywhere", "&f/feed &7- fill your hunger", "&f7 homes"]
   mvp:
     name: "&b&lMVP"
     prefix: "&b&l✪ MVP &r"
@@ -50,8 +65,8 @@ ranks:
     shop: true
     icon: DIAMOND
     inherit: vip+
-    permissions: [darkperks.fly, darkperks.nick, darkhomes.homes.8]
-    perks: ["&7Everything in VIP+", "&f/fly &7- fly (not in combat)", "&f/nick &7- a coloured nickname", "&f8 homes"]
+    permissions: [darkperks.fly, darkperks.nick, darkhomes.homes.8, darkshop.discount.mvp]
+    perks: ["&7Everything in VIP+", "&f/shop premium &7- 10% off", "&f/fly &7- fly (not in combat)", "&f/nick &7- a coloured nickname", "&f8 homes"]
   mvp+:
     name: "&3&lMVP+"
     prefix: "&3&l✪ MVP+ &r"
@@ -60,8 +75,8 @@ ranks:
     shop: true
     icon: DIAMOND_BLOCK
     inherit: mvp
-    permissions: [darkperks.repair, darkperks.glow, darkchat.color, darkhomes.homes.9]
-    perks: ["&7Everything in MVP", "&f/repair &7- fix the item you hold", "&f/glow &7- glow for everyone", "&fColours in chat with & codes", "&f9 homes"]
+    permissions: [darkperks.repair, darkperks.glow, darkchat.color, darkhomes.homes.9, darkshop.discount.mvpplus]
+    perks: ["&7Everything in MVP", "&f/shop premium &7- 12.5% off", "&f/repair &7- fix the item you hold", "&f/glow &7- glow for everyone", "&fColours in chat with & codes", "&f9 homes"]
   legend:
     name: "&6&lLEGEND"
     prefix: "&6&l★ LEGEND &r"
@@ -70,8 +85,8 @@ ranks:
     shop: true
     icon: NETHER_STAR
     inherit: mvp+
-    permissions: [darkperks.heal, darkperks.trail, darkah.unlimited, darkrtp.bypass]
-    perks: ["&7Everything in MVP+", "&f/heal &7- full health", "&f/trail &7- particle trails", "&fSell unlimited items on /ah", "&fNo /rtp cooldown"]
+    permissions: [darkperks.heal, darkperks.trail, darkah.unlimited, darkrtp.bypass, darkshop.discount.legend]
+    perks: ["&7Everything in MVP+", "&f/shop premium &7- 15% off", "&f/heal &7- full health", "&f/trail &7- particle trails", "&fSell unlimited items on /ah", "&fNo /rtp cooldown"]
 
   # ---- staff ranks: only given with /rank add <player> <rank>
   media:

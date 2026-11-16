@@ -8,7 +8,7 @@ softdepend: [DarkSettings, Vault, VaultUnlocked]
 loadbefore: [DarkAH]
 commands:
   shop:
-    description: Open the shop.
+    description: Open the shop. /shop premium for ranks, /shop edit for ops.
     aliases: [store]
   sell:
     description: Open the sell chest. Close it to get paid.
@@ -35,4 +35,7 @@ commands:
     permission: darkshop.admin
 permissions:
   darkshop.admin:
+    default: op
+  darkshop.premium:
+    description: /shop premium (ranks).
     default: op

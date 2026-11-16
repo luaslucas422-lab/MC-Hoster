@@ -15,32 +15,36 @@ import java.util.Locale;
  */
 public class ShopEditor {
     private final DarkShop plugin;
+    private final ShopMenus menus;
+    private final String root;
     private final Ask ask;
 
-    public ShopEditor(DarkShop plugin) {
+    public ShopEditor(DarkShop plugin, ShopMenus menus) {
         this.plugin = plugin;
+        this.menus = menus;
+        this.root = menus.root();
         this.ask = new Ask(plugin);
     }
 
     private void save() {
         plugin.saveConfig();
-        plugin.shop().reload();
+        menus.reload();
     }
 
     /** Sets a price (also used by the self test). */
     public void setPrice(String cat, Material m, double price) {
-        plugin.getConfig().set("categories." + cat + ".items." + m.name(), price);
+        plugin.getConfig().set(root + "." + cat + ".items." + m.name(), price);
         save();
     }
 
     public void removeItem(String cat, Material m) {
-        plugin.getConfig().set("categories." + cat + ".items." + m.name(), null);
+        plugin.getConfig().set(root + "." + cat + ".items." + m.name(), null);
         save();
     }
 
     public Menu main(Player p) {
-        Menu m = new Menu(4, "&8" + Util.small("Shop editor"));
-        ConfigurationSection cs = plugin.getConfig().getConfigurationSection("categories");
+        Menu m = new Menu(4, "&8" + Util.small(root.startsWith("premium") ? "Premium shop editor" : "Shop editor"));
+        ConfigurationSection cs = plugin.getConfig().getConfigurationSection(root);
         if (cs != null) for (String id : cs.getKeys(false)) {
             ConfigurationSection c = cs.getConfigurationSection(id);
             if (c == null) continue;
@@ -52,14 +56,14 @@ public class ShopEditor {
         }
         m.set(30, Util.item(Material.LIME_DYE, "&aAdd a category", "&7You'll type its name"), e -> ask.ask(p, "the new category's name (e.g. &bOres)", t -> {
             String id = org.bukkit.ChatColor.stripColor(Util.color(t)).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
-            if (id.isEmpty() || plugin.getConfig().isSet("categories." + id)) {
+            if (id.isEmpty() || plugin.getConfig().isSet(root + "." + id)) {
                 p.sendMessage(Util.color("&cPick another name."));
                 return;
             }
-            plugin.getConfig().set("categories." + id + ".name", t);
-            plugin.getConfig().set("categories." + id + ".icon", "CHEST");
-            plugin.getConfig().set("categories." + id + ".slot", freeSlot());
-            plugin.getConfig().set("categories." + id + ".lore", "&7Things for sale.");
+            plugin.getConfig().set(root + "." + id + ".name", t);
+            plugin.getConfig().set(root + "." + id + ".icon", "CHEST");
+            plugin.getConfig().set(root + "." + id + ".slot", freeSlot());
+            plugin.getConfig().set(root + "." + id + ".lore", "&7Things for sale.");
             save();
         }, () -> main(p).open(p)));
         ItemStack hand = p.getInventory().getItemInMainHand();
@@ -84,14 +88,14 @@ public class ShopEditor {
 
     private int freeSlot() {
         List<Integer> used = new ArrayList<>();
-        ConfigurationSection cs = plugin.getConfig().getConfigurationSection("categories");
+        ConfigurationSection cs = plugin.getConfig().getConfigurationSection(root);
         if (cs != null) for (String id : cs.getKeys(false)) used.add(cs.getInt(id + ".slot"));
         for (int s = 10; s < 27; s++) if (s % 9 != 0 && s % 9 != 8 && !used.contains(s)) return s;
         return 22;
     }
 
     public Menu category(Player p, String id) {
-        String path = "categories." + id;
+        String path = root + "." + id;
         ConfigurationSection items = plugin.getConfig().getConfigurationSection(path + ".items");
         Menu m = new Menu(6, "&8" + Util.small("Edit " + id));
         int slot = 0;

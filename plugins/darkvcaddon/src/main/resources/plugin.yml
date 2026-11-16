@@ -1,0 +1,17 @@
+name: DarkVCAddon
+version: ${project.version}
+main: dev.darkerdawnfr.darkvcaddon.DarkVCAddon
+api-version: "1.20"
+author: DarkerDawnFR
+description: Voice chat only after you accept the rules (/voicechat agree). Needs Simple Voice Chat. Made for MC Hoster.
+softdepend: [voicechat]
+commands:
+  vc:
+    description: Voice chat rules - /voicechat agree (or /vc agree).
+    aliases: [vcrules]
+permissions:
+  darkvc.admin:
+    default: op
+  darkvc.bypass:
+    description: Voice chat without agreeing.
+    default: false

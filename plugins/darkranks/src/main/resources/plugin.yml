@@ -10,6 +10,8 @@ commands:
   rank:
     description: /rank shop, /rank info. Ops - /rank add <player> <rank>, /rank remove, /rank edit.
     aliases: [ranks]
+  media:
+    description: What you need for the Media rank.
 permissions:
   darkranks.admin:
     default: op
