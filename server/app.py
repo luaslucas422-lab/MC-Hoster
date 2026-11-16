@@ -4,6 +4,7 @@ Run: pip install -r requirements.txt && ADMIN_KEY=something-secret python app.py
 Only someone with ADMIN_KEY can read feedback or delete posts. Data is a SQLite file (DB_PATH),
 so put DB_PATH on a persistent disk or it is lost when the service restarts.
 """
+import json
 import os
 import re
 import sqlite3
@@ -14,17 +15,22 @@ from flask import Flask, jsonify, request
 DB = os.environ.get("DB_PATH", "data.db")
 ADMIN = os.environ.get("ADMIN_KEY", "")
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024
 
 
 def db():
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     c.executescript("""
-    create table if not exists feedback(id integer primary key, ts real, name text, mc text, kind text, text text, version text);
+    create table if not exists feedback(id integer primary key, ts real, name text, mc text, kind text, text text, version text, images text default '[]');
     create table if not exists posts(id integer primary key, ts real, name text, mc text, title text, body text, server text);
     create table if not exists hosted(name text, owner text, mc text, kind text, version text, players int, icon text, ts real,
                                       primary key(name, mc));
     """)
+    try:
+        c.execute("alter table feedback add column images text default '[]'")
+    except sqlite3.OperationalError:
+        pass
     return c
 
 
@@ -57,18 +63,23 @@ def feedback_add():
     with db() as c:
         if limited(c, "feedback", name, mc, 3600, 10):
             return jsonify(error="That's a lot of feedback, try again later."), 429
-        c.execute("insert into feedback values(null,?,?,?,?,?,?)",
-                  (time.time(), name, mc, str(d.get("kind", ""))[:20], text, request.headers.get("X-Version", "")))
+        imgs = [i for i in (d.get("images") or [])[:3] if isinstance(i, str) and len(i) < 600000]
+        c.execute("insert into feedback(ts, name, mc, kind, text, version, images) values(?,?,?,?,?,?,?)",
+                  (time.time(), name, mc, str(d.get("kind", ""))[:20], text, request.headers.get("X-Version", ""), json.dumps(imgs)))
     return jsonify(ok=True)
 
 
 @app.get("/feedback")
 def feedback_list():
-    if not is_admin():
-        return jsonify(error="Only DarkerDawnFR can read feedback."), 403
+    # Anyone who finds the secret in the app can read this, on purpose.
     with db() as c:
-        rows = c.execute("select * from feedback order by id desc limit 500").fetchall()
-    return jsonify(items=[dict(r) for r in rows])
+        rows = c.execute("select * from feedback order by id desc limit 200").fetchall()
+    items = []
+    for r in rows:
+        d = dict(r)
+        d["images"] = json.loads(d.get("images") or "[]")
+        items.append(d)
+    return jsonify(items=items)
 
 
 @app.get("/posts")

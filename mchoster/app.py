@@ -69,7 +69,12 @@ class Wizard:
         self.header = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
         self.header.pack(fill="x")
         ttk.Label(self.header, text=core.APP_NAME, style="Title.TLabel").pack(side="left")
-        ttk.Label(self.header, text=f" {core.VERSION} · by {core.AUTHOR}", style="Hint.TLabel").pack(side="left", pady=(6, 0))
+        by = ttk.Label(self.header, text=f" {core.VERSION} · by {core.AUTHOR}", style="Hint.TLabel")
+        by.pack(side="left", pady=(6, 0))
+        self._secret = 0
+        by.bind("<Button-1>", self._secret_click)
+        root.bind_all("<Button-1>", lambda e: setattr(self, "_secret", self._secret if e.widget is by else 0), add="+")
+        root.bind_all("<Key>", lambda e: setattr(self, "_secret", 0), add="+")
         self.side_var = tk.StringVar(value="hosting")
         for text, val in (("Server sharing", "sharing"), ("Server hosting", "hosting")):
             ttk.Radiobutton(self.header, text=text, value=val, variable=self.side_var, style="Toolbutton",
@@ -189,8 +194,8 @@ class Wizard:
         ttk.Button(bottom, text="Check for updates", command=lambda: self.check_updates(False)).pack(side="left", padx=(8, 0))
         ttk.Button(bottom, text="Update logs", command=self.update_logs).pack(side="left", padx=(8, 0))
         ttk.Button(bottom, text="Send feedback", command=self.feedback_dialog).pack(side="left", padx=(8, 0))
-        self.inbox_btn = ttk.Button(bottom, text="Feedback inbox", command=self.inbox_dialog)
-        if profile.is_owner():
+        self.inbox_btn = ttk.Button(bottom, text="Received feedback", command=self.inbox_dialog)
+        if profile.load().get("inbox"):
             self.inbox_btn.pack(side="left", padx=(8, 0))
         self.new_btn = ttk.Button(bottom, text="New server…", command=self.new_server)
         self.load_versions()
@@ -1958,11 +1963,23 @@ class Wizard:
         threading.Thread(target=work, daemon=True).start()
 
     # ------------------------------------------------------------------ feedback, update logs
+    def _secret_click(self, _e=None):
+        """Click "by DarkerDawnFR" 20 times in a row (nothing else in between) to unlock Received feedback."""
+        self._secret += 1
+        if self._secret >= 20:
+            self._secret = 0
+            if not self.inbox_btn.winfo_ismapped():
+                self.inbox_btn.pack(side="left", padx=(8, 0))
+            profile.save(inbox=True)
+            messagebox.showinfo("Secret found", "You found the secret!\n\nThere's a new button in the Server tab: "
+                                "Received feedback.")
+
     def feedback_dialog(self):
         top, f = self.dialog("Send feedback")
         ttk.Label(f, text="Send feedback to DarkerDawnFR", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(f, text="A bug, an idea, a plugin you want. Only the maker of MC Hoster can read it.",
-                  style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        ttk.Label(f, text="A bug, an idea, a plugin you want. You can add photos.", style="Hint.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Heads up: feedback is not private. Anyone who finds the secret in MC Hoster can read it, with your\n"
+                          "names and photos. Don't send anything private.", style="Warn.TLabel", justify="left").pack(anchor="w", pady=(0, 6))
         kind = tk.StringVar(value="Idea")
         row = ttk.Frame(f)
         row.pack(anchor="w")
@@ -1970,6 +1987,30 @@ class Wizard:
             ttk.Radiobutton(row, text=k, value=k, variable=kind).pack(side="left", padx=(0, 10))
         body = tk.Text(f, width=64, height=9, wrap="word")
         body.pack(fill="x", pady=6)
+        photos: list[str] = []  # file paths, up to 3
+        photo_row = ttk.Frame(f)
+        photo_row.pack(fill="x")
+        photo_label = ttk.Label(photo_row, text="No photos", style="Hint.TLabel")
+
+        def show_photos():
+            photo_label.config(text=", ".join(Path(x).name for x in photos) or "No photos")
+
+        def add_photo():
+            if len(photos) >= 3:
+                status.config(text="3 photos at most.", style="Bad.TLabel")
+                return
+            names = filedialog.askopenfilenames(parent=top, title="Add photos", filetypes=[("Pictures", "*.png *.jpg *.jpeg *.gif *.bmp *.webp")])
+            for n in names:
+                if len(photos) < 3:
+                    photos.append(n)
+            show_photos()
+
+        def clear_photos():
+            photos.clear()
+            show_photos()
+        ttk.Button(photo_row, text="Add photos…", command=add_photo).pack(side="left")
+        ttk.Button(photo_row, text="Remove", command=clear_photos).pack(side="left", padx=6)
+        photo_label.pack(side="left")
         status = ttk.Label(f, text="")
         status.pack(anchor="w")
         btns = ttk.Frame(f)
@@ -1985,7 +2026,7 @@ class Wizard:
 
             def work():
                 try:
-                    online.send_feedback(text, kind.get().lower())
+                    online.send_feedback(text, kind.get().lower(), [online.encode_photo(x) for x in photos])
                     self.q.put(("feedback_done", (top, status, send_btn), None))
                 except online.Offline as e:
                     self.q.put(("feedback_done", (top, status, send_btn), self._offline_text(e)))
@@ -1995,25 +2036,24 @@ class Wizard:
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right", padx=6)
 
     def inbox_dialog(self):
-        p = profile.load()
-        key = p.get("admin_key", "")
-        if not key:
-            from tkinter import simpledialog
-            key = simpledialog.askstring("Feedback inbox", "Your admin key (set on the online service):", show="*", parent=self.root) or ""
-            if not key:
-                return
-        top, f = self.dialog("Feedback inbox")
-        txt = tk.Text(f, width=84, height=22, wrap="word", padx=8, pady=6)
-        txt.pack(fill="both", expand=True)
+        top, f = self.dialog("Received feedback")
+        ttk.Label(f, text="Received feedback", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Everything people sent with Send feedback, newest first.", style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        box = ttk.Frame(f)
+        box.pack(fill="both", expand=True)
+        txt = tk.Text(box, width=84, height=22, wrap="word", padx=8, pady=6)
+        sb = ttk.Scrollbar(box, command=txt.yview)
+        txt.config(yscrollcommand=sb.set)
+        txt.tag_configure("head", font=(self.base_font[0], self.base_font[1], "bold"))
+        txt.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
         txt.insert("1.0", "Loading…")
+        txt._imgs = []
 
         def work():
             try:
-                items = online.inbox(key)
-                profile.save(admin_key=key)
-                self.q.put(("inbox", (txt, items), None))
+                self.q.put(("inbox", (txt, online.inbox()), None))
             except online.Offline as e:
-                profile.save(admin_key="")
                 self.q.put(("inbox", (txt, None), self._offline_text(e)))
         threading.Thread(target=work, daemon=True).start()
 
@@ -2112,8 +2152,6 @@ class Wizard:
                 profile.save(terms=True, name=name.get().strip(), mc=mc.get().strip())
                 if not self.owner_var.get().strip():
                     self.owner_var.set(mc.get().strip())
-                if profile.is_owner() and not self.inbox_btn.winfo_ismapped():
-                    self.inbox_btn.pack(side="left", padx=(8, 0))
                 top.destroy()
         btns = ttk.Frame(f)
         btns.pack(fill="x", pady=(6, 0))
@@ -2251,7 +2289,17 @@ class Wizard:
                         else:
                             for it in items or []:
                                 txt.insert("end", f"{it['name']} ({it['mc']}) · {it['kind']} · v{it['version']} · "
-                                                  f"{time.strftime('%d %b %H:%M', time.localtime(it['ts']))}\n{it['text']}\n\n")
+                                                  f"{time.strftime('%d %b %H:%M', time.localtime(it['ts']))}\n", "head")
+                                txt.insert("end", it["text"] + "\n")
+                                for b64 in it.get("images") or []:
+                                    try:
+                                        img = tk.PhotoImage(data=online.thumb_png(b64))
+                                        txt._imgs.append(img)
+                                        txt.image_create("end", image=img)
+                                        txt.insert("end", " ")
+                                    except Exception:
+                                        txt.insert("end", "[photo]")
+                                txt.insert("end", "\n\n")
                             if not items:
                                 txt.insert("1.0", "No feedback yet.")
                 elif k == "update_logs":

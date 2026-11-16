@@ -9,7 +9,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 
-from . import core, profile, updater
+from . import core, online, profile, updater
 from .app import Wizard
 
 
@@ -23,6 +23,12 @@ def run(outdir: str) -> int:
     updater.releases = lambda count=30: [
         {"version": "3.0.0", "date": "2026-11-17", "notes": "## MC Hoster 3.0.0\n- **Server sharing** and **Hosted servers**\n- Send feedback\n- Update logs"},
         {"version": "2.1.1", "date": "2026-11-16", "notes": "- RAM on the players slider is honest now\n- Fixed the not enough memory crash"}]
+    import base64
+    online.inbox = lambda: [
+        {"name": "Sam", "mc": "SamBuilds", "kind": "bug", "version": "3.0.0", "ts": time.time(),
+         "text": "The server won't start on my laptop, here is a photo.", "images": [online.encode_photo(str(out / "_icon.png"))]},
+        {"name": "Mia", "mc": "MiaMines", "kind": "idea", "version": "3.0.0", "ts": time.time() - 7200,
+         "text": "Please add a plugin for pets!", "images": []}]
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
@@ -194,6 +200,9 @@ def run(outdir: str) -> int:
         w.update_logs,
         lambda: grab("11-update-logs", last_top()),
         lambda: last_top().destroy(),
+        w.inbox_dialog,
+        lambda: grab("13-received-feedback", last_top()),
+        lambda: last_top().destroy(),
         w.first_run,
         lambda: grab("12-welcome", w._first),
         lambda: w._first.destroy(),
@@ -213,5 +222,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 19
+    want = 20
     return 0 if len(shots) == want else 1

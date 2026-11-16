@@ -17,7 +17,7 @@ Please read this before you use MC Hoster.
 
 4. Backups. Servers can break, worlds can get damaged and PCs can fail. Keep your own backups of worlds you care about.
 
-5. Online parts. Feedback, Server sharing and Hosted servers send what you type (your in-app name, your Minecraft name, your message, and for a hosted server its name and icon) to the MC Hoster online service. Do not share anything private or anything against the law. Posts can be removed at any time.
+5. Online parts. Feedback, Server sharing and Hosted servers send what you type (your in-app name, your Minecraft name, your message, and for a hosted server its name and icon) to the MC Hoster online service. Do not share anything private or anything against the law. Feedback is not private: it can be read by other people, together with your names and photos. Posts can be removed at any time.
 
 6. No warranty. MC Hoster is provided "as is", with no promises that it works, is safe, or is free of bugs. To the most the law allows, DarkerDawnFR is not responsible for any loss, damage, lost worlds, banned accounts, slow PCs or anything else that comes from using MC Hoster.
 

@@ -44,12 +44,14 @@ def _call(method: str, path: str, body: dict | None = None, key: str = "", timeo
         raise Offline(f"Couldn't reach the MC Hoster service ({e}).")
 
 
-def send_feedback(text: str, kind: str = "idea") -> None:
-    _call("POST", "/feedback", {"text": text[:2000], "kind": kind})
+def send_feedback(text: str, kind: str = "idea", images: list[str] | None = None) -> None:
+    """images: up to 3 pictures as base64 JPEG."""
+    _call("POST", "/feedback", {"text": text[:2000], "kind": kind, "images": (images or [])[:3]}, timeout=60)
 
 
-def inbox(key: str) -> list[dict]:
-    return _call("GET", "/feedback", key=key).get("items", [])
+def inbox() -> list[dict]:
+    """All feedback that was sent (everyone can read it, there is no key)."""
+    return _call("GET", "/feedback", timeout=40).get("items", [])
 
 
 def posts() -> list[dict]:
@@ -71,3 +73,29 @@ def publish_hosted(name: str, kind: str, version: str, players: int, icon_b64: s
 
 def unpublish_hosted(name: str) -> None:
     _call("DELETE", "/hosted", {"name": name[:40]})
+
+
+def encode_photo(path: str) -> str:
+    """A picture as a small base64 JPEG (at most 1024 px wide, so it is quick to send)."""
+    import base64
+    import io
+
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((1024, 1024))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=80)
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+def thumb_png(b64: str) -> str:
+    """A small base64 PNG of a sent picture, for the window (it can't show JPEG itself)."""
+    import base64
+    import io
+
+    from PIL import Image
+    im = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+    im.thumbnail((300, 300))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return base64.b64encode(buf.getvalue()).decode()
