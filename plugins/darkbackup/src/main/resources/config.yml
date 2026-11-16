@@ -1,0 +1,14 @@
+# Dark Backup by DarkerDawnFR: zips every world every few hours while the server keeps running.
+
+# Hours between backups (0 = only when you type /backup now).
+every-hours: 6
+# How many backups to keep; older ones are deleted.
+keep: 10
+# Where they go (inside the server folder unless you give a full path).
+folder: backups
+# Don't make a backup if nobody played since the last one.
+skip-when-empty: true
+# Tell players when a backup starts and ends.
+announce: true
+skip-worlds: []
+prefix: "&8[&9Backup&8] "

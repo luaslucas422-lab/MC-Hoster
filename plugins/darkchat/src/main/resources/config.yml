@@ -1,0 +1,30 @@
+# Dark Chat by DarkerDawnFR.
+
+# How chat looks. {rank} = the rank prefix from LuckPerms (or any plugin, through Vault), {player}, {message}, {world}.
+format: "{rank}&f{player} &8» &7{message}"
+
+mentions:
+  # Saying someone's name (or @name) highlights it and pings them.
+  enabled: true
+  color: "&e&l"
+
+# Type [item] or [i] to show the item you're holding (hover it to see it on Paper).
+item-in-chat: true
+
+anti-spam:
+  # Shortest time between two messages.
+  delay-ms: 1000
+  no-repeats: true
+  repeat-seconds: 10
+# Messages that are mostly CAPITALS are made lowercase.
+anti-caps: true
+# Block links in chat.
+block-links: false
+# Words replaced with ***.
+filter: []
+
+msg:
+  to: "&d[me → {player}] &f"
+  from: "&d[{player} → me] &f"
+
+prefix: "&8[&bChat&8] "

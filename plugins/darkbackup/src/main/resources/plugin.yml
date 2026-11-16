@@ -1,0 +1,14 @@
+name: DarkBackup
+version: ${project.version}
+main: dev.darkerdawnfr.darkbackup.DarkBackup
+api-version: "1.20"
+author: DarkerDawnFR
+description: Automatic world backups while the server runs. Made for MC Hoster.
+commands:
+  backup:
+    description: /backup now, /backup list, /backup restore (ops).
+    aliases: [backups]
+    permission: darkbackup.admin
+permissions:
+  darkbackup.admin:
+    default: op

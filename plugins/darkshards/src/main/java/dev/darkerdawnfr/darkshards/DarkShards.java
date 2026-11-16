@@ -40,10 +40,17 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
     private File file;
     private boolean dirty;
     private ShardItems items;
+    private Editor editor;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        if (getConfig().getInt("config-version", 1) < 2) {
+            // 1.3.0: kills give their shards every time (the old default stopped repeat kills for 10 minutes)
+            getConfig().set("earn.same-player-cooldown-minutes", 0);
+            getConfig().set("config-version", 2);
+            saveConfig();
+        }
         file = new File(getDataFolder(), "shards.yml");
         YamlConfiguration y = YamlConfiguration.loadConfiguration(file);
         for (String k : y.getKeys(false)) {
@@ -56,6 +63,8 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getPluginManager().registerEvents(items, this);
+        editor = new Editor(this);
+        getServer().getPluginManager().registerEvents(editor, this);
         PluginCommand pc = getCommand("shards");
         if (pc != null) {
             pc.setExecutor(this);
@@ -137,7 +146,7 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
     public long killReward(UUID killer, UUID victim) {
         if (killer == null || killer.equals(victim)) return 0;
         long reward = getConfig().getLong("earn.kill", 5);
-        long cooldown = getConfig().getLong("earn.same-player-cooldown-minutes", 10) * 60_000L;
+        long cooldown = getConfig().getLong("earn.same-player-cooldown-minutes", 0) * 60_000L;
         String key = killer + ">" + victim;
         long now = System.currentTimeMillis();
         Long last = lastKill.get(key);
@@ -293,6 +302,11 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
                 t.getInventory().addItem(items.create(d));
                 say(s, "&7Gave " + d.name() + " &7to &f" + t.getName() + "&7.");
             }
+            case "edit", "editor" -> {
+                if (!admin) return say(s, "&cOnly ops can edit the shard shop.");
+                if (s instanceof Player p) editor.main().open(p);
+                else say(s, "&7Open it in game, or edit items: in plugins/DarkShards/config.yml");
+            }
             case "reload" -> {
                 if (!admin) return true;
                 reloadConfig();
@@ -335,7 +349,19 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
             for (ShardItems.Def d : items.defs().values()) if (d.hours() != 24) fails.add(d.id() + " lasts " + d.hours() + "h");
             giveShards(a, 100);
             if (!takeShards(a, 60) || takeShards(a, 60) || shards(a) != 40) fails.add("shards " + shards(a));
-            if (killReward(b, a) != 5 || killReward(b, a) != 0 || killReward(b, b) != 0 || shards(b) != 5) fails.add("kill shards");
+            if (killReward(b, a) != 5 || killReward(b, a) != 5 || killReward(b, b) != 0 || shards(b) != 10) fails.add("kill shards " + shards(b));
+            // the editor: turn the shard pickaxe into a diamond pickaxe and back
+            String before = getConfig().getString("items.pickaxe.material");
+            editor.set("pickaxe", "material", "DIAMOND_PICKAXE");
+            reloadConfig();
+            items.reload();
+            ShardItems.Def dp = items.defs().get("pickaxe");
+            if (dp == null || dp.material() != Material.DIAMOND_PICKAXE || items.create(dp).getType() != Material.DIAMOND_PICKAXE)
+                fails.add("editing the pickaxe item didn't stick");
+            editor.set("pickaxe", "material", before);
+            editor.main();
+            editor.item("pickaxe");
+            if (items.defs().get("pickaxe").material() != Material.AMETHYST_SHARD) fails.add("couldn't change it back");
         } catch (Throwable t) {
             fails.add(t.toString());
             getLogger().log(java.util.logging.Level.WARNING, "test failed", t);
@@ -366,7 +392,7 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
         List<String> out = new ArrayList<>();
         if (a.length == 1) {
             out.addAll(List.of("balance", "pay"));
-            if (s.hasPermission("darkshards.admin")) out.addAll(List.of("give", "take", "set", "giveitem", "reload"));
+            if (s.hasPermission("darkshards.admin")) out.addAll(List.of("edit", "give", "take", "set", "giveitem", "reload"));
         } else if (a.length == 2) {
             for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         } else if (a.length == 3 && a[0].equalsIgnoreCase("giveitem")) {

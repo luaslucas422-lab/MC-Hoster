@@ -18,13 +18,15 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
               "darktpa": ("darktpa test", "DARKTPA"), "darkhub": ("darkhub test", "DARKHUB"),
               "darkcombat": ("combat test", "DARKCOMBAT"), "darkshards": ("shards test", "DARKSHARDS"),
-              "darkrifts": ("rift test", "DARKRIFTS")}
+              "darkrifts": ("rift test", "DARKRIFTS"), "darkessentials": ("darkessentials test", "DARKESSENTIALS"),
+              "darkchat": ("darkchat test", "DARKCHAT"), "darkperformance": ("darkperformance test", "DARKPERFORMANCE"),
+              "darkbackup": ("backup test", "DARKBACKUP")}
 
 
 def run(args: list[str]) -> int:

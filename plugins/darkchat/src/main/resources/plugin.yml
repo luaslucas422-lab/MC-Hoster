@@ -1,0 +1,44 @@
+name: DarkChat
+version: ${project.version}
+main: dev.darkerdawnfr.darkchat.DarkChat
+api-version: "1.20"
+author: DarkerDawnFR
+description: Better chat - rank prefixes, @mentions, [item], anti-spam, /msg, /ignore, /mute. Made for MC Hoster.
+softdepend: [Vault, VaultUnlocked, LuckPerms]
+commands:
+  msg:
+    description: Private message.
+    aliases: [tell, w, whisper, m, pm, message]
+  reply:
+    description: Reply to your last private message.
+    aliases: [r]
+  ignore:
+    description: Hide (or show again) a player's messages.
+  mute:
+    description: Mute a player (ops). /mute <player> [minutes]
+    permission: darkchat.admin
+  unmute:
+    description: Unmute a player (ops).
+    permission: darkchat.admin
+  mutechat:
+    description: Mute or unmute chat for everyone (ops).
+    permission: darkchat.admin
+  clearchat:
+    description: Clear chat (ops).
+    aliases: [cc]
+    permission: darkchat.admin
+  socialspy:
+    description: See every /msg (ops).
+    permission: darkchat.admin
+  darkchat:
+    description: Dark Chat admin (reload, test).
+    permission: darkchat.admin
+permissions:
+  darkchat.admin:
+    default: op
+  darkchat.bypass:
+    description: No anti-spam, caps or filter.
+    default: op
+  darkchat.color:
+    description: Use & colours in chat.
+    default: op

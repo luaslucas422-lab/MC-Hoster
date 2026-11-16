@@ -1,5 +1,7 @@
+config-version: 2
+
 # Dark Shards by DarkerDawnFR: earn shards by playing and killing players, spend them in /shards.
-# Change anything here, then /shards reload.
+# Easiest: /shards edit in game (ops). Or change anything here, then /shards reload.
 
 earn:
   # Shards for playing: `amount` every `minutes` minutes online.
@@ -9,8 +11,8 @@ earn:
   skip-afk: true
   # Shards for killing a player.
   kill: 5
-  # No shards for killing the same player again within this many minutes.
-  same-player-cooldown-minutes: 10
+  # Stop farming: no shards for killing the same player again within this many minutes (0 = always get them).
+  same-player-cooldown-minutes: 0
 
 effects:
   particles: true

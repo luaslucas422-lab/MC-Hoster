@@ -1,0 +1,20 @@
+name: DarkPerformance
+version: ${project.version}
+main: dev.darkerdawnfr.darkperformance.DarkPerformance
+api-version: "1.20"
+author: DarkerDawnFR
+description: Keeps the server smooth - /tps, item clearing, mob limits, view distance that drops when it lags. Made for MC Hoster.
+commands:
+  tps:
+    description: How the server is running.
+    aliases: [lag, performance]
+  clearitems:
+    description: Clear items on the ground now (ops).
+    aliases: [clearlag]
+    permission: darkperformance.admin
+  darkperformance:
+    description: Dark Performance admin (reload, test).
+    permission: darkperformance.admin
+permissions:
+  darkperformance.admin:
+    default: op

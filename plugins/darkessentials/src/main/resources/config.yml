@@ -1,0 +1,59 @@
+# Dark Essentials by DarkerDawnFR: /spawn, /back, kits, join messages, AFK and /rules.
+
+# Seconds to stand still before /spawn and /back teleport you.
+countdown-seconds: 5
+
+spawn:
+  # Set it in game with /setspawn.
+  respawn-at-spawn: true
+  new-players-to-spawn: true
+
+back:
+  tell-on-death: true
+
+join:
+  message: "&8[&a+&8] &7{player}"
+  leave-message: "&8[&c-&8] &7{player}"
+  first-message: "&d✦ &fWelcome &d{player} &fto the server! &7(player #{number})"
+  title: "&b&lWelcome"
+  subtitle: "&7{player}"
+  # Lines shown in chat when someone joins.
+  motd:
+    - "&8&m                                        "
+    - "&b&l  Welcome, &f{player}&b&l!"
+    - "&7  /rules  &8|  &7/kit  &8|  &7/spawn  &8|  &7/discord"
+    - "&8&m                                        "
+  # The kit new players get by themselves.
+  first-kit: starter
+
+kits:
+  starter:
+    name: "&aStarter"
+    icon: STONE_SWORD
+    # -1 = only once ever.
+    cooldown-hours: -1
+    items: ["STONE_SWORD:1", "STONE_PICKAXE:1", "STONE_AXE:1", "BREAD:16", "TORCH:16", "OAK_LOG:16"]
+  daily:
+    name: "&eDaily"
+    icon: CHEST
+    cooldown-hours: 24
+    items: ["COOKED_BEEF:16", "IRON_INGOT:8", "EXPERIENCE_BOTTLE:8"]
+
+afk:
+  # Marked AFK after this many minutes without moving or chatting (0 = never).
+  minutes: 5
+  # Kicked after this many minutes AFK (0 = never).
+  kick-minutes: 0
+  kick-message: "&cYou were AFK for too long."
+  announce: true
+  now-afk: "&7{player} is now AFK."
+  back: "&7{player} is no longer AFK."
+
+rules:
+  - "&b&lRules"
+  - "&71. &fNo cheating or hacked clients."
+  - "&72. &fNo griefing or stealing outside PvP."
+  - "&73. &fBe respectful in chat."
+  - "&74. &fNo lag machines."
+
+prefix: "&8[&bServer&8] "

@@ -6,7 +6,7 @@ author: DarkerDawnFR
 description: DonutSMP-style shards and the shard shop (24-hour shard tools). Made for MC Hoster.
 commands:
   shards:
-    description: The shard shop. /shards balance, /shards pay <player> <amount>.
+    description: The shard shop. /shards balance, /shards pay <player> <amount>, /shards edit (ops).
     aliases: [shard, shardshop]
 permissions:
   darkshards.admin:
