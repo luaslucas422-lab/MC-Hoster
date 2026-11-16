@@ -467,11 +467,18 @@ class Wizard:
         else:
             self.players_scale.set(n)
         lvl, text = core.lag_level(n)
-        ram = core.ram_for_players(n, self.provider().kind == "fabric")
+        modded = self.provider().kind == "fabric"
+        need = core.ram_needed_mb(n, modded)
+        given = core.ram_for_players(n, modded)
         c = self.lag_canvas
         c.delete("all")
         c.create_rectangle(0, 0, 120 * (lvl + 1) / 4, 12, fill=LAG_COLORS[lvl], width=0)
-        extra = "" if self.provider().bedrock else f"  ({ram / 1024:.1f} GB RAM)"
+        if self.provider().bedrock:
+            extra = ""
+        elif need > given * 1.05:
+            extra = f"  (needs {need / 1024:.1f} GB RAM, this PC can only give {given / 1024:.1f} GB)"
+        else:
+            extra = f"  ({need / 1024:.1f} GB RAM)"
         self.lag_label.config(text=text + extra)
 
     def players_value(self) -> int:
@@ -488,8 +495,10 @@ class Wizard:
         if need <= self.confirmed:
             return True
         modded = self.provider().kind == "fabric"
-        ram = core.ram_for_players(n, modded) / 1024
-        ramtxt = "" if self.provider().bedrock else f" and gives the server {ram:.1f} GB of RAM"
+        need = core.ram_needed_mb(n, modded) / 1024
+        given = core.ram_for_players(n, modded) / 1024
+        ramtxt = "" if self.provider().bedrock else (
+            f" and needs about {need:.1f} GB of RAM" + (f" (this PC can only give {given:.1f} GB)" if need > given * 1.05 else ""))
         titles = ["More than 100 players?", "Are you sure?", "Really sure?", "Think about it...",
                   "Your PC may struggle", "Are you REALLY sure?", "Last chance"]
         texts = [

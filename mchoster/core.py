@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -470,18 +470,29 @@ def total_ram_mb() -> int:
     return 8192
 
 
+def ram_needed_mb(players: int, modded: bool = False) -> int:
+    """What the server really wants, with no PC limit. 2 GB base, 64 MB for each of the
+    first 20 players, 128 MB up to 100, 192 MB up to 500 and 256 MB for every player after that."""
+    p = max(1, players)
+    mb = 2048 + (512 if modded else 0)
+    mb += min(p, 20) * 64
+    mb += max(0, min(p, 100) - 20) * 128
+    mb += max(0, min(p, 500) - 100) * 192
+    mb += max(0, p - 500) * 256
+    return mb
+
+
 def ram_for_players(players: int, modded: bool = False) -> int:
-    """MB of RAM to give the server. 2 GB base, about 64 MB per player, capped at 60 % of the PC."""
-    mb = 2048 + players * 64 + (512 if modded else 0)
+    """MB of RAM to give the server: what it needs, but never more than 60 % of the PC."""
     cap = max(1024, int(total_ram_mb() * 0.6))
-    mb = min(mb, cap)
+    mb = min(ram_needed_mb(players, modded), cap)
     return max(1024, (mb // 256) * 256)
 
 
 def lag_level(players: int) -> tuple[int, str]:
     """0..3 and a short description of how hard the PC will work."""
     ram = total_ram_mb()
-    need = 2048 + players * 64
+    need = ram_needed_mb(players)
     score = players / 25 + need / max(ram, 1) * 2
     if score < 1.0:
         return 0, "Smooth, your PC will barely notice"
