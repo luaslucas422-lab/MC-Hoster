@@ -133,8 +133,8 @@ ADDONS = [
           {"bukkit": [["mr:squaremap", "hangar:squaremap"]]}, ports=[(8080, "TCP", "squaremap")]),
     Addon("skinsrestorer", "SkinsRestorer", "/skin <name> to change your skin, and skins for cracked players.",
           {"bukkit": [["mr:skinsrestorer", "hangar:SkinsRestorer"]]}),
-    Addon("maintenance", "Maintenance", "/maintenance on: only staff can join, with a message in the server list.",
-          {"bukkit": [["mr:maintenance", "hangar:Maintenance"]]}),
+    Addon("quickshop", "QuickShop-Hikari", "Player shops: put a chest down, hit it with an item, set a price.",
+          {"bukkit": [["mr:quickshop-hikari", "hangar:QuickShop-Hikari"]]}, note="Needs Vault and a money plugin (Dark Shop is one)"),
     Addon("fawe", "FastAsyncWorldEdit", "WorldEdit, but much faster for big edits (//set on millions of blocks).",
           {"bukkit": [["mr:fastasyncworldedit", "hangar:FastAsyncWorldEdit"]]}, note="Don't tick WorldEdit with it"),
     Addon("viabackwards", "ViaBackwards", "Older Minecraft versions can join (with ViaVersion).",
@@ -175,14 +175,14 @@ ADDON_BY_ID = {a.id: a for a in ADDONS}
 CATEGORIES = ["Dark plugins (by DarkerDawnFR)", "Admin & permissions", "Protection & anticheat", "Chat, voice & looks",
               "World & building", "Maps", "Performance", "Cross-play & versions", "Economy", "Other"]
 _CATEGORY = {
-    "luckperms": 1, "vanish": 1, "essentials": 1, "maintenance": 1, "placeholderapi": 1,
+    "luckperms": 1, "vanish": 1, "essentials": 1, "placeholderapi": 1,
     "coreprotect": 2, "ledger": 2, "grimac": 2, "worldguard": 2,
     "voicechat": 3, "tab": 3, "decentholograms": 3, "skinsrestorer": 3,
     "worldedit": 4, "fawe": 4, "multiverse": 4, "chunky": 4, "chunkyborder": 4,
     "bluemap": 5, "squaremap": 5,
     "spark": 6, "lithium": 6, "ferritecore": 6, "rosestacker": 6,
     "geyser": 7, "viaversion": 7, "viabackwards": 7,
-    "vault": 8,
+    "vault": 8, "quickshop": 8,
 }
 
 

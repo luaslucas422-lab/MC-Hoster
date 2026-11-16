@@ -54,8 +54,21 @@ def curseforge_pack(link: str) -> dict:
     m = CF_LINK.search(link)
     if not m:
         raise LookupError("paste the pack's CurseForge page, like https://www.curseforge.com/minecraft/texture-packs/<name>")
-    d = core.http_json(f"https://api.cfwidget.com/minecraft/{m.group(1)}/{m.group(2)}", 30)
-    f = d.get("download") or (d.get("files") or [None])[0]
+    import time
+    url = f"https://api.cfwidget.com/minecraft/{m.group(1)}/{m.group(2)}"
+    d: dict = {}
+    for attempt in range(8):  # CFWidget looks new projects up first ("in_queue"), then answers
+        try:
+            d = core.http_json(url, 30)
+        except Exception as e:
+            d = {"error": str(e)}
+        if d.get("files") or d.get("download"):
+            break
+        time.sleep(3)
+    files = d.get("files") or []
+    f = d.get("download") or (files[0] if files else None)
+    if not f:
+        raise LookupError(f"CurseForge didn't answer with files ({str(d)[:200]})")
     if not f:
         raise LookupError("that pack has no files")
     fid, name = int(f["id"]), f["name"]
