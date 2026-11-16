@@ -57,7 +57,7 @@ def root():
 def feedback_add():
     name, mc = who()
     d = request.get_json(silent=True) or {}
-    text = str(d.get("text", "")).strip()[:2000]
+    text = str(d.get("text", "")).strip()[:6000]
     if len(text) < 3 or not name:
         return jsonify(error="Write a message first."), 400
     with db() as c:

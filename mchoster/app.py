@@ -2011,6 +2011,10 @@ class Wizard:
         ttk.Button(photo_row, text="Add photos…", command=add_photo).pack(side="left")
         ttk.Button(photo_row, text="Remove", command=clear_photos).pack(side="left", padx=6)
         photo_label.pack(side="left")
+        attach = tk.BooleanVar(value=False)
+        has_log = bool(self.console.get("1.0", "end").strip())
+        ttk.Checkbutton(f, text="Attach the last lines of my server console (IP addresses are hidden)",
+                        variable=attach, state="normal" if has_log else "disabled").pack(anchor="w", pady=(6, 0))
         status = ttk.Label(f, text="")
         status.pack(anchor="w")
         btns = ttk.Frame(f)
@@ -2021,6 +2025,11 @@ class Wizard:
             if len(text) < 3:
                 status.config(text="Write something first.", style="Bad.TLabel")
                 return
+            if attach.get():
+                import re as _re
+                tail = "\n".join(self.console.get("1.0", "end").strip().splitlines()[-60:])
+                tail = _re.sub(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", "x.x.x.x", tail)
+                text = f"{text}\n\n--- server console ---\n{tail}"
             send_btn.state(["disabled"])
             status.config(text="Sending…", style="Hint.TLabel")
 

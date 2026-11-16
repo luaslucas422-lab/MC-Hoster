@@ -1,6 +1,7 @@
 package dev.darkerdawnfr.darkfishing;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -480,6 +481,11 @@ public class DarkFishing extends JavaPlugin implements Listener, TabCompleter {
                 w.playSound(l, st.where.equals("lava") ? Sound.BLOCK_LAVA_POP : Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1.2f);
                 w.spawnParticle(st.where.equals("lava") ? Particle.FLAME : Particle.REVERSE_PORTAL, l, 15, 0.2, 0.2, 0.2, 0.05);
                 p.playSound(p.getLocation(), Sound.ENTITY_FISHING_BOBBER_SPLASH, 1f, 1f);
+                try { // lava and void have no splash to see, so tell them
+                    p.sendTitle(ChatColor.translateAlternateColorCodes('&', st.where.equals("lava") ? "&6&lBITE!" : "&5&lBITE!"),
+                            ChatColor.translateAlternateColorCodes('&', "&eReel in now!"), 0, 25, 5);
+                } catch (Throwable ignored) {
+                }
                 h.teleport(l.clone().add(0, -0.25, 0));
             } else if (st.biteUntil > 0 && now > st.biteUntil) { // missed it: wait for the next one
                 st.biteUntil = 0;

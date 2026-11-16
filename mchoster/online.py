@@ -46,7 +46,7 @@ def _call(method: str, path: str, body: dict | None = None, key: str = "", timeo
 
 def send_feedback(text: str, kind: str = "idea", images: list[str] | None = None) -> None:
     """images: up to 3 pictures as base64 JPEG."""
-    _call("POST", "/feedback", {"text": text[:2000], "kind": kind, "images": (images or [])[:3]}, timeout=60)
+    _call("POST", "/feedback", {"text": text[:6000], "kind": kind, "images": (images or [])[:3]}, timeout=60)
 
 
 def inbox() -> list[dict]:
