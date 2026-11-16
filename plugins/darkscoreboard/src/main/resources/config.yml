@@ -3,7 +3,7 @@
 #
 # & colours work (&a green, &l bold...). Placeholders: {player} {money} {kills} {deaths} {kdr} {playtime}
 # {bounty} {baltop} {ping} {online} {max} {world} {x} {y} {z} {health} {level} {listings} {ah_total}
-# {rtp_queue} {discord} {shards} {combat} {homes} {rift} {date} {time} {mobkills} {displayname} {money_raw}
+# {rtp_queue} {discord} {shards} {combat} {homes} {rift} {keyall} {date} {time} {mobkills} {displayname} {money_raw}
 # PlaceholderAPI %placeholders% work too if it's installed.
 
 # How often it refreshes (20 = every second).
@@ -13,6 +13,8 @@ scoreboard:
   enabled: true
   # Hide the red numbers on the right (Paper, Purpur, Pufferfish; Spigot always shows them).
   hide-numbers: true
+  # Hide lines for plugins that aren't installed (e.g. Shards without Dark Shards).
+  hide-missing: true
   title: "&b&lTest SMP"
   # Up to 15 lines, top to bottom. "" is an empty line.
   lines:
@@ -23,6 +25,7 @@ scoreboard:
     - "&5✦ &fShards &5{shards}"
     - "&d⚑ &fBounty &d{bounty}"
     - "&e⌛ &fPlaytime &e{playtime}"
+    - "&b✪ &fKey All &b{keyall}"
     - ""
     - "&7{online} online &8| &7{ping}ms"
     - "&b&oTest SMP"

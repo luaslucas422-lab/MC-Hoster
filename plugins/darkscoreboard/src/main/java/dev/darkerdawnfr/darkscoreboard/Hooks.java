@@ -52,6 +52,7 @@ public class Hooks {
         HELP.put("combat", "combat seconds left (0 = not in combat)");
         HELP.put("homes", "how many homes you set");
         HELP.put("rift", "where the rift is, or none");
+        HELP.put("keyall", "time until the next Key All");
         HELP.put("listings", "your /ah listings");
         HELP.put("ah_total", "all /ah listings");
         HELP.put("rtp_queue", "players in /rtpq");
@@ -60,7 +61,7 @@ public class Hooks {
         HELP.put("time", "the time now");
     }
 
-    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts;
+    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts, crates;
     private Object vault;
 
     public void hook() {
@@ -73,6 +74,7 @@ public class Hooks {
         combat = enabled("DarkCombat");
         homes = enabled("DarkHomes");
         rifts = enabled("DarkRifts");
+        crates = enabled("DarkCrates");
         vault = null;
         if (enabled("Vault") != null || enabled("VaultUnlocked") != null) {
             try {
@@ -99,9 +101,26 @@ public class Hooks {
         if (combat != null) out.add("Dark Combat");
         if (homes != null) out.add("Dark Homes");
         if (rifts != null) out.add("Dark Rifts");
+        if (crates != null) out.add("Dark Crates");
         if (vault != null) out.add("Vault");
         if (papi != null) out.add("PlaceholderAPI");
         return out;
+    }
+
+    /** False if the line shows something from a plugin that isn't installed (e.g. {shards} without Dark Shards). */
+    public boolean available(String line) {
+        if (line.contains("{shards}") && shards == null) return false;
+        if (line.contains("{keyall}") && crates == null) return false;
+        if (line.contains("{bounty}") && shop == null) return false;
+        if (line.contains("{baltop}") && shop == null) return false;
+        if (line.contains("{rift}") && rifts == null) return false;
+        if ((line.contains("{listings}") || line.contains("{ah_total}")) && ah == null) return false;
+        if (line.contains("{rtp_queue}") && rtp == null) return false;
+        if (line.contains("{combat}") && combat == null) return false;
+        if (line.contains("{homes}") && homes == null) return false;
+        if (line.contains("{discord}") && discord == null) return false;
+        if (line.contains("{money") && shop == null && vault == null) return false;
+        return true;
     }
 
     // ------------------------------------------------------------------ values
@@ -166,6 +185,10 @@ public class Hooks {
             if (text.contains("{homes}")) {
                 Object m = homes != null ? call(homes, "of", id) : null;
                 text = rep(text, "homes", m instanceof java.util.Map<?, ?> map ? String.valueOf(map.size()) : "0");
+            }
+            if (text.contains("{keyall}")) {
+                Object k = crates != null ? call(crates, "keyAllIn") : null;
+                text = rep(text, "keyall", k == null ? "-" : String.valueOf(k));
             }
             if (text.contains("{rift}")) {
                 Object r = rifts != null ? call(rifts, "status") : null;

@@ -1,0 +1,72 @@
+# Dark Crates by DarkerDawnFR.
+# Make a crate: look at a chest, ender chest or shulker box (at a hub) and type /crate look set <crate>.
+# Right-click it with a key to roll, left-click to see the loot.
+#
+# Rewards: item: "NAME:amount", money: (needs Dark Shop), shards: (needs Dark Shards), command: "give {player} ..."
+# weight = how likely (bigger = more often). name and icon are optional.
+
+holograms: true
+# Tell everyone when someone wins a reward rarer than this many percent.
+announce-below-percent: 5
+
+key-all:
+  enabled: true
+  every-minutes: 60
+  # Which key everyone gets (bigger = more likely).
+  weights: {common: 60, rare: 25, epic: 12, legendary: 3}
+  message: "&b&lKEY ALL! &7Everyone online got a {key}&7!"
+
+crates:
+  common:
+    name: "&a&lCommon Crate"
+    key-name: "&aCommon Key"
+    key-item: TRIPWIRE_HOOK
+    shard-price: 10
+    rewards:
+      - {item: "COAL:16", weight: 30}
+      - {item: "BREAD:16", weight: 25}
+      - {item: "IRON_INGOT:8", weight: 20}
+      - {money: 2500, weight: 12}
+      - {shards: 3, weight: 8}
+      - {item: "DIAMOND:2", weight: 4}
+      - {item: "GOLDEN_APPLE:2", weight: 1}
+  rare:
+    name: "&9&lRare Crate"
+    key-name: "&9Rare Key"
+    key-item: TRIPWIRE_HOOK
+    shard-price: 30
+    rewards:
+      - {item: "IRON_INGOT:16", weight: 25}
+      - {money: 10000, weight: 20}
+      - {item: "DIAMOND:4", weight: 15}
+      - {shards: 10, weight: 15}
+      - {item: "ENDER_PEARL:16", weight: 10}
+      - {item: "GOLDEN_APPLE:4", weight: 10}
+      - {item: "DIAMOND_BLOCK:1", weight: 5}
+  epic:
+    name: "&5&lEpic Crate"
+    key-name: "&5Epic Key"
+    key-item: TRIPWIRE_HOOK
+    shard-price: 75
+    rewards:
+      - {item: "DIAMOND:8", weight: 25}
+      - {money: 50000, weight: 20}
+      - {shards: 25, weight: 15}
+      - {item: "NETHERITE_SCRAP:2", weight: 15}
+      - {item: "TOTEM_OF_UNDYING:1", weight: 10}
+      - {item: "ENCHANTED_GOLDEN_APPLE:1", weight: 10}
+      - {item: "ELYTRA:1", weight: 5}
+  legendary:
+    name: "&6&lLegendary Crate"
+    key-name: "&6Legendary Key"
+    key-item: TRIPWIRE_HOOK
+    shard-price: 200
+    rewards:
+      - {item: "NETHERITE_INGOT:2", weight: 25}
+      - {money: 250000, weight: 20}
+      - {shards: 100, weight: 15}
+      - {item: "ELYTRA:1", weight: 15}
+      - {item: "ENCHANTED_GOLDEN_APPLE:3", weight: 15}
+      - {item: "BEACON:1", weight: 10}
+
+prefix: "&8[&6Crates&8] "

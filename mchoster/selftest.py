@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup"]
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce"]
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -26,7 +26,9 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darkcombat": ("combat test", "DARKCOMBAT"), "darkshards": ("shards test", "DARKSHARDS"),
               "darkrifts": ("rift test", "DARKRIFTS"), "darkessentials": ("darkessentials test", "DARKESSENTIALS"),
               "darkchat": ("darkchat test", "DARKCHAT"), "darkperformance": ("darkperformance test", "DARKPERFORMANCE"),
-              "darkbackup": ("backup test", "DARKBACKUP")}
+              "darkbackup": ("backup test", "DARKBACKUP"), "darkcrates": ("crate test", "DARKCRATES"),
+              "darktips": ("tips test", "DARKTIPS"), "darkbossbar": ("bar test", "DARKBOSSBAR"),
+              "darkannounce": ("darkannounce test", "DARKANNOUNCE")}
 
 
 def run(args: list[str]) -> int:

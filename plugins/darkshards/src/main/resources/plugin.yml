@@ -2,6 +2,7 @@ name: DarkShards
 version: ${project.version}
 main: dev.darkerdawnfr.darkshards.DarkShards
 api-version: "1.20"
+softdepend: [DarkCrates]
 author: DarkerDawnFR
 description: DonutSMP-style shards and the shard shop (24-hour shard tools). Made for MC Hoster.
 commands:

@@ -108,7 +108,9 @@ public class DarkScoreboard extends JavaPlugin implements Listener, TabCompleter
 
     private List<String> lines(Player p) {
         List<String> out = new ArrayList<>();
-        for (String l : getConfig().getStringList("scoreboard.lines")) out.add(hooks.apply(p, p, l));
+        boolean hide = getConfig().getBoolean("scoreboard.hide-missing", true);
+        for (String l : getConfig().getStringList("scoreboard.lines"))
+            if (!hide || hooks.available(l)) out.add(hooks.apply(p, p, l));
         return out;
     }
 

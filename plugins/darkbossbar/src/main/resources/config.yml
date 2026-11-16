@@ -1,0 +1,21 @@
+# Dark Bossbar by DarkerDawnFR. Change it in game with /bar (ops).
+
+enabled: true
+# {ip} = your server's address (MC Hoster fills it in: your custom IP, or your public IP).
+# {c} = a colour that flashes through text-colors. Also {online} {max} {player}.
+text: "{c}&l✦ &f&lPLAY: {c}&l{ip} {c}&l✦"
+# Several texts to switch between (empty = just "text").
+texts: []
+text-every-flashes: 10
+# Bar colours: PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE. More than one + flash = it flashes.
+colors: [PURPLE, PINK, BLUE]
+flash: true
+text-colors: ["&d", "&5", "&b"]
+# How fast it flashes (20 ticks = 1 second).
+flash-speed-ticks: 10
+# SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20
+style: SOLID
+progress: 1.0
+# Set this to always show the same address instead of the one from MC Hoster.
+ip: ""
+hide-in-worlds: []

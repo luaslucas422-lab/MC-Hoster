@@ -20,6 +20,10 @@
     <module>darkhomes</module>
     <module>darkrifts</module>
     <module>darkbackup</module>
+    <module>darkcrates</module>
+    <module>darkannounce</module>
+    <module>darkbossbar</module>
+    <module>darktips</module>
     <module>darkperformance</module>
     <module>darkchat</module>
     <module>darkessentials</module>

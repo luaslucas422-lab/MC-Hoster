@@ -197,6 +197,15 @@ public class DarkShards extends JavaPlugin implements Listener, TabCompleter {
             int slot = Math.max(0, Math.min(m.size() - 1, d.slot()));
             m.set(slot, show, e -> confirm(p, d).open(p));
         }
+        org.bukkit.plugin.Plugin crates = Bukkit.getPluginManager().getPlugin("DarkCrates");
+        if (crates != null && crates.isEnabled())
+            m.set(m.size() - 5, Util.item(Material.TRIPWIRE_HOOK, "&b&lCrate Keys", "&7Buy keys for the crates", "&7at the hubs with shards.", "", "&eClick for the Keys page"), e -> {
+                try {
+                    crates.getClass().getMethod("openKeyShop", Player.class).invoke(crates, p);
+                } catch (Exception ex) {
+                    say(p, "&cThe Keys page isn't available.");
+                }
+            });
         m.fill();
         return m;
     }

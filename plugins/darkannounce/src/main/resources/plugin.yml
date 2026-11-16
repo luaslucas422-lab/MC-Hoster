@@ -1,0 +1,21 @@
+name: DarkAnnounce
+version: ${project.version}
+main: dev.darkerdawnfr.darkannounce.DarkAnnounce
+api-version: "1.20"
+author: DarkerDawnFR
+description: /announce for big announcements and /donor to thank supporters with fireworks. Made for MC Hoster.
+commands:
+  announce:
+    description: A big announcement for everyone.
+    aliases: [broadcast, bc]
+    permission: darkannounce.admin
+  donor:
+    description: Thank a supporter - /donor <player> <what they bought>.
+    aliases: [donate, thanks]
+    permission: darkannounce.admin
+  darkannounce:
+    description: Dark Announce admin (reload, test).
+    permission: darkannounce.admin
+permissions:
+  darkannounce.admin:
+    default: op

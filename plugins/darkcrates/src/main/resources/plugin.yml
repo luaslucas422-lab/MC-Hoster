@@ -1,0 +1,14 @@
+name: DarkCrates
+version: ${project.version}
+main: dev.darkerdawnfr.darkcrates.DarkCrates
+api-version: "1.20"
+author: DarkerDawnFR
+description: Crates with keys, a spinning roll, a Keys page in /shards and a Key All every hour. Made for MC Hoster.
+softdepend: [DarkShop, DarkShards]
+commands:
+  crate:
+    description: Crates. Ops - /crate look set <crate> on a chest, ender chest or shulker box.
+    aliases: [crates, keyall]
+permissions:
+  darkcrates.admin:
+    default: op

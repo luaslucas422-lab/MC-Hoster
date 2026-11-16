@@ -1198,6 +1198,15 @@ class Wizard:
         self.upnp, self.opened_ports = (up, opened) if opened else (None, [])
         self.q.put(("ip", "public", ((pub if bed else core.server_address(cfg, pub)) if pub else "couldn't find it")))
         lines = []
+        if "darkbossbar" in cfg.addons and not bed:
+            # Dark Bossbar shows {ip}: the custom address, or the public one
+            addr = domain.join_address(cfg.domain, cfg) if cfg.domain.get("enabled") else (core.server_address(cfg, pub) if pub else "")
+            try:
+                f = Path(cfg.folder) / cfg.prov.addon_folder / "DarkBossbar" / "address.txt"
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text(addr, encoding="utf-8")
+            except OSError:
+                pass
         if cfg.domain.get("enabled"):
             self.q.put(("ip", "domain", domain.join_address(cfg.domain, cfg)))
             if pub:

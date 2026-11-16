@@ -1,0 +1,14 @@
+name: DarkBossbar
+version: ${project.version}
+main: dev.darkerdawnfr.darkbossbar.DarkBossbar
+api-version: "1.20"
+author: DarkerDawnFR
+description: A boss bar with your server's IP (any text), in any colour, flashing if you like. Made for MC Hoster.
+commands:
+  bar:
+    description: Change the boss bar (ops) - /bar text, /bar color, /bar flash...
+    aliases: [dbar, darkbossbar]
+    permission: darkbossbar.admin
+permissions:
+  darkbossbar.admin:
+    default: op

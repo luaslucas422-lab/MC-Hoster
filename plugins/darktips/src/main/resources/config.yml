@@ -1,0 +1,28 @@
+# Dark Tips by DarkerDawnFR. Change everything in game with /tips (ops).
+
+enabled: true
+interval-minutes: 5
+random-order: false
+sound: true
+prefix: "&b&lTIP &8» &7"
+tips:
+  - "Use &f/home &7to set and visit your homes."
+  - "Sell your farm loot with &f/sell &7and buy gear in &f/shop&7."
+  - "Earn shards by playing and killing players, then spend them in &f/shards&7."
+  - "Stuck? &f/rtp &7sends you somewhere new."
+  - "Put something up for sale with &f/ah sell <price>&7."
+  - "Join our Discord with &f/discord&7."
+  - "Fighting tags you for 20 seconds. Logging out in combat kills you!"
+
+# Shown to every player when they log in.
+login:
+  enabled: true
+  delay-seconds: 2
+  title: ""
+  subtitle: ""
+  lines:
+    - ""
+    - "&d&l  ANNOUNCEMENT"
+    - "&7  Welcome back, &f{player}&7! &8({online} online)"
+    - "&7  Key All every hour - stay online to get a free crate key!"
+    - ""
