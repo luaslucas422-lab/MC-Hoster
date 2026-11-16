@@ -779,9 +779,51 @@ def my_servers() -> list[ServerConfig]:
     return out
 
 
+# Windows can't have <>:"/\|?* in names, and Java can't start a server from a folder with ! in its path
+# (jar paths use "!/"); # % ^ & ; ` also break Java or start.bat.
+BAD_PATH_CHARS = '!#%^&;`'
+
+
 def safe_folder_name(name: str) -> str:
-    s = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", name).strip().rstrip(".") or "My Server"
-    return s[:40]
+    s = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", name)
+    s = "".join(ch for ch in s if ch not in BAD_PATH_CHARS)
+    s = re.sub(r"\s+", " ", s).strip().rstrip(".").strip() or "My Server"
+    return s[:40].strip()
+
+
+def bad_path(folder: str | Path) -> bool:
+    """True if Java can't run a server from this folder."""
+    return any(ch in str(folder) for ch in BAD_PATH_CHARS)
+
+
+def rename_server_folder(cfg: "ServerConfig", log=print) -> bool:
+    """Gives the server folder the server's (safe) name: after renaming the server, or when the folder has ! in it.
+    The server must be stopped. True if the folder moved (cfg.folder is updated and saved)."""
+    d = Path(cfg.folder)
+    want = safe_folder_name(cfg.name)
+    if not d.is_dir():
+        return False
+    if not bad_path(d.name) and (d.name == want or re.fullmatch(re.escape(want) + r" \(\d+\)", d.name)):
+        return False
+    target, i = d.with_name(want), 2
+    while target.exists():
+        target = d.with_name(f"{want} ({i})")
+        i += 1
+    for attempt in range(10):  # the server can take a moment to let go of its files
+        try:
+            d.rename(target)
+            break
+        except OSError as e:
+            if attempt == 9:
+                log(f"! Couldn't rename the server folder to \"{target.name}\": {e}")
+                return False
+            time.sleep(1)
+    cfg.folder = str(target)
+    cfg.save()
+    log(f"Server folder renamed: {d.name} → {target.name}")
+    if bad_path(target.parent):
+        log(f"! The folder {target.parent} has one of {BAD_PATH_CHARS} in its path, so Java may not start servers there.")
+    return True
 
 
 def new_server_folder(name: str) -> Path:

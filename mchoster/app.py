@@ -18,7 +18,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import addons, core, domain, schedule
+from . import addons, core, domain, schedule, updater
 from .core import PROVIDERS, PROVIDER_BY_NAME, ServerConfig
 
 GREEN, YELLOW, ORANGE, RED = "#2e9e44", "#c9a400", "#e07b00", "#cc2b2b"
@@ -172,6 +172,8 @@ class Wizard:
         bottom = ttk.Frame(f)
         bottom.grid(row=7, column=0, columnspan=3, sticky="we")
         ttk.Button(bottom, text="My servers…", command=self.my_servers).pack(side="left")
+        ttk.Button(bottom, text="Check for updates", command=lambda: self.check_updates(False)).pack(side="left", padx=(8, 0))
+        ttk.Label(bottom, text=f"v{core.VERSION}", style="Hint.TLabel").pack(side="left", padx=(8, 0))
         self.new_btn = ttk.Button(bottom, text="New server…", command=self.new_server)
         self.load_versions()
 
@@ -1022,6 +1024,8 @@ class Wizard:
             try:
                 wanted = before()
                 log = lambda l: self.q.put(("log", l))
+                if self.edit and self.cfg.folder:
+                    core.rename_server_folder(self.cfg, log)  # renamed server, or a folder Java can't use
                 core.setup_server(self.cfg, log=log, progress=lambda d, t: self.q.put(("bytes", d, t)),
                                   step=lambda i, n, t: self.q.put(("step", i, n, t)))
                 if wanted is not None:
@@ -1096,6 +1100,10 @@ class Wizard:
         self.page = self.PLAY
         self.enter_edit_mode()
         self.progress.config(value=100)
+        if core.bad_path(Path(cfg.folder).name):
+            core.rename_server_folder(cfg, self.log)
+            if cfg.schedule.get("enabled") or cfg.schedule.get("task"):
+                schedule.apply(cfg, self.log)
         self.log(f"» Opening {cfg.name} ({cfg.prov.name} {cfg.version}) from {cfg.folder}")
         if not cfg.prov.bedrock and (not cfg.java or not Path(cfg.java).exists()):
             found = core.find_java(core.required_java(cfg.version), Path(cfg.minecraft_dir) if cfg.minecraft_dir else None,
@@ -1282,6 +1290,75 @@ class Wizard:
                 (w.grid if on else w.grid_remove)()
         self.ip_box.grid(row=3, column=0, sticky="we", pady=(8, 0))
 
+    # ------------------------------------------------------------------ updates
+    def check_updates(self, quiet: bool):
+        """quiet = the check when MC Hoster opens: only says something if there is an update."""
+        threading.Thread(target=lambda: self.q.put(("update", updater.latest(), quiet)), daemon=True).start()
+
+    def update_dialog(self, info, quiet: bool):
+        if info is None:
+            if not quiet:
+                messagebox.showinfo("Check for updates", "Couldn't reach GitHub. Check your internet and try again.")
+            return
+        if not updater.newer(info["version"]):
+            if not quiet:
+                messagebox.showinfo("Check for updates", f"You have the newest MC Hoster (v{core.VERSION}).")
+            return
+        if quiet and updater.skipped() == info["version"]:
+            return
+        top, f = self.dialog("Update available")
+        ttk.Label(f, text=f"MC Hoster {info['version']} is out!", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text=f"You have {core.VERSION}. Here's what's new:", style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        box = ttk.Frame(f)
+        box.pack(fill="both", expand=True)
+        txt = tk.Text(box, width=78, height=18, wrap="word", relief="flat", padx=8, pady=6)
+        sb = ttk.Scrollbar(box, command=txt.yview)
+        txt.config(yscrollcommand=sb.set)
+        txt.insert("1.0", updater.plain(info["notes"]) or "(no notes)")
+        txt.config(state="disabled")
+        txt.pack(side="left", fill="both", expand=True)
+        sb.pack(side="right", fill="y")
+        bar = ttk.Progressbar(f, mode="determinate", maximum=100)
+        status = ttk.Label(f, text="", style="Hint.TLabel")
+        status.pack(anchor="w", pady=(6, 0))
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(8, 0))
+        can = updater.can_install() and info.get("url")
+        install = ttk.Button(btns, text="Install update" if can else "Open download page")
+        install.pack(side="right")
+        ttk.Button(btns, text="Later", command=top.destroy).pack(side="right", padx=6)
+
+        def skip():
+            updater.skip(info["version"])
+            top.destroy()
+        ttk.Button(btns, text="Skip this version", command=skip).pack(side="left")
+        self._upd = {"top": top, "status": status, "bar": bar, "install": install}
+
+        def go():
+            if not can:
+                webbrowser.open(info["page"])
+                top.destroy()
+                return
+            running = self.server and self.server.running
+            if running and not messagebox.askyesno("Update", "Your server will stop (the world is saved) and MC Hoster "
+                                                   "restarts with the update. Go ahead?", parent=top):
+                return
+            install.state(["disabled"])
+            bar.pack(fill="x", pady=(6, 0), before=status)
+            status.config(text="Downloading…")
+
+            def work():
+                try:
+                    if running:
+                        self.server.stop(60)
+                    new = updater.download(info, lambda d, t: self.q.put(("upd_progress", d, t)))
+                    updater.install(new)
+                    self.q.put(("upd_ready",))
+                except Exception as e:
+                    self.q.put(("upd_failed", str(e)))
+            threading.Thread(target=work, daemon=True).start()
+        install.config(command=go)
+
     # ------------------------------------------------------------------ events from worker threads
     def _drain(self):
         try:
@@ -1290,6 +1367,26 @@ class Wizard:
                 k = ev[0]
                 if k == "versions":
                     self._set_versions(ev[1], ev[2], ev[3])
+                elif k == "update":
+                    self.update_dialog(ev[1], ev[2])
+                elif k == "upd_progress":
+                    u = getattr(self, "_upd", None)
+                    if u and u["top"].winfo_exists():
+                        done, total = ev[1], ev[2]
+                        u["status"].config(text=f"Downloading… {done / 1048576:.1f} / {total / 1048576:.1f} MB" if total else
+                                           f"Downloading… {done / 1048576:.1f} MB")
+                        if total:
+                            u["bar"].config(value=done * 100 / total)
+                elif k == "upd_ready":
+                    self._close_ports()
+                    self.root.destroy()
+                    return
+                elif k == "upd_failed":
+                    u = getattr(self, "_upd", None)
+                    if u and u["top"].winfo_exists():
+                        u["status"].config(text="")
+                        u["install"].state(["!disabled"])
+                    messagebox.showerror("Update", f"The update didn't work: {ev[1]}\nYou can download it from GitHub instead.")
                 elif k == "log":
                     self.log(ev[1])
                     if len(ev) > 2 and ev[2] is self.server and ("FAILED TO BIND TO PORT" in ev[1] or "Address already in use" in ev[1]):
@@ -1411,6 +1508,8 @@ def main(start_folder: str | None = None):
                     "by an older MC Hoster after it was closed.\n\nStop it now?", parent=root):
                 core.kill_tree(pid)
     root.after(300, check_leftovers)
+    if not start_folder:
+        root.after(2500, lambda: w.check_updates(True))
     if start_folder:  # started by the scheduler
         try:
             w.open_existing(ServerConfig.load(Path(start_folder)))

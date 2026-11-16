@@ -129,6 +129,38 @@ jobs:
       - run: pip install pillow
       - run: python -u MC-Hoster.py --addons-test ${{ matrix.type }} ${{ matrix.version }}
 
+  upgrade:
+    # A server made with the last release must keep working after updating MC Hoster.
+    needs: plugins
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [purpur, paper]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: dark-plugins
+          path: darkplugins
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow
+      - name: Last release makes a server
+        timeout-minutes: 25
+        shell: pwsh
+        run: |
+          $tag = git tag --sort=-v:refname | Select-Object -First 1
+          echo "last release: $tag"
+          git worktree add old $tag
+          python -u .github/upgrade_test.py old "$PWD/old" "$env:RUNNER_TEMP/upgrade-srv" ${{ matrix.type }}
+      - name: New MC Hoster opens it
+        timeout-minutes: 25
+        run: python -u .github/upgrade_test.py new "${{ github.workspace }}" "${{ runner.temp }}/upgrade-srv"
+
   scheduler:
     runs-on: windows-latest
     steps:
@@ -138,6 +170,7 @@ jobs:
           python-version: "3.12"
       - run: pip install pillow
       - run: python -u MC-Hoster.py --schedule-test
+      - run: python -u .github/update_test.py
 
   orphans:
     # A server must never outlive MC Hoster, and leftover / port-blocking servers are found.

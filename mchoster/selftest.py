@@ -113,6 +113,19 @@ def run(args: list[str]) -> int:
         cfg.save()
         assert core.ServerConfig.load(d).owner == "Geo", "owner name not saved"
         cfg.owner = ""
+        # a name with ! makes a folder Java can't use: the folder is made without it, and fixed when renamed
+        assert core.safe_folder_name("Geo's SMP!!") == "Geo's SMP" and core.safe_folder_name("!!!") == "My Server"
+        tmp = Path(tempfile.mkdtemp())
+        bad = tmp / "Test SMP!"
+        bad.mkdir()
+        t = core.ServerConfig(name="Test SMP!", eula=True)
+        t.folder = str(bad)
+        t.save()
+        assert core.rename_server_folder(t, print) and Path(t.folder).name == "Test SMP" and Path(t.folder, "mchoster.json").exists()
+        t.name = "Renamed Server"
+        assert core.rename_server_folder(t, print) and Path(t.folder).name == "Renamed Server"
+        assert not core.rename_server_folder(t, print), "renamed again for nothing"
+        assert core.ServerConfig.load(Path(t.folder)).name == "Renamed Server"
         cfg.nether, cfg.end = True, True
         core.write_server_files(cfg)
         assert core.read_properties(d / "server.properties")["allow-nether"] == "true"
