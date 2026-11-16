@@ -1347,13 +1347,16 @@ class ServerProcess:
                 self.ready = True
                 self.on_ready()
         code = p.wait()
+        self._clear_pid(p.pid)
+        self.on_exit(code)
+
+    def _clear_pid(self, pid: int):
         try:
             f = Path(self.cfg.folder) / PID_FILE
-            if f.exists() and json.loads(f.read_text()).get("pid") == p.pid:
+            if f.exists() and json.loads(f.read_text()).get("pid") == pid:
                 f.unlink()
         except Exception:
             pass
-        self.on_exit(code)
 
     def send(self, cmd: str):
         if self.running:
@@ -1375,3 +1378,5 @@ class ServerProcess:
                 self.proc.wait(10)
             except subprocess.TimeoutExpired:
                 self.proc.kill()
+        if self.proc.poll() is not None:
+            self._clear_pid(self.proc.pid)
