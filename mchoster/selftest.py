@@ -264,7 +264,14 @@ def respack_test() -> int:
     assert mr["url"].startswith("https://") and len(mr["sha1"]) == 40
     sha = respack.sha1_of(mr["url"])
     assert sha == mr["sha1"], f"sha1 {sha} != {mr['sha1']}"
-    cf = respack.curseforge_pack("https://www.curseforge.com/minecraft/texture-packs/faithful-32x")
+    cf = None
+    for slug in ("bare-bones", "stay-true", "default-dark-mode"):  # some packs left CurseForge, one of these is there
+        try:
+            cf = respack.curseforge_pack(f"https://www.curseforge.com/minecraft/texture-packs/{slug}")
+            break
+        except LookupError as e:
+            print(f"  {slug}: {e}")
+    assert cf, "no CurseForge pack worked"
     print("CurseForge pack:", cf)
     assert cf["url"].startswith("https://")
     cf_sha = respack.sha1_of(cf["url"])

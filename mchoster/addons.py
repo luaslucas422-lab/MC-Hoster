@@ -365,7 +365,11 @@ def install(addon: Addon, cfg: core.ServerConfig, log=print) -> list[str]:
     folder.mkdir(parents=True, exist_ok=True)
     files = []
     pending = []
+    skip = {c for a in (getattr(cfg, "_wanted", None) or cfg.addons) for c in PROVIDED.get(a, [])}
     for url, name, deps, note, source in resolve(addon, cfg):
+        if source in skip:
+            log(f"  = {name} not needed (already there)")
+            continue
         if source.startswith("bundled:"):
             import shutil
             shutil.copyfile(url, folder / name)
@@ -393,8 +397,31 @@ def install(addon: Addon, cfg: core.ServerConfig, log=print) -> list[str]:
     return files
 
 
+# Presets that can't be on the same server: ticking the first unticks the others.
+CONFLICTS = {"fawe": ["worldedit"], "worldedit": ["fawe"]}
+# A file another preset brings along, that a ticked preset already gives (FAWE is a WorldEdit too).
+PROVIDED = {"fawe": ["mr:worldedit", "hangar:WorldEdit"]}
+
+
+def fix_conflicts(wanted: list[str]) -> list[str]:
+    out = list(wanted)
+    for a in wanted:
+        if a in out:
+            for c in CONFLICTS.get(a, []):
+                if c in out and out.index(c) > out.index(a):
+                    out.remove(c)
+    return out
+
+
 def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
     """Installs the ticked presets that are missing and removes the unticked ones. Returns failures."""
+    fixed = fix_conflicts(wanted)
+    for a in wanted:
+        if a not in fixed:
+            log(f"Not installing {ADDON_BY_ID[a].name if a in ADDON_BY_ID else a}: it can't be on the same server as "
+                + ", ".join(ADDON_BY_ID[x].name for x in CONFLICTS.get(a, []) if x in fixed and x in ADDON_BY_ID))
+    wanted = fixed
+    cfg._wanted = wanted  # install() skips files a ticked preset already gives
     folder = Path(cfg.folder) / cfg.prov.addon_folder
     failed = []
     for aid in [a for a in cfg.addons if a not in wanted]:

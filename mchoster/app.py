@@ -1155,7 +1155,7 @@ class Wizard:
                 row = ttk.Frame(body)
                 row.grid(row=i, column=0, sticky="we", pady=3)
                 ttk.Checkbutton(row, text=a.name, variable=v, style="Bold.TCheckbutton", width=20,
-                                command=self._addons_count).pack(side="left", anchor="n")
+                                command=lambda i=a.id: self._addon_ticked(i)).pack(side="left", anchor="n")
                 txt = ttk.Frame(row)
                 txt.pack(side="left", fill="x", expand=True)
                 ttk.Label(txt, text=a.desc, wraplength=320, justify="left").pack(anchor="w")
@@ -1165,6 +1165,15 @@ class Wizard:
             head.config(command=lambda c=cat: self._toggle_folder(c))
             if cat not in self._open_folders:
                 body.grid_remove()
+        self._addons_count()
+
+    def _addon_ticked(self, aid):
+        if self.addon_vars[aid].get():
+            for other in addons.CONFLICTS.get(aid, []):
+                if other in self.addon_vars and self.addon_vars[other].get():
+                    self.addon_vars[other].set(False)
+                    self.addons_status.config(text=f"Unticked {addons.ADDON_BY_ID[other].name}: it can't be next to {addons.ADDON_BY_ID[aid].name}")
+                    self.root.after(2500, self._addons_count)
         self._addons_count()
 
     def _toggle_folder(self, cat):
