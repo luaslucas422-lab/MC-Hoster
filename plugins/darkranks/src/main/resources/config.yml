@@ -6,7 +6,7 @@
 # inherit = also gets every permission of that rank.
 # permissions = like LuckPerms. The Dark Perks commands (darkperks.*) are only for ranks.
 
-config-version: 6
+config-version: 7
 default-rank: member
 # The server owner(s): they get the owner rank when they join. MC Hoster fills this in from Settings > "Your name".
 owners: []
@@ -49,7 +49,7 @@ ranks:
     icon: EMERALD
     inherit: member
     permissions: [darkperks.craft, darkperks.hat, darkperks.ec, darkhomes.homes.7, darkshop.premium, darkshop.discount.vip, darkshop.multiplier.vip, darkessentials.starter.vip]
-    perks: ["&f/shop premium &7- 5% off", "&f/ec &7- ender chest anywhere", "&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f7 homes", "&fBetter respawn kit (iron sword)", "&f1.05x /sell money"]
+    perks: ["&f/shop premium &7- 5% off", "&f/ec &7- ender chest anywhere", "&f/craft &7- crafting table anywhere", "&f/hat &7- wear any block", "&f7 homes", "&fRespawn kit: &airon sword", "&f1.05x /sell money"]
   vip+:
     name: "&2&lVIP+"
     prefix: "&2&l✦ VIP+ &r"
@@ -59,7 +59,7 @@ ranks:
     icon: EMERALD_BLOCK
     inherit: vip
     permissions: [darkperks.feed, darkhomes.homes.9, darkshop.discount.vipplus, darkshop.multiplier.vipplus, darkessentials.starter.vipplus]
-    perks: ["&7Everything in VIP", "&f/shop premium &7- 7.5% off", "&f/feed &7- fill your hunger", "&f9 homes", "&fRespawn kit: iron armour and tools", "&f1.1x /sell money"]
+    perks: ["&7Everything in VIP", "&f/shop premium &7- 7.5% off", "&f/feed &7- fill your hunger", "&f9 homes", "&fRespawn kit: &2gold pieces, iron tools", "&f1.1x /sell money"]
   mvp:
     name: "&b&lMVP"
     prefix: "&b&l✪ MVP &r"
@@ -69,7 +69,7 @@ ranks:
     icon: DIAMOND
     inherit: vip+
     permissions: [darkperks.fly, darkperks.nick, darkhomes.homes.12, darkshop.discount.mvp, darkshop.multiplier.mvp, darkessentials.starter.mvp]
-    perks: ["&7Everything in VIP+", "&f/shop premium &7- 10% off", "&f/fly &7- fly (not in combat)", "&f/nick &7- a coloured nickname", "&f12 homes", "&fRespawn kit: + shield, golden carrots", "&f1.15x /sell money"]
+    perks: ["&7Everything in VIP+", "&f/shop premium &7- 10% off", "&f/fly &7- fly (not in combat)", "&f/nick &7- a coloured nickname", "&f12 homes", "&fRespawn kit: &biron and gold armour", "&f1.15x /sell money"]
   mvp+:
     name: "&3&lMVP+"
     prefix: "&3&l✪ MVP+ &r"
@@ -79,7 +79,7 @@ ranks:
     icon: DIAMOND_BLOCK
     inherit: mvp
     permissions: [darkperks.repair, darkperks.glow, darkchat.color, darkhomes.homes.15, darkshop.discount.mvpplus, darkshop.multiplier.mvpplus, darkessentials.starter.mvpplus]
-    perks: ["&7Everything in MVP", "&f/shop premium &7- 12.5% off", "&f/repair &7- fix the item you hold", "&f/glow &7- glow for everyone", "&fColours in chat with & codes", "&f15 homes", "&fRespawn kit: diamond sword and pieces", "&f1.2x /sell money"]
+    perks: ["&7Everything in MVP", "&f/shop premium &7- 12.5% off", "&f/repair &7- fix the item you hold", "&f/glow &7- glow for everyone", "&fColours in chat with & codes", "&f15 homes", "&fRespawn kit: &3more iron, a shield", "&f1.2x /sell money"]
   legend:
     name: "&6&lLEGEND"
     prefix: "&6&l★ LEGEND &r"
@@ -89,7 +89,7 @@ ranks:
     icon: NETHER_STAR
     inherit: mvp+
     permissions: [darkperks.heal, darkperks.trail, darkah.unlimited, darkrtp.bypass, darkshop.discount.legend, darkshop.multiplier.legend, darkhomes.homes.20, darkessentials.starter.legend]
-    perks: ["&7Everything in MVP+", "&f/shop premium &7- 15% off", "&f/heal &7- full health", "&f/trail &7- particle trails", "&fSell unlimited items on /ah", "&fNo /rtp cooldown", "&f20 homes", "&fRespawn kit: full diamond", "&f1.25x /sell money"]
+    perks: ["&7Everything in MVP+", "&f/shop premium &7- 15% off", "&f/heal &7- full health", "&f/trail &7- particle trails", "&fSell unlimited items on /ah", "&fNo /rtp cooldown", "&f20 homes", "&fRespawn kit: &6iron armour, golden apple", "&f1.25x /sell money"]
 
   # ---- staff ranks: only given with /rank add <player> <rank>
   media:

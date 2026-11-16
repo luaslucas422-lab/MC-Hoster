@@ -64,6 +64,18 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             getConfig().set("config-version", 2);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 3) {
+            // rank kits without diamond (too unfair), and a colour for each kit
+            var defs = getConfig().getDefaults();
+            if (defs != null) {
+                boolean diamond = String.valueOf(getConfig().get("starter-gear.tiers")).contains("DIAMOND");
+                if (diamond || !getConfig().isSet("starter-gear.tiers")) getConfig().set("starter-gear.tiers", defs.get("starter-gear.tiers"));
+                if (!getConfig().isSet("starter-gear.colors")) getConfig().set("starter-gear.colors", defs.get("starter-gear.colors"));
+                if ("&7&lStarter {item}".equals(getConfig().getString("starter-gear.name"))) getConfig().set("starter-gear.name", "{color}&lStarter {item}");
+            }
+            getConfig().set("config-version", 3);
+            saveConfig();
+        }
         tp = new Tp(this);
         dataFile = new File(getDataFolder(), "data.yml");
         data = YamlConfiguration.loadConfiguration(dataFile);
@@ -253,10 +265,20 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
 
     public List<ItemStack> starterGear(Player p) {
         String t = tier(p);
-        return starterGear(t.isEmpty() ? getConfig().getStringList("starter-gear.items") : getConfig().getStringList("starter-gear.tiers." + t));
+        return starterGear(t.isEmpty() ? getConfig().getStringList("starter-gear.items") : getConfig().getStringList("starter-gear.tiers." + t), t);
+    }
+
+    /** The colour of "Starter" for a kit ("" = the normal kit). */
+    public String color(String tier) {
+        return getConfig().getString("starter-gear.colors." + (tier == null || tier.isEmpty() ? "default" : tier),
+                getConfig().getString("starter-gear.colors.default", "&7"));
     }
 
     public List<ItemStack> starterGear(List<String> list) {
+        return starterGear(list, "");
+    }
+
+    public List<ItemStack> starterGear(List<String> list, String tier) {
         List<ItemStack> out = new ArrayList<>();
         org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(this, "starter");
         for (String s : list) {
@@ -271,7 +293,8 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             ItemStack it = new ItemStack(m, Math.max(1, Math.min(n, m.getMaxStackSize())));
             org.bukkit.inventory.meta.ItemMeta meta = it.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName(Util.color(getConfig().getString("starter-gear.name", "&7&lStarter {item}").replace("{item}", Util.nice(m))));
+                meta.setDisplayName(Util.color(getConfig().getString("starter-gear.name", "{color}&lStarter {item}")
+                        .replace("{color}", color(tier)).replace("{item}", Util.nice(m))));
                 meta.setLore(List.of(Util.color("&8Can't be sold or auctioned")));
                 meta.getPersistentDataContainer().set(key, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
                 it.setItemMeta(meta);
@@ -481,8 +504,13 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             if (kitWait(id, "starter") != -1) fails.add("starter can be claimed twice");
             rememberBack(id, new Location(w, 1, 64, 1));
             List<ItemStack> gear = starterGear();
-            List<ItemStack> legend = starterGear(getConfig().getStringList("starter-gear.tiers.legend"));
-            if (legend.stream().noneMatch(i -> i.getType() == Material.DIAMOND_CHESTPLATE)) fails.add("legend respawn kit");
+            List<ItemStack> legend = starterGear(getConfig().getStringList("starter-gear.tiers.legend"), "legend");
+            if (legend.stream().noneMatch(i -> i.getType() == Material.IRON_CHESTPLATE)) fails.add("legend respawn kit");
+            for (String t : getConfig().getConfigurationSection("starter-gear.tiers").getKeys(false))
+                for (ItemStack it : starterGear(getConfig().getStringList("starter-gear.tiers." + t), t))
+                    if (it.getType().name().startsWith("DIAMOND") || it.getType().name().startsWith("NETHERITE")) fails.add(t + " kit has " + it.getType());
+            if (!legend.get(0).getItemMeta().getDisplayName().startsWith(org.bukkit.ChatColor.GOLD.toString() + org.bukkit.ChatColor.BOLD))
+                fails.add("legend kit colour " + legend.get(0).getItemMeta().getDisplayName());
             if (gear.size() < 9) fails.add("starter gear has " + gear.size() + " items");
             for (ItemStack it : gear) {
                 String n = org.bukkit.ChatColor.stripColor(it.getItemMeta().getDisplayName());

@@ -93,6 +93,7 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
         file = new File(getDataFolder(), "spawners.yml");
         loadTypes();
         load();
+        ask = new Ask(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand pc = getCommand("spawners");
@@ -101,6 +102,10 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
             pc.setTabCompleter(this);
         }
         Bukkit.getScheduler().runTaskTimer(this, this::save, 20 * 120, 20 * 120);
+        // fix spawners placed before (they showed no mob)
+        Bukkit.getScheduler().runTask(this, () -> {
+            for (org.bukkit.World w : Bukkit.getWorlds()) for (org.bukkit.Chunk c : w.getLoadedChunks()) showMobs(c);
+        });
     }
 
     @Override
@@ -148,6 +153,111 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
             types.put(id.toLowerCase(Locale.ROOT), new Type(id.toLowerCase(Locale.ROOT), c.getString("name", "&e&l" + id + " Spawner"), e, loot,
                     c.getInt("xp", 2), c.getLong("shard-price", 100)));
         }
+    }
+
+    private Ask ask;
+
+    // ------------------------------------------------------------------ /spawners edit (the Spawners page of /shards)
+
+    private void setType(String id, String key, Object v) {
+        getConfig().set("types." + id + "." + key, v);
+        saveConfig();
+        loadTypes();
+    }
+
+    private static long num(String t) {
+        try {
+            return Long.parseLong(t.trim().replace(",", ""));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    public Menu editor(Player p) {
+        Menu m = new Menu(4, "&8" + Util.small("Spawner editor"));
+        int slot = 10;
+        for (Type t : types.values()) {
+            if (slot % 9 == 8) slot += 2;
+            if (slot >= 26) break;
+            List<String> lore = new ArrayList<>(List.of("&8id: " + t.id(), "&7Price: &d✦ " + t.shardPrice() + " shards" + (t.shardPrice() <= 0 ? " &8(not sold)" : ""),
+                    "&7XP per drop: &f" + t.xp(), "&7Loot: &f" + String.join(", ", getConfig().getStringList("types." + t.id() + ".loot")), "", "&eClick to edit"));
+            m.set(slot++, Util.item(Material.SPAWNER, 1, t.name(), lore), e -> typeEditor(p, t.id()).open(p));
+        }
+        m.set(31, Util.item(Material.LIME_DYE, "&aAdd a spawner", "&7Type the mob, like zombie or iron_golem"), e ->
+                ask.ask(p, "the mob (like zombie)", t -> {
+                    String id = t.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+                    EntityType et;
+                    try {
+                        et = EntityType.valueOf(id.toUpperCase(Locale.ROOT));
+                    } catch (IllegalArgumentException ex) {
+                        say(p, "&cThere's no mob called " + t + ".");
+                        return;
+                    }
+                    if (!et.isAlive() || types.containsKey(id)) {
+                        say(p, "&cThat can't be a spawner, or it's already one.");
+                        return;
+                    }
+                    setType(id, "name", "&f&l" + capital(id) + " Spawner");
+                    setType(id, "shard-price", 100);
+                    setType(id, "xp", 3);
+                    setType(id, "loot", List.of("BONE:1-2"));
+                    typeEditor(p, id).open(p);
+                }, null));
+        m.set(27, Util.item(Material.ARROW, "&fBack to the shard shop"), e -> p.performCommand("shards edit"));
+        m.fill();
+        return m;
+    }
+
+    private static String capital(String id) {
+        StringBuilder b = new StringBuilder();
+        for (String w : id.split("_")) if (!w.isEmpty()) b.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
+        return b.toString().trim();
+    }
+
+    public Menu typeEditor(Player p, String id) {
+        Type t = types.get(id);
+        if (t == null) return editor(p);
+        Menu m = new Menu(3, "&8" + Util.small("Edit") + " " + org.bukkit.ChatColor.stripColor(Util.color(t.name())));
+        m.set(4, item(t, 1));
+        m.set(10, Util.item(Material.NAME_TAG, "&eName", "&7Now: " + t.name(), "&7& colours work"), e ->
+                ask.ask(p, "the new name", x -> setType(id, "name", x.trim()), () -> typeEditor(p, id).open(p)));
+        m.set(12, Util.item(Material.AMETHYST_SHARD, "&ePrice in /shards", "&7Now: &d✦ " + t.shardPrice(), "&70 = not sold"), e ->
+                ask.ask(p, "the price in shards", x -> {
+                    long v = num(x);
+                    if (v < 0) say(p, "&cThat isn't a number.");
+                    else setType(id, "shard-price", v);
+                }, () -> typeEditor(p, id).open(p)));
+        m.set(14, Util.item(Material.EXPERIENCE_BOTTLE, "&eXP per drop", "&7Now: &f" + t.xp()), e ->
+                ask.ask(p, "the XP per drop", x -> {
+                    long v = num(x);
+                    if (v < 0) say(p, "&cThat isn't a number.");
+                    else setType(id, "xp", v);
+                }, () -> typeEditor(p, id).open(p)));
+        List<String> loot = getConfig().getStringList("types." + id + ".loot");
+        m.set(16, Util.item(Material.CHEST, "&eLoot", "&7Now: &f" + String.join(", ", loot), "&7Type it like: &fBONE:1-3, ARROW:0-2"), e ->
+                ask.ask(p, "the loot (like BONE:1-3, ARROW:0-2)", x -> {
+                    List<String> l = new ArrayList<>();
+                    for (String part : x.split(",")) {
+                        String q = part.trim().toUpperCase(Locale.ROOT);
+                        Material mat = Util.material(q.split(":")[0]);
+                        if (mat == null || !q.matches("[A-Z0-9_]+(:\\d+(-\\d+)?)?")) {
+                            say(p, "&c" + part.trim() + " isn't an item like BONE:1-3.");
+                            return;
+                        }
+                        l.add(q);
+                    }
+                    if (!l.isEmpty()) setType(id, "loot", l);
+                }, () -> typeEditor(p, id).open(p)));
+        m.set(18, Util.item(Material.ARROW, "&fBack"), e -> editor(p).open(p));
+        m.set(26, Util.item(Material.BARRIER, "&cDelete this spawner type", "&7Shift-click. Placed ones stop making loot."), e -> {
+            if (!e.isShiftClick()) return;
+            getConfig().set("types." + id, null);
+            saveConfig();
+            loadTypes();
+            editor(p).open(p);
+        });
+        m.fill();
+        return m;
     }
 
     public Map<String, Type> types() {
@@ -215,6 +325,31 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
         return s;
     }
 
+    /** Makes the spinning mob show inside the cage (spawners placed empty look invisible). */
+    public void showMob(Block b, Type t) {
+        if (b.getType() != Material.SPAWNER || t == null) return;
+        BlockState st = b.getState();
+        if (st instanceof CreatureSpawner cs && cs.getSpawnedType() != t.entity()) {
+            cs.setSpawnedType(t.entity());
+            cs.update(true, false);
+        }
+    }
+
+    private void showMobs(org.bukkit.Chunk c) {
+        String pre = c.getWorld().getName() + ";";
+        for (Spawner s : spawners.values()) {
+            if (!s.where.startsWith(pre)) continue;
+            String[] p = s.where.split(";");
+            int x = Integer.parseInt(p[1]), z = Integer.parseInt(p[3]);
+            if (x >> 4 == c.getX() && z >> 4 == c.getZ()) showMob(c.getWorld().getBlockAt(x, Integer.parseInt(p[2]), z), types.get(s.type));
+        }
+    }
+
+    @EventHandler
+    public void chunkLoad(org.bukkit.event.world.ChunkLoadEvent e) {
+        showMobs(e.getChunk());
+    }
+
     private long period() {
         return Math.max(5, getConfig().getLong("seconds-per-drop", 60)) * 1000L;
     }
@@ -248,7 +383,10 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
     public void place(BlockPlaceEvent e) {
         Type t = typeOf(e.getItemInHand());
         if (t == null) return;
-        register(e.getBlockPlaced(), t, e.getPlayer().getUniqueId(), 1);
+        Block placed = e.getBlockPlaced();
+        register(placed, t, e.getPlayer().getUniqueId(), 1);
+        // Minecraft drops a spawner item's mob for players who aren't op, after this event: set it again a tick later
+        Bukkit.getScheduler().runTask(this, () -> showMob(placed, t));
         say(e.getPlayer(), "&7Placed a " + t.name() + "&7. It fills with loot: right-click it to open.");
     }
 
@@ -488,6 +626,10 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
         String sub = a.length > 0 ? a[0].toLowerCase(Locale.ROOT) : "";
         boolean admin = s.hasPermission("darkspawners.admin");
         switch (sub) {
+            case "edit", "editor" -> {
+                if (!admin) return say(s, "&cOnly ops can edit spawners.");
+                if (s instanceof Player p) editor(p).open(p);
+            }
             case "give" -> {
                 if (!admin) return true;
                 if (a.length < 3) return say(s, "&7Usage: /spawners give <player> <" + String.join("|", types.keySet()) + "> [amount]");
@@ -532,6 +674,12 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
             b.setType(Material.SPAWNER);
             Spawner sp = register(b, sk, owner, 2);
             if (!(b.getState() instanceof CreatureSpawner cs) || cs.getSpawnedType() != EntityType.SKELETON) fails.add("block not a skeleton spawner");
+            if (b.getState() instanceof CreatureSpawner cs2) {
+                cs2.setSpawnedType(EntityType.PIG); // as if Minecraft dropped the item's mob
+                cs2.update(true, false);
+                showMob(b, types.get("skeleton"));
+                if (!(b.getState() instanceof CreatureSpawner cs3) || cs3.getSpawnedType() != EntityType.SKELETON) fails.add("mob not shown again");
+            }
             sp.last = System.currentTimeMillis() - period() * 10;
             generate(sp);
             if (sp.items.getOrDefault(Material.BONE, 0L) < 20 || sp.xp <= 0) fails.add("loot " + sp.items + " xp " + sp.xp);
@@ -563,7 +711,7 @@ public class DarkSpawners extends JavaPlugin implements Listener, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String alias, String[] a) {
         List<String> out = new ArrayList<>();
-        if (a.length == 1 && s.hasPermission("darkspawners.admin")) out.addAll(List.of("give", "reload"));
+        if (a.length == 1 && s.hasPermission("darkspawners.admin")) out.addAll(List.of("edit", "give", "reload"));
         else if (a.length == 2 && a[0].equalsIgnoreCase("give")) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         else if (a.length == 3 && a[0].equalsIgnoreCase("give")) out.addAll(types.keySet());
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase(Locale.ROOT);

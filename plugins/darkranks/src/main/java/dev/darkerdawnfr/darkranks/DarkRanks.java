@@ -132,6 +132,19 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             getConfig().set("config-version", 6);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 7) {
+            // respawn kits without diamond
+            String[][] kit = {{"vip", "&fRespawn kit: &airon sword"}, {"vip+", "&fRespawn kit: &2gold pieces, iron tools"}, {"mvp", "&fRespawn kit: &biron and gold armour"}, {"mvp+", "&fRespawn kit: &3more iron, a shield"}, {"legend", "&fRespawn kit: &6iron armour, golden apple"}};
+            for (String[] x : kit) {
+                if (!getConfig().isSet("ranks." + x[0])) continue;
+                List<String> perks = new ArrayList<>(getConfig().getStringList("ranks." + x[0] + ".perks"));
+                perks.removeIf(pk -> pk.toLowerCase(Locale.ROOT).contains("respawn kit"));
+                perks.add(x[1]);
+                getConfig().set("ranks." + x[0] + ".perks", perks);
+            }
+            getConfig().set("config-version", 7);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();

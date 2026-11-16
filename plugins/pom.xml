@@ -35,6 +35,8 @@
     <module>darkchat</module>
     <module>darkessentials</module>
     <module>darkteams</module>
+    <module>darkhatesgriefers</module>
+    <module>darkafkzone</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

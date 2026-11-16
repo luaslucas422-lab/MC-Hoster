@@ -24,6 +24,8 @@ public class Menu implements InventoryHolder {
     private final Map<Integer, Consumer<InventoryClickEvent>> actions = new HashMap<>();
     public boolean editable;
     public Consumer<Player> onClose;
+    /** Clicks in the player's own inventory below the menu (the crate editor adds loot this way). */
+    public Consumer<InventoryClickEvent> onBottomClick;
 
     public Menu(int rows, String title) {
         inv = Bukkit.createInventory(this, rows * 9, Util.color(title));
@@ -70,6 +72,10 @@ public class Menu implements InventoryHolder {
             if (!(e.getInventory().getHolder() instanceof Menu m)) return;
             if (m.editable) return;
             e.setCancelled(true);
+            if (e.getClickedInventory() != null && e.getClickedInventory() != e.getInventory() && m.onBottomClick != null) {
+                m.onBottomClick.accept(e);
+                return;
+            }
             if (e.getClickedInventory() == null || e.getClickedInventory() != e.getInventory()) return;
             Consumer<InventoryClickEvent> a = m.actions.get(e.getRawSlot());
             if (a != null) a.accept(e);

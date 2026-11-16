@@ -54,7 +54,12 @@ import java.util.concurrent.ThreadLocalRandom;
  * Keys come from the shard shop's Keys page and from the Key All every hour (shown on the scoreboard).
  */
 public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
-    public record Reward(String name, Material icon, Material item, int amount, double money, long shards, String command, double weight) {}
+    public record Reward(String name, Material icon, Material item, int amount, double money, long shards, String command, double weight,
+                         ItemStack stack, int index) {
+        public Reward(String name, Material icon, Material item, int amount, double money, long shards, String command, double weight) {
+            this(name, icon, item, amount, money, shards, command, weight, null, -1);
+        }
+    }
 
     public record Crate(String id, String name, String keyName, Material keyItem, long shardPrice, List<Reward> rewards, double total) {}
 
@@ -65,6 +70,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
     private YamlConfiguration data;
     private File dataFile;
     private long nextKeyAll;
+    private Ask ask;
 
     @Override
     public void onEnable() {
@@ -77,6 +83,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             if (i > 0) placed.put(s.substring(0, i), s.substring(i + 1));
         }
         load();
+        ask = new Ask(this);
         getServer().getPluginManager().registerEvents(new Menu.Events(), this);
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand pc = getCommand("crate");
@@ -130,11 +137,17 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             if (c == null) continue;
             List<Reward> rs = new ArrayList<>();
             double total = 0;
+            int index = -1;
             for (Map<?, ?> m : c.getMapList("rewards")) {
+                index++;
                 String item = str(m, "item");
                 Material mat = null;
                 int amount = 1;
-                if (!item.isEmpty()) {
+                ItemStack stack = m.get("stack") instanceof ItemStack is && is.getType() != Material.AIR ? is.clone() : null;
+                if (stack != null) {
+                    mat = stack.getType();
+                    amount = stack.getAmount();
+                } else if (!item.isEmpty()) {
                     String[] p = item.split(":");
                     mat = Util.material(p[0]);
                     if (mat == null || !mat.isItem()) continue;
@@ -146,10 +159,12 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
                 Material icon = Util.material(str(m, "icon"));
                 if (icon == null) icon = mat != null ? mat : money > 0 ? Material.SUNFLOWER : shards > 0 ? Material.AMETHYST_SHARD : Material.PAPER;
                 String name = str(m, "name");
+                if (name.isEmpty() && stack != null && stack.hasItemMeta() && stack.getItemMeta().hasDisplayName())
+                    name = stack.getItemMeta().getDisplayName() + (amount > 1 ? " &7x" + amount : "");
                 if (name.isEmpty())
                     name = mat != null ? "&f" + amount + "x " + Util.nice(mat) : money > 0 ? "&a" + Util.money(money) : shards > 0 ? "&d✦ " + shards + " shards" : "&fA surprise";
                 double weight = Math.max(0, num(m, "weight") == 0 ? 1 : num(m, "weight"));
-                rs.add(new Reward(name, icon, mat, amount, money, shards, command, weight));
+                rs.add(new Reward(name, icon, mat, amount, money, shards, command, weight, stack, index));
                 total += weight;
             }
             Material key = Util.material(c.getString("key-item", "TRIPWIRE_HOOK"));
@@ -178,6 +193,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
     }
 
     public Reward pick(Crate c) {
+        if (c.rewards().isEmpty() || c.total() <= 0) return null;
         double r = ThreadLocalRandom.current().nextDouble(c.total());
         for (Reward x : c.rewards()) {
             r -= x.weight();
@@ -194,13 +210,34 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         List<String> lore = new ArrayList<>();
         if (withChance) lore.add("&7Chance: &f" + String.format(Locale.ROOT, "%.1f", chance(c, r)) + "%");
         int amount = r.item() != null ? Math.max(1, Math.min(r.amount(), r.icon().getMaxStackSize())) : 1;
+        if (r.stack() != null) {
+            ItemStack it = r.stack().clone();
+            it.setAmount(amount);
+            ItemMeta meta = it.getItemMeta();
+            if (meta != null) {
+                List<String> l = meta.hasLore() && meta.getLore() != null ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                for (String x : lore) l.add(Util.color(x));
+                meta.setLore(l);
+                it.setItemMeta(meta);
+            }
+            return it;
+        }
         return Util.item(r.icon(), amount, r.name(), lore);
     }
 
     /** Gives a reward. Money and shards work for offline players too; items need them online. */
     public void give(UUID who, Crate c, Reward r) {
         Player p = Bukkit.getPlayer(who);
-        if (r.item() != null && p != null) {
+        if (r.stack() != null && p != null) {
+            int left = r.amount();
+            while (left > 0) {
+                ItemStack it = r.stack().clone();
+                int n = Math.min(left, it.getMaxStackSize());
+                it.setAmount(n);
+                for (ItemStack rest : p.getInventory().addItem(it).values()) p.getWorld().dropItemNaturally(p.getLocation(), rest);
+                left -= n;
+            }
+        } else if (r.item() != null && p != null) {
             int left = r.amount();
             while (left > 0) {
                 int n = Math.min(left, r.item().getMaxStackSize());
@@ -239,7 +276,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
     // ------------------------------------------------------------------ keys
 
     public ItemStack key(Crate c, int amount) {
-        ItemStack it = Util.item(c.keyItem(), amount, c.keyName(), List.of("&7Right-click a " + c.name() + " &7to open it.", "&7Crates are at the hubs."));
+        ItemStack it = Util.item(c.keyItem(), amount, c.keyName(), List.of("&eRight-click to use it&7: it goes to your", c.name() + " &7(sneak: use them all).", "&7Crates are at the hubs."));
         ItemMeta m = it.getItemMeta();
         m.getPersistentDataContainer().set(keyTag, PersistentDataType.STRING, c.id());
         try {
@@ -255,21 +292,67 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         return it.getItemMeta().getPersistentDataContainer().get(keyTag, PersistentDataType.STRING);
     }
 
+    /** Keys this player used (clicked) for this crate: the ones a crate can open with. */
     public int keys(Player p, Crate c) {
+        return stored(p.getUniqueId(), c.id());
+    }
+
+    public int stored(UUID id, String crate) {
+        return Math.max(0, data.getInt("keys." + id + "." + crate, 0));
+    }
+
+    public void addStored(UUID id, String crate, int n) {
+        int v = Math.max(0, stored(id, crate) + n);
+        data.set("keys." + id + "." + crate, v == 0 ? null : v);
+        saveData();
+    }
+
+    /** Key items still in the inventory (not used yet). */
+    public int unused(Player p, Crate c) {
         int n = 0;
         for (ItemStack it : p.getInventory().getContents()) if (c.id().equals(keyId(it))) n += it.getAmount();
         return n;
     }
 
     private boolean takeKey(Player p, Crate c) {
-        ItemStack[] inv = p.getInventory().getContents();
-        for (int i = 0; i < inv.length; i++)
-            if (c.id().equals(keyId(inv[i]))) {
-                if (inv[i].getAmount() > 1) inv[i].setAmount(inv[i].getAmount() - 1);
-                else p.getInventory().setItem(i, null);
-                return true;
-            }
-        return false;
+        if (stored(p.getUniqueId(), c.id()) <= 0) return false;
+        addStored(p.getUniqueId(), c.id(), -1);
+        return true;
+    }
+
+    /** Uses the key in that hand: it disappears and counts for its crate. all = the whole stack. Returns how many. */
+    public int redeem(Player p, EquipmentSlot hand, boolean all) {
+        ItemStack it = hand == EquipmentSlot.OFF_HAND ? p.getInventory().getItemInOffHand() : p.getInventory().getItemInMainHand();
+        String id = keyId(it);
+        if (id == null) return 0;
+        Crate c = crates.get(id);
+        if (c == null) {
+            say(p, "&cThis key's crate doesn't exist anymore.");
+            return 0;
+        }
+        int n = all ? it.getAmount() : 1;
+        if (it.getAmount() > n) it.setAmount(it.getAmount() - n);
+        else if (hand == EquipmentSlot.OFF_HAND) p.getInventory().setItemInOffHand(null);
+        else p.getInventory().setItemInMainHand(null);
+        addStored(p.getUniqueId(), id, n);
+        say(p, "&a+" + n + " " + c.keyName() + "&a! &7You have &f" + stored(p.getUniqueId(), id) + " &7for the " + c.name() + "&7.");
+        p.playSound(p.getLocation(), Sound.BLOCK_TRIPWIRE_CLICK_ON, 1f, 1.4f);
+        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.6f);
+        return n;
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void useKey(PlayerInteractEvent e) {
+        if (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (keyId(e.getItem()) == null) return;
+        e.setCancelled(true); // a key is never placed as a tripwire hook
+        if (e.getClickedBlock() != null && crateAt(e.getClickedBlock()) != null) return; // the crate click does it
+        redeem(e.getPlayer(), e.getHand() == null ? EquipmentSlot.HAND : e.getHand(), e.getPlayer().isSneaking());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void placeKey(org.bukkit.event.block.BlockPlaceEvent e) {
+        if (keyId(e.getItemInHand()) != null) e.setCancelled(true);
     }
 
     public void giveKeys(Player p, Crate c, int n) {
@@ -381,6 +464,8 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         if (c == null) return;
         e.setCancelled(true);
         Player p = e.getPlayer();
+        if (e.getAction() == Action.RIGHT_CLICK_BLOCK && keyId(e.getItem()) != null)
+            redeem(p, e.getHand() == null ? EquipmentSlot.HAND : e.getHand(), p.isSneaking());
         if (e.getAction() == Action.LEFT_CLICK_BLOCK) preview(c, null).open(p);
         else if (e.getAction() == Action.RIGHT_CLICK_BLOCK) confirm(p, c, e.getClickedBlock().getLocation()).open(p);
     }
@@ -409,10 +494,14 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
     }
 
     public Menu confirm(Player p, Crate c, Location at) {
-        int have = keys(p, c);
+        int have = keys(p, c), unused = unused(p, c);
         Menu m = new Menu(3, "&8" + Util.small("Open " + org.bukkit.ChatColor.stripColor(Util.color(c.name())) + "?"));
-        m.set(13, Util.item(Material.CHEST, c.name(), "&7You have &f" + have + " &7" + org.bukkit.ChatColor.stripColor(Util.color(c.keyName())) + (have == 1 ? "" : "s")));
-        if (have > 0)
+        List<String> info = new ArrayList<>(List.of("&7You have &f" + have + " &7" + org.bukkit.ChatColor.stripColor(Util.color(c.keyName())) + (have == 1 ? "" : "s")));
+        if (unused > 0) info.addAll(List.of("", "&e" + unused + " more in your inventory:", "&eright-click them to use them"));
+        m.set(13, Util.item(Material.CHEST, 1, c.name(), info));
+        if (c.rewards().isEmpty())
+            m.set(11, Util.item(Material.GRAY_STAINED_GLASS_PANE, "&7This crate has no loot yet"));
+        else if (have > 0)
             m.set(11, Util.item(Material.LIME_STAINED_GLASS_PANE, "&a&lUse 1 key", "&7Roll for loot"), e -> {
                 if (rolling.containsKey(p.getUniqueId())) return;
                 if (!takeKey(p, c)) {
@@ -423,7 +512,8 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
                 roll(p, c, at);
             });
         else
-            m.set(11, Util.item(Material.GRAY_STAINED_GLASS_PANE, "&7You have no keys", "&7Get them in &f/shards &7(Keys page)", "&7or from the &bKey All &7every hour."));
+            m.set(11, Util.item(Material.GRAY_STAINED_GLASS_PANE, "&7You have no keys", "&7Get them in &f/shards &7(Keys page)", "&7or from the &bKey All &7every hour.",
+                    "&7Right-click a key to use it.", unused > 0 ? "&eYou have " + unused + " in your inventory!" : ""));
         m.set(15, Util.item(Material.RED_STAINED_GLASS_PANE, "&c&lCancel"), e -> p.closeInventory());
         m.set(22, Util.item(Material.BOOK, "&fSee the loot"), e -> preview(c, () -> confirm(p, c, at).open(p)).open(p));
         m.fill();
@@ -442,6 +532,11 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
 
     private void roll(Player p, Crate c, Location at) {
         Reward chosen = pick(c);
+        if (chosen == null) {
+            addStored(p.getUniqueId(), c.id(), 1); // give the key back
+            p.closeInventory();
+            return;
+        }
         List<Reward> seq = sequence(c, chosen);
         Menu m = new Menu(3, "&8" + Util.small("Rolling..."));
         for (int i = 0; i < 9; i++) {
@@ -595,6 +690,222 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         return m;
     }
 
+    // ------------------------------------------------------------------ editing crates (/crate add, /crate edit)
+
+    public static String crateId(String name) {
+        return org.bukkit.ChatColor.stripColor(Util.color(name)).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "");
+    }
+
+    /** Makes a new crate with no loot yet. Returns its id, or null with the reason in why[0]. */
+    public String addCrate(String name, String[] why) {
+        String id = crateId(name);
+        if (id.isEmpty()) {
+            why[0] = "Use letters or numbers in the name.";
+            return null;
+        }
+        if (crates.containsKey(id)) {
+            why[0] = "There's already a crate called " + id + ".";
+            return null;
+        }
+        String plain = org.bukkit.ChatColor.stripColor(Util.color(name)).trim();
+        String shown = name.contains("&") ? name : "&e&l" + plain + (plain.toLowerCase(Locale.ROOT).endsWith("crate") ? "" : " Crate");
+        String base = "crates." + id + ".";
+        getConfig().set(base + "name", shown);
+        getConfig().set(base + "key-name", "&e" + plain.replaceAll("(?i)\\s*crate$", "") + " Key");
+        getConfig().set(base + "key-item", "TRIPWIRE_HOOK");
+        getConfig().set(base + "shard-price", 50);
+        getConfig().set(base + "rewards", new ArrayList<>());
+        saveConfig();
+        load();
+        return id;
+    }
+
+    public void deleteCrate(String id) {
+        getConfig().set("crates." + id, null);
+        getConfig().set("key-all.weights." + id, null);
+        saveConfig();
+        placed.values().removeIf(v -> v.equals(id));
+        saveData();
+        load();
+        removeHolograms();
+        allHolograms();
+    }
+
+    private List<Map<String, Object>> rewardMaps(String id) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<?, ?> m : getConfig().getMapList("crates." + id + ".rewards")) {
+            Map<String, Object> copy = new LinkedHashMap<>();
+            m.forEach((k, v) -> copy.put(String.valueOf(k), v));
+            out.add(copy);
+        }
+        return out;
+    }
+
+    private void saveRewards(String id, List<Map<String, Object>> list) {
+        getConfig().set("crates." + id + ".rewards", list);
+        saveConfig();
+        load();
+    }
+
+    /** Adds an item as loot: plain items are written as "NAME:amount", named/enchanted ones are kept whole. */
+    public void addItemReward(String id, ItemStack it, double weight) {
+        List<Map<String, Object>> l = rewardMaps(id);
+        Map<String, Object> m = new LinkedHashMap<>();
+        ItemStack plain = new ItemStack(it.getType(), it.getAmount());
+        if (it.isSimilar(plain)) m.put("item", it.getType().name() + ":" + it.getAmount());
+        else m.put("stack", it.clone());
+        m.put("weight", weight);
+        l.add(m);
+        saveRewards(id, l);
+    }
+
+    public void addReward(String id, String type, double amount, double weight) {
+        List<Map<String, Object>> l = rewardMaps(id);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put(type, type.equals("shards") ? (Object) (long) amount : (Object) amount);
+        m.put("weight", weight);
+        l.add(m);
+        saveRewards(id, l);
+    }
+
+    public void setRewardWeight(String id, int index, double weight) {
+        List<Map<String, Object>> l = rewardMaps(id);
+        if (index < 0 || index >= l.size()) return;
+        l.get(index).put("weight", weight);
+        saveRewards(id, l);
+    }
+
+    public void removeReward(String id, int index) {
+        List<Map<String, Object>> l = rewardMaps(id);
+        if (index < 0 || index >= l.size()) return;
+        l.remove(index);
+        saveRewards(id, l);
+    }
+
+    private static double number(String t) {
+        try {
+            return Util.parseMoney(t.trim());
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    public Menu editor(Player p) {
+        int rows = Math.min(6, Math.max(3, (crates.size() + 8) / 9 + 2));
+        Menu m = new Menu(rows, "&8" + Util.small("Crate editor"));
+        int slot = 10;
+        for (Crate c : crates.values()) {
+            while (slot % 9 == 0 || slot % 9 == 8) slot++;
+            if (slot >= rows * 9 - 9) break;
+            m.set(slot++, Util.item(Material.CHEST, 1, c.name(), List.of("&8id: " + c.id(), "&7Loot: &f" + c.rewards().size(),
+                    "&7Key price: &d✦ " + c.shardPrice() + " shards", "", "&eClick to edit")), e -> crateEditor(p, c.id()).open(p));
+        }
+        m.set(rows * 9 - 5, Util.item(Material.LIME_DYE, "&a&lAdd a crate", "&7Or: /crate add <name>"), e ->
+                ask.ask(p, "the new crate's name", t -> {
+                    String[] why = {""};
+                    String id = addCrate(t.trim(), why);
+                    if (id == null) say(p, "&c" + why[0]);
+                    else {
+                        say(p, "&aMade the " + crates.get(id).name() + "&a. Add loot by clicking items in your inventory.");
+                        crateEditor(p, id).open(p);
+                    }
+                }, null));
+        m.fill();
+        return m;
+    }
+
+    public Menu crateEditor(Player p, String id) {
+        Crate c = crates.get(id);
+        if (c == null) return editor(p);
+        Menu m = new Menu(6, "&8" + Util.small("Edit") + " " + org.bukkit.ChatColor.stripColor(Util.color(c.name())));
+        int slot = 0;
+        for (Reward rw : c.rewards()) {
+            if (slot >= 45) break;
+            ItemStack show = icon(c, rw, true);
+            ItemMeta meta = show.getItemMeta();
+            if (meta != null) {
+                List<String> l = meta.hasLore() && meta.getLore() != null ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                l.add(Util.color("&7Weight: &f" + (rw.weight() == Math.floor(rw.weight()) ? String.valueOf((long) rw.weight()) : String.valueOf(rw.weight()))));
+                l.add("");
+                l.add(Util.color("&eLeft-click: change the chance"));
+                l.add(Util.color("&cShift + right-click: remove"));
+                meta.setLore(l);
+                show.setItemMeta(meta);
+            }
+            int idx = rw.index();
+            m.set(slot++, show, e -> {
+                if (e.isShiftClick() && e.isRightClick()) {
+                    removeReward(id, idx);
+                    crateEditor(p, id).open(p);
+                } else if (e.isLeftClick())
+                    ask.ask(p, "the weight (bigger = more often, now " + rw.weight() + ")", t -> {
+                        double w = number(t);
+                        if (w <= 0) say(p, "&cThat isn't a number above 0.");
+                        else setRewardWeight(id, idx, w);
+                    }, () -> crateEditor(p, id).open(p));
+            });
+        }
+        m.onBottomClick = e -> {
+            ItemStack it = e.getCurrentItem();
+            if (it == null || it.getType() == Material.AIR) return;
+            addItemReward(id, it, 10);
+            say(p, "&aAdded " + (it.hasItemMeta() && it.getItemMeta().hasDisplayName() ? it.getItemMeta().getDisplayName() : it.getAmount() + "x " + Util.nice(it.getType()))
+                    + " &ato the loot (weight 10, left-click it to change). You keep your item.");
+            crateEditor(p, id).open(p);
+        };
+        m.set(45, Util.item(Material.ARROW, "&fBack"), e -> editor(p).open(p));
+        m.set(46, Util.item(Material.NAME_TAG, "&eRename the crate", "&7Now: " + c.name(), "&7& colours work"), e ->
+                ask.ask(p, "the crate's new name", t -> setCfg(id, "name", t.trim()), () -> crateEditor(p, id).open(p)));
+        m.set(47, Util.item(c.keyItem(), "&eRename the key", "&7Now: " + c.keyName()), e ->
+                ask.ask(p, "the key's new name", t -> setCfg(id, "key-name", t.trim()), () -> crateEditor(p, id).open(p)));
+        m.set(48, Util.item(Material.AMETHYST_SHARD, "&eKey price in /shards", "&7Now: &d✦ " + c.shardPrice(), "&70 = not sold"), e ->
+                ask.ask(p, "the price in shards", t -> {
+                    double v = number(t);
+                    if (v < 0) say(p, "&cThat isn't a number.");
+                    else setCfg(id, "shard-price", (long) v);
+                }, () -> crateEditor(p, id).open(p)));
+        m.set(49, Util.item(Material.BOOK, "&fAdd loot", "&7Click any item in &fyour inventory", "&7to add it (name, enchants and all).",
+                "&7Or use the buttons for money / shards."));
+        m.set(50, Util.item(Material.SUNFLOWER, "&aAdd money", "&7Needs Dark Shop"), e ->
+                ask.ask(p, "the amount of money (like 5000 or 2.5k)", t -> {
+                    double v = number(t);
+                    if (v <= 0) say(p, "&cThat isn't an amount.");
+                    else addReward(id, "money", v, 10);
+                }, () -> crateEditor(p, id).open(p)));
+        m.set(51, Util.item(Material.AMETHYST_CLUSTER, "&dAdd shards", "&7Needs Dark Shards"), e ->
+                ask.ask(p, "the number of shards", t -> {
+                    double v = number(t);
+                    if (v <= 0) say(p, "&cThat isn't a number.");
+                    else addReward(id, "shards", Math.round(v), 10);
+                }, () -> crateEditor(p, id).open(p)));
+        double kw = getConfig().getDouble("key-all.weights." + id, 0);
+        m.set(52, Util.item(Material.CLOCK, "&bKey All weight", "&7Now: &f" + kw + " &8(0 = never in the Key All)"), e ->
+                ask.ask(p, "the Key All weight", t -> {
+                    double v = number(t);
+                    if (v < 0) say(p, "&cThat isn't a number.");
+                    else {
+                        getConfig().set("key-all.weights." + id, v);
+                        saveConfig();
+                    }
+                }, () -> crateEditor(p, id).open(p)));
+        m.set(53, Util.item(Material.BARRIER, "&cDelete this crate", "&7Shift-click to delete it for good"), e -> {
+            if (!e.isShiftClick()) return;
+            deleteCrate(id);
+            say(p, "&7Crate deleted.");
+            editor(p).open(p);
+        });
+        for (int i = 45; i < 54; i++) if (m.getInventory().getItem(i) == null) m.set(i, Util.glass());
+        return m;
+    }
+
+    private void setCfg(String id, String key, Object value) {
+        getConfig().set("crates." + id + "." + key, value);
+        saveConfig();
+        load();
+        removeHolograms();
+        allHolograms();
+    }
+
     // ------------------------------------------------------------------ commands
 
     @Override
@@ -619,6 +930,29 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
                 if (crateAt(b) != null) removeCrate(b);
                 setCrate(b, c.id());
                 say(p, "&aThis " + Util.nice(b.getType()) + " is now a " + c.name() + "&a.");
+            }
+            case "add", "create" -> {
+                if (!admin) return say(s, "&cOnly ops can make crates.");
+                if (a.length < 2) return say(s, "&7Usage: /crate add <name>");
+                String[] why = {""};
+                String id = addCrate(String.join(" ", java.util.Arrays.copyOfRange(a, 1, a.length)), why);
+                if (id == null) return say(s, "&c" + why[0]);
+                say(s, "&aMade the " + crates.get(id).name() + " &a(id " + id + "). Add its loot in &f/crate edit " + id
+                        + "&a, then place it with &f/crate look set " + id + "&a.");
+                if (s instanceof Player p) crateEditor(p, id).open(p);
+            }
+            case "edit", "editor" -> {
+                if (!admin) return say(s, "&cOnly ops can edit crates.");
+                if (!(s instanceof Player p)) return true;
+                Crate c = a.length > 1 ? crates.get(a[1].toLowerCase(Locale.ROOT)) : null;
+                (c == null ? editor(p) : crateEditor(p, c.id())).open(p);
+            }
+            case "delete", "remove" -> {
+                if (!admin) return true;
+                Crate c = a.length > 1 ? crates.get(a[1].toLowerCase(Locale.ROOT)) : null;
+                if (c == null) return say(s, "&7Usage: /crate delete <" + String.join("|", crates.keySet()) + ">");
+                deleteCrate(c.id());
+                say(s, "&7Deleted " + c.name() + "&7.");
             }
             case "give" -> {
                 if (!admin) return true;
@@ -665,7 +999,12 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             default -> {
                 say(s, "&fCrates: " + String.join("&7, ", crates.values().stream().map(Crate::name).toList()));
                 say(s, "&7Key All in &b" + keyAllIn() + "&7. Buy keys in &f/shards&7 (Keys page). Crates are at the hubs.");
-                if (admin) say(s, "&8/crate look set <crate> | look remove | give <player> <crate> [n] | giveall <crate> | keyall | preview <crate> | reload");
+                if (s instanceof Player p) {
+                    List<String> mine = new ArrayList<>();
+                    for (Crate c : crates.values()) if (keys(p, c) > 0) mine.add(c.keyName() + " &7x" + keys(p, c));
+                    say(s, "&7Your keys: " + (mine.isEmpty() ? "&fnone &8(right-click a key item to use it)" : String.join("&7, ", mine)));
+                }
+                if (admin) say(s, "&8/crate add <name> | edit [crate] | delete <crate> | look set <crate> | look remove | give <player> <crate> [n] | giveall <crate> | keyall | preview <crate> | reload");
             }
         }
         return true;
@@ -703,6 +1042,43 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             long holos = w.getNearbyEntities(b.getLocation(), 3, 3, 3).stream().filter(e -> e.getScoreboardTags().contains(HOLO)).count();
             if (holos < 1) fails.add("no hologram");
             if (!removeCrate(b) || crateAt(b) != null) fails.add("crate not removed");
+            // keys are used (clicked) and then counted for their crate
+            UUID kid = UUID.nameUUIDFromBytes("darkcrates-keys".getBytes());
+            addStored(kid, "rare", 3);
+            addStored(kid, "rare", -1);
+            if (stored(kid, "rare") != 2 || stored(kid, "epic") != 0) fails.add("stored keys " + stored(kid, "rare"));
+            addStored(kid, "rare", -5);
+            if (stored(kid, "rare") != 0) fails.add("keys below 0");
+            // /crate add, loot added in the editor (a named item is kept whole), then delete
+            String[] why = {""};
+            String nid = addCrate("Test Mythic", why);
+            if (!"testmythic".equals(nid) || !crates.get(nid).name().contains("Test Mythic Crate")) fails.add("crate add " + nid + " " + why[0]);
+            if (addCrate("Test Mythic", why) != null) fails.add("same crate twice");
+            if (nid != null) {
+                if (pick(crates.get(nid)) != null) fails.add("empty crate gave loot");
+                ItemStack named = new ItemStack(Material.DIAMOND_SWORD);
+                ItemMeta nm = named.getItemMeta();
+                nm.setDisplayName("Test Blade");
+                named.setItemMeta(nm);
+                addItemReward(nid, named, 5);
+                addItemReward(nid, new ItemStack(Material.COBBLESTONE, 32), 20);
+                addReward(nid, "money", 1500, 10);
+                reloadConfig();
+                load();
+                Crate t = crates.get(nid);
+                if (t == null || t.rewards().size() != 3) fails.add("editor loot not saved");
+                else {
+                    Reward blade = t.rewards().get(0);
+                    if (blade.stack() == null || !"Test Blade".equals(blade.stack().getItemMeta().getDisplayName())) fails.add("named item not kept");
+                    if (t.rewards().get(1).item() != Material.COBBLESTONE || t.rewards().get(1).amount() != 32) fails.add("plain item");
+                    setRewardWeight(nid, 1, 99);
+                    removeReward(nid, 0);
+                    t = crates.get(nid);
+                    if (t.rewards().size() != 2 || t.rewards().get(0).weight() != 99) fails.add("change / remove loot");
+                }
+                deleteCrate(nid);
+                if (crates.containsKey(nid) || getConfig().isSet("crates." + nid)) fails.add("crate delete");
+            }
             // money and shards rewards work for offline players
             Object before = call("DarkShards", "shards", fake);
             give(fake, common, new Reward("t", Material.PAPER, null, 1, 0, 7, "", 1));
@@ -726,11 +1102,12 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         boolean admin = s.hasPermission("darkcrates.admin");
         if (a.length == 1) {
             out.addAll(List.of("preview", "keys"));
-            if (admin) out.addAll(List.of("look", "give", "giveall", "keyall", "reload"));
+            if (admin) out.addAll(List.of("add", "edit", "delete", "look", "give", "giveall", "keyall", "reload"));
         } else if (a.length == 2 && a[0].equalsIgnoreCase("look")) out.addAll(List.of("set", "remove"));
         else if (a.length == 2 && a[0].equalsIgnoreCase("give")) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
         else if ((a.length == 3 && (a[0].equalsIgnoreCase("look") || a[0].equalsIgnoreCase("give")))
-                || (a.length == 2 && (a[0].equalsIgnoreCase("preview") || a[0].equalsIgnoreCase("giveall")))) out.addAll(crates.keySet());
+                || (a.length == 2 && (a[0].equalsIgnoreCase("preview") || a[0].equalsIgnoreCase("giveall") || a[0].equalsIgnoreCase("edit")
+                || a[0].equalsIgnoreCase("delete")))) out.addAll(crates.keySet());
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase(Locale.ROOT);
         out.removeIf(v -> !v.toLowerCase(Locale.ROOT).startsWith(last));
         return out;

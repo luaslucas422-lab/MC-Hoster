@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565

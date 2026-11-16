@@ -1,4 +1,4 @@
-config-version: 2
+config-version: 3
 
 # Dark Essentials by DarkerDawnFR: /spawn, /back, kits, join messages, AFK and /rules.
 
@@ -29,26 +29,34 @@ join:
   first-kit: ""
 
 # Anyone who spawns in with nothing (new players, and after dying) gets this.
-# It's called "Starter <item>" in gray bold and can't be sold (/sell) or put on /ah.
+# It's called "Starter <item>" in bold and can't be sold (/sell) or put on /ah. {color} is the kit's colour.
 starter-gear:
   enabled: true
-  name: "&7&lStarter {item}"
+  name: "{color}&lStarter {item}"
   items: ["CHAINMAIL_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "CHAINMAIL_BOOTS", "COOKED_BEEF:16",
           "STONE_SWORD", "STONE_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
   # Better ranks respawn with better kits (permission darkessentials.starter.<tier>, given by Dark Ranks).
-  # The first tier in this list that a player has is the one they get.
+  # The first tier in this list that a player has is the one they get. No diamond: it would be too unfair.
   tier-order: [legend, mvpplus, mvp, vipplus, vip]
   tiers:
-    vip: ["IRON_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:24",
+    vip: ["CHAINMAIL_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "CHAINMAIL_BOOTS", "COOKED_BEEF:24",
           "IRON_SWORD", "STONE_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
-    vipplus: ["IRON_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:32",
-              "IRON_SWORD", "IRON_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
-    mvp: ["IRON_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:32", "GOLDEN_CARROT:8",
-          "IRON_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
-    mvpplus: ["DIAMOND_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "DIAMOND_BOOTS", "COOKED_BEEF:48", "GOLDEN_CARROT:16",
-              "DIAMOND_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
-    legend: ["DIAMOND_HELMET", "DIAMOND_CHESTPLATE", "DIAMOND_LEGGINGS", "DIAMOND_BOOTS", "COOKED_BEEF:64", "GOLDEN_APPLE:2",
-             "DIAMOND_SWORD", "DIAMOND_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
+    vipplus: ["GOLDEN_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "GOLDEN_BOOTS", "COOKED_BEEF:32",
+              "IRON_SWORD", "IRON_PICKAXE", "STONE_AXE", "STONE_SHOVEL", "GOLDEN_CARROT:4"]
+    mvp: ["IRON_HELMET", "CHAINMAIL_CHESTPLATE", "GOLDEN_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:32",
+          "IRON_SWORD", "IRON_PICKAXE", "IRON_AXE", "STONE_SHOVEL", "GOLDEN_CARROT:8"]
+    mvpplus: ["IRON_HELMET", "IRON_CHESTPLATE", "GOLDEN_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:48",
+              "IRON_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "GOLDEN_CARROT:12", "SHIELD"]
+    legend: ["IRON_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "GOLDEN_BOOTS", "COOKED_BEEF:64",
+             "IRON_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "GOLDEN_CARROT:16", "SHIELD", "GOLDEN_APPLE:1"]
+  # The colour of "Starter" for each kit (better = rarer colour). "default" = players without a rank.
+  colors:
+    default: "&7"
+    vip: "&a"
+    vipplus: "&2"
+    mvp: "&b"
+    mvpplus: "&3"
+    legend: "&6"
 
 kits:
   starter:

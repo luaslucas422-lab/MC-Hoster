@@ -68,6 +68,12 @@ public class Editor implements Listener {
             plugin.items().reload();
             item(id).open((Player) e.getWhoClicked());
         });
+        if (org.bukkit.Bukkit.getPluginManager().getPlugin("DarkCrates") != null)
+            m.set(27, Util.item(Material.TRIPWIRE_HOOK, "&eCrate Keys page", "&7Key prices, crates and their loot", "&eClick to edit"),
+                    e -> ((Player) e.getWhoClicked()).performCommand("crate edit"));
+        if (org.bukkit.Bukkit.getPluginManager().getPlugin("DarkSpawners") != null)
+            m.set(35, Util.item(Material.SPAWNER, "&eSpawners page", "&7Spawner prices, loot and XP", "&eClick to edit"),
+                    e -> ((Player) e.getWhoClicked()).performCommand("spawners edit"));
         m.set(33, Util.item(Material.CLOCK, "&fEarning shards",
                 "&7Per kill: &d" + plugin.getConfig().getLong("earn.kill", 5),
                 "&7Playing: &d" + plugin.getConfig().getLong("earn.amount", 1) + " &7every &d" + plugin.getConfig().getInt("earn.minutes", 5) + " min",

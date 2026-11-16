@@ -1,0 +1,17 @@
+name: DarkHatesGriefers
+version: ${project.version}
+main: dev.darkerdawnfr.darkhatesgriefers.DarkHatesGriefers
+api-version: "1.20"
+author: DarkerDawnFR
+description: Protected areas where nobody can break or place blocks. Made for MC Hoster.
+commands:
+  darkhatesgriefers:
+    description: Protected areas - /dhg set 1, /dhg set 2 (or /dhg wand), /dhg create <name>, /dhg allow <player>.
+    aliases: [dhg, hatesgriefers, antigrief]
+permissions:
+  darkhatesgriefers.admin:
+    description: Make and change protected areas.
+    default: op
+  darkhatesgriefers.bypass:
+    description: Build in every protected area (ops don't get this by default, use /dhg allow).
+    default: false
