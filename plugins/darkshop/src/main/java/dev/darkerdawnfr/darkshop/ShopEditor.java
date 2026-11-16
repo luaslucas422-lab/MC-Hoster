@@ -180,8 +180,8 @@ public class ShopEditor {
             category(p, id).open(p);
         });
         m.set(50, Util.item(Material.COMPASS, "&fSlot in /shop: &e" + plugin.getConfig().getInt(path + ".slot"), "&eClick to move it"),
-                e -> slotPicker(p, id, slot -> {
-                    plugin.getConfig().set(path + ".slot", slot);
+                e -> slotPicker(p, id, picked -> {
+                    plugin.getConfig().set(path + ".slot", picked);
                     save();
                     category(p, id).open(p);
                 }, () -> category(p, id).open(p)).open(p));
