@@ -55,6 +55,8 @@ public class Hooks {
         HELP.put("keyall", "time until the next Key All");
         HELP.put("rank", "your rank's tag, like ♛ OWNER");
         HELP.put("rankname", "your rank's name");
+        HELP.put("team", "your team's name, or -");
+        HELP.put("team_online", "your team mates online");
         HELP.put("listings", "your /ah listings");
         HELP.put("ah_total", "all /ah listings");
         HELP.put("rtp_queue", "players in /rtpq");
@@ -63,7 +65,7 @@ public class Hooks {
         HELP.put("time", "the time now");
     }
 
-    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts, crates, ranks;
+    private Plugin shop, ah, rtp, discord, papi, shards, combat, homes, rifts, crates, ranks, teams;
     private Object vault;
 
     public void hook() {
@@ -76,6 +78,7 @@ public class Hooks {
         combat = enabled("DarkCombat");
         homes = enabled("DarkHomes");
         rifts = enabled("DarkRifts");
+        teams = enabled("DarkTeams");
         crates = enabled("DarkCrates");
         ranks = enabled("DarkRanks");
         vault = null;
@@ -104,6 +107,7 @@ public class Hooks {
         if (combat != null) out.add("Dark Combat");
         if (homes != null) out.add("Dark Homes");
         if (rifts != null) out.add("Dark Rifts");
+        if (teams != null) out.add("Dark Teams");
         if (crates != null) out.add("Dark Crates");
         if (ranks != null) out.add("Dark Ranks");
         if (vault != null) out.add("Vault");
@@ -119,6 +123,7 @@ public class Hooks {
         if (line.contains("{bounty}") && shop == null) return false;
         if (line.contains("{baltop}") && shop == null) return false;
         if (line.contains("{rift}") && rifts == null) return false;
+        if (line.contains("{team") && teams == null) return false;
         if ((line.contains("{listings}") || line.contains("{ah_total}")) && ah == null) return false;
         if (line.contains("{rtp_queue}") && rtp == null) return false;
         if (line.contains("{combat}") && combat == null) return false;
@@ -201,6 +206,11 @@ public class Hooks {
                 Object r = ranks != null ? call(ranks, "prefix", id) : null;
                 Object n = ranks != null ? call(ranks, "rankName", id) : null;
                 text = rep(rep(text, "rank", r == null ? "" : String.valueOf(r)), "rankname", n == null ? "" : String.valueOf(n));
+            }
+            if (text.contains("{team")) {
+                Object t = teams != null ? call(teams, "teamName", id) : null;
+                text = rep(text, "team_online", num(teams, "teamOnline", id));
+                text = rep(text, "team", t == null || String.valueOf(t).isEmpty() ? "-" : String.valueOf(t));
             }
             if (text.contains("{keyall}")) {
                 Object k = crates != null ? call(crates, "keyAllIn") : null;

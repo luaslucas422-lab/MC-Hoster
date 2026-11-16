@@ -34,6 +34,7 @@
     <module>darkperformance</module>
     <module>darkchat</module>
     <module>darkessentials</module>
+    <module>darkteams</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

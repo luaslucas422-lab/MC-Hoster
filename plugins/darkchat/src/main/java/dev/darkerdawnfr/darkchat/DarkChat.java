@@ -118,6 +118,24 @@ public class DarkChat extends JavaPlugin implements Listener, TabCompleter {
 
     // ------------------------------------------------------------------ cleaning a message
 
+    /** Used by Dark Teams so muted players can't use team chat either. */
+    public boolean isMuted(UUID who) {
+        Long until = muted.get(who);
+        return until != null && (until == 0 || until > System.currentTimeMillis());
+    }
+
+    /** "[Team] " from Dark Teams for {team} in the chat format, "" if none. */
+    private String teamTag(Player p) {
+        org.bukkit.plugin.Plugin t = Bukkit.getPluginManager().getPlugin("DarkTeams");
+        if (t == null || !t.isEnabled()) return "";
+        try {
+            Object n = t.getClass().getMethod("teamName", UUID.class).invoke(t, p.getUniqueId());
+            return n == null || String.valueOf(n).isEmpty() ? "" : getConfig().getString("team-tag", "&9[{team}] ").replace("{team}", String.valueOf(n));
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     /** What's wrong with a message (null = fine). Also used by the test. */
     public String blocked(UUID who, String msg, long now) {
         Long until = muted.get(who);
@@ -197,7 +215,7 @@ public class DarkChat extends JavaPlugin implements Listener, TabCompleter {
             });
         }
         String fmt = Util.color(getConfig().getString("format", "{rank}&f{player} &8» &7{message}")
-                .replace("{rank}", rankPrefix(p))).replace("%", "%%");
+                .replace("{rank}", rankPrefix(p)).replace("{team}", teamTag(p))).replace("%", "%%");
         fmt = fmt.replace("{player}", "%1$s").replace("{message}", "%2$s").replace("{world}", p.getWorld().getName());
         String hold = "[item]", hold2 = "[i]";
         ItemStack hand = p.getInventory().getItemInMainHand();

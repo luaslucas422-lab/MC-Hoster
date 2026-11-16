@@ -1,7 +1,9 @@
 # Dark Chat by DarkerDawnFR.
 
 # How chat looks. {rank} = the rank prefix from Dark Ranks (or LuckPerms through Vault), {player}, {message}, {world}.
+# {team} shows the Dark Teams name (team-tag), e.g. "{team}{rank}&f{player} &8» &7{message}"
 format: "{rank}&f{player} &8» &7{message}"
+team-tag: "&9[{team}] "
 
 mentions:
   # Saying someone's name (or @name) highlights it and pings them.

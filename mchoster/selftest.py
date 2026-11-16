@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon"]  # Dark RS Add-on is tested in --addons (RoseStacker)
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkteams"]  # Dark RS Add-on is tested in --addons (RoseStacker)
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -31,7 +31,7 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darkannounce": ("darkannounce test", "DARKANNOUNCE"), "darkspawners": ("spawners test", "DARKSPAWNERS"),
               "darksettings": ("settings test", "DARKSETTINGS"), "darkduels": ("duel test", "DARKDUELS"),
               "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS"),
-              "darkvcaddon": ("vc test", "DARKVCADDON"),
+              "darkvcaddon": ("vc test", "DARKVCADDON"), "darkteams": ("darkteams test", "DARKTEAMS"),
               "darkrsaddon": ("stacking test", "DARKRSADDON")}
 
 

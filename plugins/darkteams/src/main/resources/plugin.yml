@@ -1,0 +1,20 @@
+name: DarkTeams
+version: ${project.version}
+main: dev.darkerdawnfr.darkteams.DarkTeams
+api-version: "1.20"
+author: DarkerDawnFR
+description: DonutSMP-style teams. Made for MC Hoster.
+softdepend: [DarkCombat, DarkSettings, DarkChat]
+commands:
+  team:
+    description: Your team menu, or /team create|invite|join|leave|home|sethome|chat|kick|disband.
+    aliases: [teams]
+  teamchat:
+    description: Talk to your team (/tc <message>), or switch team chat on/off.
+    aliases: [tc]
+  darkteams:
+    description: Dark Teams admin (reload, test).
+    permission: darkteams.admin
+permissions:
+  darkteams.admin:
+    default: op

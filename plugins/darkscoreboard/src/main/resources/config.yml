@@ -3,7 +3,7 @@
 #
 # & colours work (&a green, &l bold...). Placeholders: {player} {money} {kills} {deaths} {kdr} {playtime}
 # {bounty} {baltop} {ping} {online} {max} {world} {x} {y} {z} {health} {level} {listings} {ah_total}
-# {rtp_queue} {discord} {shards} {combat} {homes} {rift} {keyall} {rank} {rankname} {date} {time} {mobkills} {displayname} {money_raw}
+# {rtp_queue} {discord} {shards} {combat} {homes} {rift} {keyall} {rank} {rankname} {team} {team_online} {date} {time} {mobkills} {displayname} {money_raw}
 # PlaceholderAPI %placeholders% work too if it's installed.
 
 # How often it refreshes (20 = every second).
@@ -25,6 +25,7 @@ scoreboard:
     - "&6☠ &fDeaths &6{deaths}"
     - "&5✦ &fShards &5{shards}"
     - "&d⚑ &fBounty &d{bounty}"
+    - "&9⚐ &fTeam &9{team}"
     - "&e⌛ &fPlaytime &e{playtime}"
     - "&b✪ &fKey All &b{keyall}"
     - ""

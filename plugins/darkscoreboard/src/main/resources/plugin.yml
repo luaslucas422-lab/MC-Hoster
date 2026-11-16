@@ -4,7 +4,7 @@ main: dev.darkerdawnfr.darkscoreboard.DarkScoreboard
 api-version: "1.20"
 author: DarkerDawnFR
 description: The old DonutSMP scoreboard and tab list, connected to the other Dark plugins. Made for MC Hoster.
-softdepend: [DarkSettings, DarkShop, DarkAH, DarkRTP, DarkDiscord, DarkShards, DarkCombat, DarkHomes, DarkRifts, DarkCrates, DarkRanks, Vault, VaultUnlocked, PlaceholderAPI]
+softdepend: [DarkSettings, DarkShop, DarkAH, DarkRTP, DarkDiscord, DarkShards, DarkCombat, DarkHomes, DarkRifts, DarkCrates, DarkRanks, DarkTeams, Vault, VaultUnlocked, PlaceholderAPI]
 commands:
   dsb:
     description: Edit the scoreboard (/dsb edit) or hide yours (/dsb toggle).
