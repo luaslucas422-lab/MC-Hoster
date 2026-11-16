@@ -18,6 +18,7 @@ messages:
   prefix: "&8[&dAH&8] "
   bought: "&aYou bought &f{item} &afor &f{price}&a."
   sold: "&a{buyer} bought your &f{item} &afor &f{price}&a."
+  sold-away: "&aWhile you were away you sold &f{count} &aitem(s) on /ah for &f{price}&a."
   not-enough: "&cYou don't have enough money. You need &f{price}&c."
   gone: "&cSomeone already bought that, or it expired."
   own: "&cThat's your own item."

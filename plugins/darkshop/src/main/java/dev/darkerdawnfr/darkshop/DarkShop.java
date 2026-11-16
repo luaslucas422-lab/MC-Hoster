@@ -98,12 +98,20 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     /** Adds things from newer versions (more /sell items, the premium shop) without touching what you changed. */
     private void migrate() {
         int v = getConfig().getInt("config-version", 1);
-        if (v >= 3) return;
+        if (v >= 4) return;
+        var d4 = getConfig().getDefaults();
+        if (d4 != null && !getConfig().isSet("sell-multipliers") && d4.isSet("sell-multipliers"))
+            getConfig().set("sell-multipliers", d4.get("sell-multipliers"));
+        if (v >= 3) {
+            getConfig().set("config-version", 4);
+            saveConfig();
+            return;
+        }
         var d3 = getConfig().getDefaults();
         if (d3 != null) for (String k : List.of("rules", "money-tags"))
             if (!getConfig().isSet(k) && d3.isSet(k)) getConfig().set(k, d3.get(k));
         if (v >= 2) {
-            getConfig().set("config-version", 3);
+            getConfig().set("config-version", 4);
             saveConfig();
             return;
         }
@@ -115,7 +123,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
             for (String k : List.of("premium", "worth-hint"))
                 if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
         }
-        getConfig().set("config-version", 3);
+        getConfig().set("config-version", 4);
         saveConfig();
     }
 
@@ -399,6 +407,8 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            if (getConfig().getDouble("sell-multipliers.legend", 0) != 1.25 || !SellMenu.x(1.25).equals("1.25x") || !SellMenu.x(2).equals("2x"))
+                fails.add("sell multipliers");
             if (getConfig().getStringList("rules").size() < 3) fails.add("rules");
             extras.rules();
             UUID sid = UUID.nameUUIDFromBytes("darkshop-stats".getBytes());

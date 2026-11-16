@@ -105,6 +105,22 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             getConfig().set("config-version", 4);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 5) {
+            // /sell boost for ranks
+            String[][] add = {{"vip", "vip", "1.05"}, {"vip+", "vipplus", "1.1"}, {"mvp", "mvp", "1.15"}, {"mvp+", "mvpplus", "1.2"}, {"legend", "legend", "1.25"}};
+            for (String[] x : add) {
+                if (!getConfig().isSet("ranks." + x[0])) continue;
+                List<String> l = new ArrayList<>(getConfig().getStringList("ranks." + x[0] + ".permissions"));
+                if (!l.contains("darkshop.multiplier." + x[1])) l.add("darkshop.multiplier." + x[1]);
+                getConfig().set("ranks." + x[0] + ".permissions", l);
+                List<String> perks = new ArrayList<>(getConfig().getStringList("ranks." + x[0] + ".perks"));
+                perks.removeIf(pk -> pk.contains("/sell money"));
+                perks.add("&f" + x[2] + "x /sell money");
+                getConfig().set("ranks." + x[0] + ".perks", perks);
+            }
+            getConfig().set("config-version", 5);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();
@@ -535,6 +551,7 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             Set<String> perms = permissions(legend);
             if (!perms.contains("darkperks.craft") || !perms.contains("darkperks.fly") || !perms.contains("darkperks.trail")) fails.add("legend perms " + perms);
             if (permissions(ranks.get("vip")).contains("darkperks.fly")) fails.add("vip shouldn't fly");
+            if (!perms.contains("darkshop.multiplier.legend") || !perms.contains("darkshop.multiplier.vip")) fails.add("no sell boost");
             if (!permissions(ranks.get("vip")).contains("darkperks.ec")) fails.add("vip should have /ec");
             if (!perms.contains("darkhomes.homes.20") || !perms.contains("darkessentials.starter.legend")) fails.add("legend homes/kit");
             if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");

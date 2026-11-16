@@ -27,13 +27,13 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
    - **Dark Shop**: the old DonutSMP `/shop` (End, Nether, Gear, Food, amount menu), `/sell`, `/worth`, `/bal`, `/pay`, `/baltop`, `/eco`, `/baltop` as a menu of player heads, and `/bounty` (put money on someone, their killer gets it). Uses EssentialsX/Vault money if there is one, its own otherwise (and shares it through Vault).
-   - **Dark AH**: DonutSMP-style `/ah`: `/ah sell <price>`, sort, filter, search, Your Items, 48-hour listings.
+   - **Dark AH**: DonutSMP-style `/ah`: `/ah sell <price>`, sort, filter, search, Your Items, 48-hour listings, and what sold while you were offline when you log in.
    - **Dark RTP**: `/rtp` (menu: Overworld, Nether, End, 5-second countdown, safe spots only), `/rtpqueue` or `/rtpq` (matched with another player, both sent to the same spot).
    - **Dark Scoreboard**: the old DonutSMP sidebar (titled *Test SMP*: money, kills, deaths, bounty, playtime, online, ping) and tab list header/footer/names. Reads money, bounty, baltop rank, /ah listings, /rtpq and the Discord link from the other Dark plugins, plus PlaceholderAPI. Ops edit everything in game with `/dsb edit`; anyone can hide theirs with `/dsb toggle`.
    - **Dark Homes**: the modern DonutSMP `/home` menu (a bed per home, delete buttons), `/sethome`, `/delhome`. 5 homes, more with `darkhomes.homes.<n>`.
    - **Dark TPA**: `/tpa`, `/tpahere`, `/tpaccept`, `/tpdeny`, `/tpacancel`, `/tpauto` (auto-accept), and `/tp`, `/tphere` for ops.
    - **Dark Hub**: `/hub` menu with a bed per hub (own names, 100 players each) and a Random Hub button at the end. Ops set them with `/hubset <number> [name]`. You respawn at your hub if you have no bed.
-   - **Dark Combat**: 20-second combat tag in dark colours above the hotbar; no teleporting, logging out kills you. `/combat time <seconds>` changes it.
+   - **Dark Combat**: 20-second combat tag in dark colours above the hotbar; no teleporting, logging out kills you, 15-second ender pearl cooldown. `/combat time <seconds>` changes it.
    - **Dark Shards**: shards for playing and killing players, `/shards` shop with 24-hour shard tools (the Shard Pickaxe is an amethyst shard that mines 3x3), purple particles and amethyst sounds. Every item is editable in its config.
    - **Dark Rifts** (original): a purple rift opens somewhere in the world every 45 minutes. Stand in it to charge it, but it only charges while one player holds it, and mobs come in waves. Whoever held it longest gets money, shards and loot. `/rift` shows where it is and points your compass at it.
    - **Dark Essentials**: `/spawn`, `/setspawn`, `/back`, kits (starter + daily, `/kit`), join/leave/first-join messages, welcome title, AFK, `/rules`.
@@ -54,7 +54,7 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark VC Add-on**: voice chat only after `/voicechat agree` and accepting the rules in a pop-up (installs Simple Voice Chat too).
    - **Dark RS Add-on**: RoseStacker stacking on/off per player in `/settings`; in a shared chunk, whoever arrived first decides (installs RoseStacker too; RoseStacker doesn't run on 26.x yet).
    - Dark Shop also shows **money under name tags**, has **`/rules`** and **`/stats [player]`**, and shows both the **sell value** and the **auction value** (from real `/ah` sales) on items.
-   - Better ranks get `/ec` (from VIP), more homes (up to 20 for LEGEND) and a better respawn kit. **Random Coords** in `/settings` hides your real coordinates on the scoreboard, `/home` and `/rtp` for streaming.
+   - Better ranks get `/ec` (from VIP), more homes (up to 20 for LEGEND), a better respawn kit and a `/sell` boost (1.05x VIP up to 1.25x LEGEND). **Random Coords** in `/settings` hides your real coordinates on the scoreboard, `/home` and `/rtp` for streaming.
    - Editors for ops: `/shop edit`, `/shards edit`, `/rank edit`, `/dsb edit`.
    - Every teleport (home, hub, tpa, tp, rtp, spawn, back) is a 5-second countdown you can't move in, and is blocked in combat.
    - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).

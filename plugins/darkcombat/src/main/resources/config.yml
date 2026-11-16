@@ -7,6 +7,8 @@ kill-on-logout: true
 # Stop /fly when you get hit, and (if true) stop elytra flying in combat.
 stop-flying: true
 stop-elytra: false
+# Ender pearl cooldown while in combat, in seconds (0 = normal 1 second).
+pearl-cooldown-seconds: 15
 # Worlds with no combat tag, e.g. [hub]
 disabled-worlds: []
 # Commands you can't use in combat (teleports).

@@ -57,6 +57,8 @@ public class AuctionHouse {
     private final Map<UUID, List<ItemStack>> claims = new HashMap<>();
     /** unit prices of the last sales of each item */
     private final Map<Material, List<Double>> sales = new HashMap<>();
+    /** sales made while the seller was offline: {count, money} */
+    private final Map<UUID, double[]> away = new HashMap<>();
 
     public AuctionHouse(DarkAH plugin) {
         this.plugin = plugin;
@@ -164,7 +166,11 @@ public class AuctionHouse {
         eco.give(l.seller, paid);
         deliver(buyer, l.item);
         Player seller = Bukkit.getPlayer(l.seller);
-        if (seller != null) {
+        if (seller == null) {
+            double[] a = away.computeIfAbsent(l.seller, k -> new double[2]);
+            a[0]++;
+            a[1] += paid;
+        } else {
             Player b = Bukkit.getPlayer(buyer);
             seller.sendMessage(plugin.msg("sold").replace("{buyer}", b != null ? b.getName() : "Someone")
                     .replace("{item}", DarkAH.itemName(l.item)).replace("{price}", Util.money(paid)));
@@ -227,6 +233,13 @@ public class AuctionHouse {
         return n % 2 == 1 ? sorted.get(n / 2) : (sorted.get(n / 2 - 1) + sorted.get(n / 2)) / 2;
     }
 
+    /** Takes the sales made while this player was offline: {count, money}, or null. */
+    public double[] takeAway(UUID who) {
+        double[] a = away.remove(who);
+        if (a != null) save();
+        return a;
+    }
+
     public void forgetSales(Material m) {
         sales.remove(m);
     }
@@ -248,6 +261,13 @@ public class AuctionHouse {
                     listings.put(l.id, l);
                 } catch (IllegalArgumentException ignored) {
                 }
+            }
+        }
+        ConfigurationSection aw = y.getConfigurationSection("away");
+        if (aw != null) for (String k : aw.getKeys(false)) {
+            try {
+                away.put(UUID.fromString(k), new double[]{aw.getDouble(k + ".count"), aw.getDouble(k + ".money")});
+            } catch (IllegalArgumentException ignored) {
             }
         }
         ConfigurationSection ss = y.getConfigurationSection("sales");
@@ -278,6 +298,10 @@ public class AuctionHouse {
             y.set(p + "price", l.price);
             y.set(p + "listed", l.listed);
             y.set(p + "expires", l.expires);
+        }
+        for (Map.Entry<UUID, double[]> e : away.entrySet()) {
+            y.set("away." + e.getKey() + ".count", e.getValue()[0]);
+            y.set("away." + e.getKey() + ".money", e.getValue()[1]);
         }
         for (Map.Entry<Material, List<Double>> e : sales.entrySet()) y.set("sales." + e.getKey().name(), e.getValue());
         for (Map.Entry<UUID, List<ItemStack>> e : claims.entrySet())

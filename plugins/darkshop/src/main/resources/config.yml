@@ -1,4 +1,4 @@
-config-version: 3
+config-version: 4
 
 # Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
 # Change prices here, then /darkshop reload.
@@ -310,6 +310,14 @@ orders:
 
 # Show what the item you hold sells for above the hotbar when you switch to it (players can turn it off in /settings).
 worth-hint: true
+
+# /sell boost for ranks (permission darkshop.multiplier.<name>, the best one counts). 1.1 = 10% more money.
+sell-multipliers:
+  vip: 1.05
+  vipplus: 1.1
+  mvp: 1.15
+  mvpplus: 1.2
+  legend: 1.25
 
 # /shop premium: only for ranks (darkshop.premium). Better deals and things the normal shop doesn't have,
 # priced so the economy stays fair. Bigger ranks get a bigger discount (darkshop.discount.<name>).

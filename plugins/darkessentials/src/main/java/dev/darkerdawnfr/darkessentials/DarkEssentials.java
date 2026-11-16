@@ -413,6 +413,8 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             return true;
         }
         if (name.equals("rules")) {
+            org.bukkit.plugin.Plugin shop = Bukkit.getPluginManager().getPlugin("DarkShop");
+            if (s instanceof Player && shop != null && shop.isEnabled()) return Bukkit.dispatchCommand(s, "darkshop:rules");
             for (String l : getConfig().getStringList("rules")) s.sendMessage(Util.color(l));
             return true;
         }

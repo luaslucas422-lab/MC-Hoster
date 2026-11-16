@@ -27,8 +27,22 @@ public class SellMenu {
         return plugin.getConfig().getDouble("worth." + it.getType().name(), 0);
     }
 
+    /** Sell boost for this player: the best "sell-multipliers" entry they have darkshop.multiplier.<name> for (1 = none). */
+    public double multiplier(Player p) {
+        double best = 1;
+        org.bukkit.configuration.ConfigurationSection d = plugin.getConfig().getConfigurationSection("sell-multipliers");
+        if (d != null) for (String k : d.getKeys(false))
+            if (p.hasPermission("darkshop.multiplier." + k)) best = Math.max(best, d.getDouble(k, 1));
+        return best;
+    }
+
+    public static String x(double m) {
+        return (m == Math.floor(m) ? String.valueOf((int) m) : String.valueOf(Math.round(m * 100) / 100.0)) + "x";
+    }
+
     public Menu open(Player p) {
-        Menu m = new Menu(6, "&8" + Util.small("Sell items"));
+        double mul = multiplier(p);
+        Menu m = new Menu(6, "&8" + Util.small("Sell items") + (mul > 1 ? " &a" + x(mul) : ""));
         m.editable = true;
         m.onClose = player -> sell(player, m.getInventory());
         m.open(p);
@@ -56,10 +70,12 @@ public class SellMenu {
             Map<Integer, ItemStack> left = new HashMap<>(p.getInventory().addItem(back.toArray(new ItemStack[0])));
             for (ItemStack it : left.values()) p.getWorld().dropItemNaturally(p.getLocation(), it);
         }
-        total = Math.round(total * 100) / 100.0;
+        double mul = multiplier(p);
+        total = Math.round(total * mul * 100) / 100.0;
         if (count > 0) {
             plugin.money().give(p.getUniqueId(), total);
-            p.sendMessage(plugin.msg("sold").replace("{amount}", String.valueOf(count)).replace("{price}", Util.money(total)));
+            p.sendMessage(plugin.msg("sold").replace("{amount}", String.valueOf(count)).replace("{price}", Util.money(total))
+                    + (mul > 1 ? Util.color(" &8(" + x(mul) + " " + Util.small("boost") + ")") : ""));
             p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.4f);
         } else if (!back.isEmpty()) {
             p.sendMessage(plugin.msg("nothing-sold"));

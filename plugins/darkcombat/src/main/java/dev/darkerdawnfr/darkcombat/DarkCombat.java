@@ -113,6 +113,22 @@ public class DarkCombat extends JavaPlugin implements Listener, TabCompleter {
         }
     }
 
+    /** Longer ender pearl cooldown in combat (DonutSMP style). */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void pearl(org.bukkit.event.entity.ProjectileLaunchEvent e) {
+        if (!(e.getEntity() instanceof org.bukkit.entity.EnderPearl) || !(e.getEntity().getShooter() instanceof Player p)) return;
+        int s = pearlCooldown();
+        if (s <= 1 || !inCombat(p.getUniqueId()) || p.hasPermission("darkcombat.bypass")) return;
+        // after the normal 1-second cooldown is set
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (p.isOnline()) p.setCooldown(org.bukkit.Material.ENDER_PEARL, s * 20);
+        });
+    }
+
+    public int pearlCooldown() {
+        return Math.max(0, getConfig().getInt("pearl-cooldown-seconds", 15));
+    }
+
     @EventHandler
     public void death(PlayerDeathEvent e) {
         untag(e.getEntity().getUniqueId());
@@ -240,6 +256,7 @@ public class DarkCombat extends JavaPlugin implements Listener, TabCompleter {
         UUID a = UUID.randomUUID(), b = UUID.randomUUID();
         try {
             if (seconds() != 20) fails.add("default is " + seconds() + "s");
+            if (pearlCooldown() != 15) fails.add("pearl cooldown " + pearlCooldown());
             tag(a);
             if (!inCombat(a) || inCombat(b) || remaining(a) != 20) fails.add("tag: " + remaining(a));
             onCommand(Bukkit.getConsoleSender(), getCommand("combat"), "combat", new String[]{"time", "35"});

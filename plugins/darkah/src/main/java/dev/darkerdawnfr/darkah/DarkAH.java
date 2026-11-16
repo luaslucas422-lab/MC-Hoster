@@ -112,6 +112,8 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
 
     @EventHandler
     public void join(PlayerJoinEvent e) {
+        double[] a = ah.takeAway(e.getPlayer().getUniqueId());
+        if (a != null && a[0] > 0) e.getPlayer().sendMessage(msg("sold-away").replace("{count}", String.valueOf((int) a[0])).replace("{price}", Util.money(a[1])));
         int n = ah.claims(e.getPlayer().getUniqueId()).size();
         if (n > 0) e.getPlayer().sendMessage(msg("collect").replace("{count}", String.valueOf(n)));
     }
@@ -218,6 +220,9 @@ public class DarkAH extends JavaPlugin implements Listener, TabCompleter {
                 if (Math.abs(eco.balance(seller) - (sellerStart + 100 * (100 - tax) / 100)) > 1e-6) fails.add("seller balance " + eco.balance(seller));
                 if (ah.claims(buyer).stream().noneMatch(i -> i.getType() == Material.DIAMOND && i.getAmount() == 3))
                     fails.add("offline buyer didn't get the diamonds to collect");
+                double[] away = ah.takeAway(seller);
+                if (away == null || away[0] != 1 || Math.abs(away[1] - 100 * (100 - tax) / 100) > 1e-6) fails.add("offline seller's sale not remembered");
+                if (ah.takeAway(seller) != null) fails.add("away sales shown twice");
             } else {
                 if (ah.buy(buyer, l) != AuctionHouse.Result.NO_MONEY) fails.add("bought without money");
                 ah.cancel(l);
