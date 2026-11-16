@@ -22,7 +22,7 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, **Dark Spawners**, **Dark Settings**, **Dark Duels**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
    - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
@@ -44,6 +44,10 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark Tips**: a tip every few minutes and a login announcement, all changed with `/tips`.
    - **Dark Bossbar**: a boss bar with your IP (MC Hoster fills in `{ip}`), any colour, flashing; `/bar`.
    - **Dark Announce**: `/announce <message>` and `/donor <player> <package>` (fireworks, works from the console for stores).
+   - **Dark Spawners**: DonutSMP-style spawners that fill with loot and XP instead of spawning mobs; stack them, sell all, collect XP. Bought on page 3 of `/shards`.
+   - **Dark Settings**: `/settings` (night vision, mob spawns, scoreboard, boss bar, chat, private messages, mention pings, TPA requests, payments, tips). The other Dark plugins follow it.
+   - **Dark Duels**: `/duel <player> [bet]` in arenas you set with `/duel arena set <name> 1|2`; nobody loses items, winner takes the bet, stats.
+   - Dark Shop also has **`/orders`** (buy orders), and Dark Essentials gives **starter gear** (chainmail, 16 steak, stone tools, gray bold "Starter ...", can't be sold or auctioned) to anyone who spawns with nothing.
    - Every teleport (home, hub, tpa, tp, rtp, spawn, back) is a 5-second countdown you can't move in, and is blocked in combat.
    - **Dark Discord**: `/discord` (link to everyone), `/dc` (only you, 5 seconds on screen), `/dcedit` (ops: link, Text or GUI mode).
 
