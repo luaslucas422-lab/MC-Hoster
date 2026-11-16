@@ -129,3 +129,19 @@ ranks:
     # * = everything ops get (/shop edit, /rank edit, ...)
     permissions: ["*"]
     perks: ["&7Owner"]
+
+# /store: ranks people buy with real money on your web store (Tebex, your website...). Nothing is sold in game,
+# it shows the ranks and links to the store. Change it all in game: /store edit (or /store link <url>, /store mode gui|text).
+store:
+  mode: gui
+  link: "https://your-store.tebex.io"
+  title: "&8Store"
+  button: "&e&lPaid Ranks"
+  prefix: "&8[&6Store&8] "
+  # Text mode: these lines, then the link. {link} = the link.
+  text:
+    - "&6&lSTORE &8» &7Support the server and get a rank!"
+  ranks:
+    - {name: "&a&lVIP", icon: EMERALD, price: "€4.99", perks: ["VIP tag in chat", "/fly in the lobby", "2 extra homes"]}
+    - {name: "&b&lMVP", icon: DIAMOND, price: "€9.99", perks: ["Everything in VIP", "MVP tag", "Coloured chat"]}
+    - {name: "&6&lLEGEND", icon: NETHER_STAR, price: "€19.99", perks: ["Everything in MVP", "LEGEND tag", "A special kit"]}

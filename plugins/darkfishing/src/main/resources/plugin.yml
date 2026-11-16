@@ -1,0 +1,14 @@
+name: DarkFishing
+version: ${project.version}
+main: dev.darkerdawnfr.darkfishing.DarkFishing
+api-version: "1.20"
+author: DarkerDawnFR
+description: Custom fish, vouchers, crate keys, and lava and void fishing. Made for MC Hoster.
+softdepend: [DarkShop, DarkShards, DarkCrates]
+commands:
+  fish:
+    description: Your fish collection (/fish lava, /fish void). Ops - /fish give.
+    aliases: [fishing, fishdex]
+permissions:
+  darkfishing.admin:
+    default: op

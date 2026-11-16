@@ -12,6 +12,9 @@ commands:
     aliases: [ranks]
   media:
     description: What you need for the Media rank.
+  store:
+    description: Paid ranks on the server's web store (/store edit for ops).
+    aliases: [buy, donate]
 permissions:
   darkranks.admin:
     default: op

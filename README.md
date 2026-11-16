@@ -22,7 +22,7 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 3. **Settings**: name, 64×64 PNG icon, **max players up to 1500** (over 100 asks 2 times, over 500 asks 5 times, over 1000 asks 7 times), game mode, difficulty + hardcore, **Nether and End on/off**, **Your name** (you get op and the OWNER rank), **Auto-start** (scheduler), **Custom IP**, Gh0st AC, EULA. Then **Finish**.
 4. **Play**: the IPs with Copy buttons (your custom address, friends, same Wi-Fi, this PC), automatic port opening on your router (UPnP), live console, commands, Stop/Start.
 5. **Plugins & Mods**: tick presets and click **Apply & restart**:
-   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, **Dark Spawners**, **Dark Settings**, **Dark Duels**, **Dark Ranks**, **Dark Perks**, **Dark VC Add-on**, **Dark RS Add-on**, **Dark Teams**, **Dark Hates Griefers**, **Dark AFK Zone**, **Dark Names**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
+   - Plugins: Simple Voice Chat, Vanish (SuperVanish), RoseStacker, Vault, **Dark Shop**, **Dark AH**, **Dark Discord**, **Dark RTP**, **Dark Scoreboard**, **Dark Homes**, **Dark TPA**, **Dark Hub**, **Dark Combat**, **Dark Shards**, **Dark Rifts**, **Dark Essentials**, **Dark Chat**, **Dark Performance**, **Dark Backup**, **Dark Crates**, **Dark Tips**, **Dark Bossbar**, **Dark Announce**, **Dark Spawners**, **Dark Settings**, **Dark Duels**, **Dark Ranks**, **Dark Perks**, **Dark VC Add-on**, **Dark RS Add-on**, **Dark Teams**, **Dark Hates Griefers**, **Dark AFK Zone**, **Dark Names**, **Dark Fishing**, **Dark NPCs**, **No Enchant Limits**, EssentialsX, LuckPerms, WorldEdit, CoreProtect, Geyser + Floodgate, ViaVersion, Chunky, spark, BlueMap
    - Fabric mods: Simple Voice Chat, Vanish, LuckPerms, WorldEdit, Ledger, Geyser + Floodgate, Chunky, spark, BlueMap, Lithium, FerriteCore
 
    The **Dark plugins** are made by DarkerDawnFR and come inside MC Hoster (source in `plugins/`):
@@ -55,6 +55,10 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
    - **Dark Hates Griefers**: protected areas (`/dhg set 1`, `/dhg set 2` or `/dhg wand`, `/dhg create <name>`): nobody breaks or places blocks, no explosions, fire, pistons or lava; `/dhg allow <player>` lets someone build.
    - **Dark AFK Zone**: 10 shards every minute in the AFK zone (`/afkzone` to go there; ops make it like Dark Hates Griefers).
    - **Dark Names**: `/dn` renames what you hold in any colour: colours, gradients, animated names (rainbow, wave, pulse, shine, fire, glitch), bold/italic/..., and `&a`, `&#FF8800`, `<gradient:...>` codes; `/dn reset` gives it its own name back.
+   - **Dark Fishing**: custom fish with rarity, weight and price (sold with `/sell`), money and shard vouchers, crate keys, and lava and void fishing with the Lava Line / Void Line books. `/fish` for your collection.
+   - **Dark NPCs**: `/npc create`: a player's skin, a command from a menu, "CLICK ME" above it; clicking runs the command.
+   - **No Enchant Limits**: `/enchant` anything on anything up to level 255, with a warning when it won't do anything.
+   - **`/store`** (Dark Ranks): paid ranks from your web store, GUI (an enchanted totem "Paid Ranks") or text, edited with `/store edit`.
    - **Dark Teams**: DonutSMP-style `/team` (menu, create, invite, join, leave, kick, transfer, disband), team home, team chat (`/tc`), no friendly fire (`/team pvp`), `/team top`. `{team}` on the scoreboard and in chat.
    - **Dark RS Add-on**: RoseStacker mob/item stacking on/off per player in `/settings` for the area around you (stacks there get split up); where areas overlap, whoever arrived first decides (installs RoseStacker too; RoseStacker doesn't run on 26.x yet).
    - Dark Shop also shows **money under name tags**, has **`/rules`** and **`/stats [player]`**, and shows both the **sell value** and the **auction value** (from real `/ah` sales) on items.
@@ -70,6 +74,8 @@ It looks and works like the Fabric Installer: tabs across the top, **Back / Next
 6. **Config**: MOTD, seed, world type, view distance, spawn protection, world border, PvP, flying, whitelist, AFK kick, game rules (keep inventory, mob griefing, fire, day/night, weather, phantoms...), memory and Aikar's flags, and **auto restart** (every few hours with warnings, and after a crash).
 
 The Settings tab also has a **resource pack** (Modrinth search, a CurseForge link or any direct link, optional or required) and **Draw…** for the icon (a 64×64 drawing board with ready-made pictures). Tab 5 sorts the presets into **folders**.
+
+7. **Experimental**: commands that run every time the server starts, as soon as it's ready.
 
 **After Finish, every tab can be clicked.** Change anything in 1, 2, 3 or 5 and press **Apply & restart**: the server stops (world saved), the changes are applied, and it starts again. In tab 1 you can update to a newer version (never older, that would break the world).
 

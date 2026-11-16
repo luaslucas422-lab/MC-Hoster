@@ -38,6 +38,9 @@
     <module>darkhatesgriefers</module>
     <module>darkafkzone</module>
     <module>darknames</module>
+    <module>darkfishing</module>
+    <module>darknpcs</module>
+    <module>noenchantlimits</module>
   </modules>
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

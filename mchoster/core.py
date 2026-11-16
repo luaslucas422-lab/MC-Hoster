@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -748,6 +748,7 @@ class ServerConfig:
     tweaks: dict = field(default_factory=dict)        # tab 6 Config: server.properties, gamerules, RAM... (only what was changed)
     resource_pack: dict = field(default_factory=dict) # url, sha1, required, prompt, name, source
     auto_restart: dict = field(default_factory=dict)  # every_hours (0 = off), on_crash
+    experimental: dict = field(default_factory=dict)  # tab 7: startup commands {"enabled": bool, "commands": [...]}
     # filled in by setup
     folder: str = ""
     java: str = ""
@@ -1093,6 +1094,12 @@ def tweak_props(cfg: "ServerConfig") -> dict[str, str]:
 def ready_commands(cfg: "ServerConfig") -> list[str]:
     """Console commands for when the server is ready: gamerules, whitelist and ops from tab 6, the owner."""
     cmds = []
+    ex = cfg.experimental or {}
+    if ex.get("enabled", True):  # tab 7: your own commands, first
+        for c in ex.get("commands", []) or []:
+            c = str(c).strip()
+            if c and not c.startswith("#"):
+                cmds.append(c[1:] if c.startswith("/") else c)
     if cfg.prov.bedrock:
         return cmds
     t = cfg.tweaks or {}

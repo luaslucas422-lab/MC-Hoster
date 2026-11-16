@@ -21,6 +21,12 @@ public class SellMenu {
 
     public double worth(ItemStack it) {
         if (it == null || it.getType() == Material.AIR || DarkShop.starter(it)) return 0;
+        // Dark Fishing's fish (and anything else with its own price) sell for that price
+        if (it.hasItemMeta()) {
+            Double own = it.getItemMeta().getPersistentDataContainer().get(new org.bukkit.NamespacedKey("darkfishing", "value"),
+                    org.bukkit.persistence.PersistentDataType.DOUBLE);
+            if (own != null) return own;
+        }
         // renamed or enchanted items are not sold by mistake
         if (it.hasItemMeta() && it.getItemMeta() != null
                 && (it.getItemMeta().hasDisplayName() || it.getItemMeta().hasEnchants())) return 0;

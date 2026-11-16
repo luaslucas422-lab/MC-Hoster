@@ -153,6 +153,8 @@ def run(outdir: str) -> int:
         lambda: grab("3-resource-pack", dialogs["rp"]),
         config_tab,
         lambda: grab("6-config"),
+        lambda: (w.exp_text.insert("1.0", "say Welcome to Lucas's SMP!\ntime set day\n# a note\n"), w.show(w.EXPERIMENTAL)),
+        lambda: grab("7-experimental"),
     ]
 
     def go(i=0):
@@ -169,5 +171,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 13
+    want = 14
     return 0 if len(shots) == want else 1

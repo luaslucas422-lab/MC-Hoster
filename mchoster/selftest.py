@@ -18,7 +18,7 @@ from pathlib import Path
 from . import core
 
 
-DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkteams", "darkhatesgriefers", "darkafkzone", "darknames"]  # Dark RS Add-on is tested in --addons (RoseStacker)
+DARK = ["darkshop", "darkah", "darkdiscord", "darkrtp", "darkscoreboard", "darkhomes", "darktpa", "darkhub", "darkcombat", "darkshards", "darkrifts", "darkessentials", "darkchat", "darkperformance", "darkbackup", "darkcrates", "darktips", "darkbossbar", "darkannounce", "darkspawners", "darksettings", "darkduels", "darkranks", "darkperks", "darkvcaddon", "darkteams", "darkhatesgriefers", "darkafkzone", "darknames", "darkfishing", "darknpcs", "noenchantlimits"]  # Dark RS Add-on is tested in --addons (RoseStacker)
 DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test", "DARKAH"),
               "darkdiscord": ("dcedit test", "DARKDISCORD"), "darkrtp": ("darkrtp test", "DARKRTP"),
               "darkscoreboard": ("dsb test", "DARKSCOREBOARD"), "darkhomes": ("darkhomes test", "DARKHOMES"),
@@ -31,7 +31,7 @@ DARK_TESTS = {"darkshop": ("darkshop test", "DARKSHOP"), "darkah": ("darkah test
               "darkannounce": ("darkannounce test", "DARKANNOUNCE"), "darkspawners": ("spawners test", "DARKSPAWNERS"),
               "darksettings": ("settings test", "DARKSETTINGS"), "darkduels": ("duel test", "DARKDUELS"),
               "darkranks": ("rank test", "DARKRANKS"), "darkperks": ("perks test", "DARKPERKS"),
-              "darkvcaddon": ("vc test", "DARKVCADDON"), "darkteams": ("darkteams test", "DARKTEAMS"), "darkhatesgriefers": ("dhg test", "DARKHATESGRIEFERS"), "darkafkzone": ("afkzone test", "DARKAFKZONE"), "darknames": ("dn test", "DARKNAMES"),
+              "darkvcaddon": ("vc test", "DARKVCADDON"), "darkteams": ("darkteams test", "DARKTEAMS"), "darkhatesgriefers": ("dhg test", "DARKHATESGRIEFERS"), "darkafkzone": ("afkzone test", "DARKAFKZONE"), "darknames": ("dn test", "DARKNAMES"), "darkfishing": ("fish test", "DARKFISHING"), "darknpcs": ("npc test", "DARKNPCS"), "noenchantlimits": ("noenchantlimits test", "NOENCHANTLIMITS"),
               "darkrsaddon": ("stacking test", "DARKRSADDON")}
 
 
@@ -164,6 +164,7 @@ def run(args: list[str]) -> int:
         cfg.tweaks = {"pvp": False, "motd": "&bCI &lserver", "spawn-protection": 8, "allow-flight": True, "view-distance": 7,
                       "keep_inventory": True, "phantoms": False, "sleeping": 50, "whitelist_names": ["CiPlayer"], "aikar": True}
         cfg.resource_pack = {"url": "https://example.com/pack.zip", "sha1": "0" * 40, "required": True, "prompt": "Please"}
+        cfg.experimental = {"enabled": True, "commands": ["/say MCHOSTER STARTUP OK", "# skipped"]}
         core.write_server_files(cfg)
         props = core.read_properties(d / "server.properties")
         for k, v in {"pvp": "false", "spawn-protection": "8", "allow-flight": "true", "view-distance": "7",
@@ -226,6 +227,9 @@ def run(args: list[str]) -> int:
         if not m or not m.group(1).startswith("OK"):
             print(f"FAILED: {tag} test")
             return 1
+    if not provider.bedrock and "MCHOSTER STARTUP OK" not in text:
+        print("FAILED: the Experimental tab's startup command didn't run")
+        return 1
     bad_rules = [k for k, v in rules_ok.items() if not v]
     if bad_rules:
         print(f"FAILED: gamerules not set on {version}: {bad_rules}")

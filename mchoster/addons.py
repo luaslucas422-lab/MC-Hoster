@@ -116,6 +116,12 @@ ADDONS = [
           {"bukkit": [["bundled:DarkAFKZone.jar"], ["bundled:DarkShards.jar"]]}, note="Comes with Dark Shards. Make it: /afkzone set 1, set 2, create"),
     Addon("darknames", "Dark Names", "Rename what you hold in any colour: 18 colours, 9 gradients, 6 animations, bold/italic... /dn",
           {"bukkit": [["bundled:DarkNames.jar"]]}, note="Made by DarkerDawnFR. /dn rename, /dn reset"),
+    Addon("darkfishing", "Dark Fishing", "Custom fish (rarity, weight, price), money and shard vouchers, crate keys, and lava and void fishing. /fish",
+          {"bukkit": [["bundled:DarkFishing.jar"]]}, note="Made by DarkerDawnFR. Lava/void fishing: the Lava Line and Void Line books"),
+    Addon("darknpcs", "Dark NPCs", "NPCs with a player's skin that run a command when clicked (\"CLICK ME\"). /npc create",
+          {"bukkit": [["bundled:DarkNPCs.jar"]]}, note="Made by DarkerDawnFR. Real player skins on 1.21.9+, heads on older versions"),
+    Addon("noenchantlimits", "No Enchant Limits", "/enchant anything on anything, up to level 255 (/enchant mace wind_burst 64).",
+          {"bukkit": [["bundled:NoEnchantLimits.jar"]]}, note="Made by DarkerDawnFR. Ops only"),
     Addon("darkrsaddon", "Dark RS Add-on", "Players turn RoseStacker stacking on/off in /settings; the first player in a chunk decides.",
           {"bukkit": [["bundled:DarkRSAddon.jar"], ["mr:rosestacker", "hangar:RoseStacker"]]}, note="Installs RoseStacker too"),
     # ---- more from Modrinth (Hangar if Modrinth has no build)

@@ -100,12 +100,21 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
     /** Adds things from newer versions (more /sell items, the premium shop) without touching what you changed. */
     private void migrate() {
         int v = getConfig().getInt("config-version", 1);
-        if (v >= 5) return;
+        if (v >= 6) return;
+        var d6 = getConfig().getDefaults();
+        var w6 = d6 == null ? null : d6.getConfigurationSection("worth");
+        if (w6 != null) for (String k : w6.getKeys(false)) // newer sellable items
+            if (!getConfig().isSet("worth." + k)) getConfig().set("worth." + k, w6.get(k));
+        if (v >= 5) {
+            getConfig().set("config-version", 6);
+            saveConfig();
+            return;
+        }
         var d5 = getConfig().getDefaults();
         if (d5 != null && !getConfig().isSet("playtime-rewards") && d5.isSet("playtime-rewards"))
             getConfig().set("playtime-rewards", d5.get("playtime-rewards"));
         if (v >= 4) {
-            getConfig().set("config-version", 5);
+            getConfig().set("config-version", 6);
             saveConfig();
             return;
         }
@@ -113,7 +122,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         if (d4 != null && !getConfig().isSet("sell-multipliers") && d4.isSet("sell-multipliers"))
             getConfig().set("sell-multipliers", d4.get("sell-multipliers"));
         if (v >= 3) {
-            getConfig().set("config-version", 5);
+            getConfig().set("config-version", 6);
             saveConfig();
             return;
         }
@@ -121,7 +130,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
         if (d3 != null) for (String k : List.of("rules", "money-tags"))
             if (!getConfig().isSet(k) && d3.isSet(k)) getConfig().set(k, d3.get(k));
         if (v >= 2) {
-            getConfig().set("config-version", 5);
+            getConfig().set("config-version", 6);
             saveConfig();
             return;
         }
@@ -133,7 +142,7 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
             for (String k : List.of("premium", "worth-hint"))
                 if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
         }
-        getConfig().set("config-version", 5);
+        getConfig().set("config-version", 6);
         saveConfig();
     }
 
@@ -172,6 +181,10 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
 
     public Playtime playtime() {
         return playtime;
+    }
+
+    public SellMenu sellMenu() {
+        return sell;
     }
 
     public Money money() {

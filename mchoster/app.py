@@ -40,8 +40,8 @@ def open_folder(path: str):
 
 
 class Wizard:
-    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config"]
-    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG = range(6)
+    TABS = ["Server", "Minecraft", "Settings", "Play", "Plugins & Mods", "Config", "Experimental"]
+    SERVER, MINECRAFT, SETTINGS, PLAY, ADDONS, CONFIG, EXPERIMENTAL = range(7)
 
     def __init__(self, root: tk.Tk):
         self.root = root
@@ -91,6 +91,7 @@ class Wizard:
         self._page_play(self.pages[3])
         self._page_addons(self.pages[4])
         self._page_config(self.pages[5])
+        self._page_experimental(self.pages[6])
         self.show(0)
         self.root.after(60, self._drain)
         self.root.after(1000, self._restart_tick)
@@ -939,6 +940,11 @@ class Wizard:
         ttk.Label(f, text="Plugins & Mods", style="Title.TLabel").grid(row=0, column=0, sticky="w")
         self.addons_sub = ttk.Label(f, text="", style="Hint.TLabel", wraplength=520, justify="left")
         self.addons_sub.grid(row=1, column=0, sticky="w", pady=(0, 8))
+        warn = tk.Label(f, text="⚠  Some plugins and mods for Minecraft servers can be malicious: they can make themselves operator "
+                                "without any commands. Be careful when getting plugins or mods for your server, and only use official "
+                                "sites (Modrinth, Hangar, CurseForge, SpigotMC, the maker's own page).",
+                        bg="#FFF4CE", fg="#7A4B00", wraplength=540, justify="left", anchor="w", padx=8, pady=6, relief="solid", borderwidth=1)
+        warn.grid(row=4, column=0, sticky="we", pady=(8, 0))
         box = ttk.Frame(f, relief="sunken", borderwidth=1)
         box.grid(row=2, column=0, sticky="nsew")
         box.columnconfigure(0, weight=1)
@@ -963,7 +969,7 @@ class Wizard:
     def _wheel(self, e):
         if self.page == self.ADDONS:
             self.addons_canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
-        elif self.page == self.CONFIG:
+        elif self.page == self.CONFIG and hasattr(self, "config_canvas"):
             self.config_canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
 
     # ------------------------------------------------------------------ 6. Config
@@ -1053,12 +1059,57 @@ class Wizard:
             row=1, column=0, columnspan=3, sticky="w", pady=2)
         ttk.Button(inner, text="Reset everything to the defaults", command=self._config_defaults).grid(row=r, column=0, sticky="w")
 
+    # ------------------------------------------------------------------ 7. Experimental
+    def _page_experimental(self, f):
+        f.columnconfigure(0, weight=1)
+        f.rowconfigure(3, weight=1)
+        ttk.Label(f, text="Experimental", style="Title.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(f, text="Commands that run every time the server starts, as soon as it's ready (so every plugin's "
+                          "commands work). One per line, without the /. Lines starting with # are skipped.\n"
+                          "They run as the console, before anything else MC Hoster sends.", style="Hint.TLabel",
+                  wraplength=540, justify="left").grid(row=1, column=0, sticky="w", pady=(0, 6))
+        self.exp_on = tk.BooleanVar(value=True)
+        ttk.Checkbutton(f, text="Run these commands when the server starts", variable=self.exp_on).grid(row=2, column=0, sticky="w")
+        box = ttk.Frame(f)
+        box.grid(row=3, column=0, sticky="nsew", pady=6)
+        box.columnconfigure(0, weight=1)
+        box.rowconfigure(0, weight=1)
+        self.exp_text = tk.Text(box, height=12, wrap="none", font=("Consolas", 10) if core.WINDOWS else ("Monospace", 10), undo=True)
+        sb = ttk.Scrollbar(box, command=self.exp_text.yview)
+        self.exp_text.config(yscrollcommand=sb.set)
+        self.exp_text.grid(row=0, column=0, sticky="nsew")
+        sb.grid(row=0, column=1, sticky="ns")
+        ex = ttk.Frame(f)
+        ex.grid(row=4, column=0, sticky="we")
+        ttk.Label(ex, text="Examples:", style="Hint.TLabel").pack(side="left")
+        for sample in ("say Server is up!", "time set day", "weather clear", "gamerule doInsomnia false", "difficulty hard"):
+            ttk.Button(ex, text=sample, style="Toolbutton", command=lambda t=sample: self.exp_text.insert("end", ("" if self.exp_text.get("1.0", "end").strip() == "" or self.exp_text.get("end-2c") == "\n" else "\n") + t + "\n")).pack(side="left", padx=2)
+        self.exp_run = ttk.Button(f, text="Run them now (server running)", command=self._exp_run_now)
+        self.exp_run.grid(row=5, column=0, sticky="w", pady=(8, 0))
+
+    def _exp_commands(self) -> list[str]:
+        return [l.rstrip() for l in self.exp_text.get("1.0", "end").splitlines() if l.strip()]
+
+    def _exp_run_now(self):
+        if not (self.server and self.server.running):
+            messagebox.showinfo("Experimental", "Start the server first.")
+            return
+        for c in self._exp_commands():
+            if not c.strip().startswith("#"):
+                self.server.send(c.strip().lstrip("/"))
+        self.log("» Ran the startup commands now.")
+
     def _config_defaults(self):
         if not messagebox.askyesno("Config", "Put every setting on this page back to the default?"):
             return
         self.cfg.tweaks = {}
         self.cfg.auto_restart = {}
         self.fill_config()
+        ex = c.experimental or {}
+        self.exp_on.set(bool(ex.get("enabled", True)))
+        self.exp_text.delete("1.0", "end")
+        if ex.get("commands"):
+            self.exp_text.insert("1.0", "\n".join(ex["commands"]) + "\n")
 
     def _tweak_defaults(self) -> dict:
         d = {k: dflt for k, _l, _k, dflt, _h in core.PROP_TWEAKS}
@@ -1280,6 +1331,7 @@ class Wizard:
         c.owner = self.owner_var.get().strip()
         c.resource_pack = dict(self.rp or {})
         self.collect_config()
+        c.experimental = {"enabled": bool(self.exp_on.get()), "commands": self._exp_commands()}
         mc = Path(self.mc_var.get().strip().strip('"'))
         c.minecraft_dir = str(mc) if self.mc_var.get().strip() and self.mc_ok(mc) else ""
         c.add_to_list = self.add_list_var.get() and bool(c.minecraft_dir)

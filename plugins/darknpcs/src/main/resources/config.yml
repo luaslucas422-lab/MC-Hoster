@@ -1,0 +1,9 @@
+# Dark NPCs by DarkerDawnFR: NPCs that run a command when clicked.
+# /npc create: type a player for the skin, pick the command, name it. It stands where you are.
+# Change one: sneak + right-click it (or /npc edit). Remove: /npc delete (look at it) or /npc delete <id>.
+
+# The line under the name.
+click-me: "&e&lCLICK ME"
+# NPCs turn their heads to the nearest player.
+look-at-players: true
+prefix: "&8[&eNPCs&8] "

@@ -1,4 +1,4 @@
-config-version: 5
+config-version: 6
 
 # Dark Shop by DarkerDawnFR: the old DonutSMP /shop (End, Nether, Gear, Food), /sell and money.
 # Change prices here, then /darkshop reload.
@@ -90,6 +90,18 @@ categories:
 
 # What /sell pays for 1 item. Anything not listed can't be sold.
 worth:
+  SEA_PICKLE: 5
+  SCUTE: 150
+  HEAVY_CORE: 5000
+  TRIAL_KEY: 200
+  OMINOUS_TRIAL_KEY: 600
+  DISC_FRAGMENT_5: 200
+  SNIFFER_EGG: 800
+  TORCHFLOWER_SEEDS: 40
+  PITCHER_POD: 40
+  GOAT_HORN: 300
+  RECOVERY_COMPASS: 900
+  GILDED_BLACKSTONE: 20
   WHEAT: 1
   CARROT: 1
   POTATO: 1

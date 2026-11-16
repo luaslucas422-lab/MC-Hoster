@@ -51,6 +51,7 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
     private YamlConfiguration players;
     private File playersFile;
     private Ask ask;
+    private Store store;
 
     @Override
     public void onEnable() {
@@ -157,6 +158,12 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
                 pc.setExecutor(this);
                 pc.setTabCompleter(this);
             }
+        }
+        store = new Store(this, ask);
+        PluginCommand sc = getCommand("store");
+        if (sc != null) {
+            sc.setExecutor(store);
+            sc.setTabCompleter(store);
         }
         for (Player p : Bukkit.getOnlinePlayers()) apply(p);
     }
@@ -620,6 +627,10 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             if (!perms.contains("darkshop.multiplier.legend") || !perms.contains("darkshop.multiplier.vip")) fails.add("no sell boost");
             if (!permissions(ranks.get("owner")).contains("*") || !expand("*").contains("darkranks.admin")) fails.add("owner doesn't get everything");
             if (expand("*").contains("darkvc.bypass")) fails.add("* gives bypass permissions");
+            if (store.ranks().size() < 3 || !store.gui() || !store.link().startsWith("http")) fails.add("store defaults");
+            store.change(0, "price", "€1.23");
+            if (!"€1.23".equals(String.valueOf(store.ranks().get(0).get("price")))) fails.add("store edit");
+            store.change(0, "price", "€4.99");
             if (!permissions(ranks.get("vip")).contains("darkperks.ec")) fails.add("vip should have /ec");
             if (!perms.contains("darkhomes.homes.20") || !perms.contains("darkessentials.starter.legend")) fails.add("legend homes/kit");
             if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");

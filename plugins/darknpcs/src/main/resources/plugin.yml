@@ -1,0 +1,13 @@
+name: DarkNPCs
+version: ${project.version}
+main: dev.darkerdawnfr.darknpcs.DarkNPCs
+api-version: "1.20"
+author: DarkerDawnFR
+description: NPCs that run a command when you click them. Made for MC Hoster.
+commands:
+  darknpc:
+    description: /npc create, /npc delete, /npc edit, /npc list.
+    aliases: [npc, npcs, dnpc, npn]
+permissions:
+  darknpcs.admin:
+    default: op
