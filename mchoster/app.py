@@ -1105,7 +1105,8 @@ class Wizard:
             if cfg.schedule.get("enabled") or cfg.schedule.get("task"):
                 schedule.apply(cfg, self.log)
         self.log(f"» Opening {cfg.name} ({cfg.prov.name} {cfg.version}) from {cfg.folder}")
-        if not cfg.prov.bedrock and (not cfg.java or not Path(cfg.java).exists()):
+        if not cfg.prov.bedrock and (not cfg.java or not Path(cfg.java).exists()
+                                     or (core.java_major(cfg.java) or 99) < core.required_java(cfg.version)):
             found = core.find_java(core.required_java(cfg.version), Path(cfg.minecraft_dir) if cfg.minecraft_dir else None,
                                    cfg.provider == "spigot")
             if not found:
@@ -1444,6 +1445,16 @@ class Wizard:
                     self._close_ports()
                     self.play_title.config(text=f"{self.cfg.name} is offline")
                     self.step_label.config(text=f"The server stopped (exit code {ev[1]}).")
+                    srv = ev[2] if len(ev) > 2 else None
+                    by_itself = srv is not None and not srv.stopping and not getattr(self, "_closing", False)
+                    if by_itself and not any("FAILED TO BIND" in l or "Address already in use" in l for l in srv.tail):
+                        # it stopped by itself: say why, if we can tell (a plain "stop" typed in the console ends with 0)
+                        why = core.explain_exit(srv.tail, self.cfg.folder)
+                        if why or ev[1] not in (0, None):
+                            last = "\n".join(l[-160:] for l in srv.tail[-8:])
+                            self.step_label.config(text="The server stopped by itself. " + (why or "See the console above."))
+                            messagebox.showwarning("The server stopped", (why or "It stopped by itself.") +
+                                                   (f"\n\nLast lines from the server:\n{last}" if last else ""))
                     self.startstop_btn.config(text="Start server", state="normal")
                     self.ip_box.grid_remove()
                     self.update_buttons()

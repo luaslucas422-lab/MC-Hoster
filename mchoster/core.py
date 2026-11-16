@@ -1376,6 +1376,42 @@ def change_port(cfg: "ServerConfig", port: int) -> None:
     cfg.save()
 
 
+# Why a server stopped by itself: (pattern in its output, what to tell the user)
+EXIT_REASONS = [
+    (r"FAILED TO BIND TO PORT|Address already in use",
+     "Another program (often a server from an older or second MC Hoster) is using the port. Close the other MC Hoster, "
+     "or let MC Hoster pick another port when it asks."),
+    (r"UnsupportedClassVersionError|compiled by a more recent version of the Java Runtime|requires running the server with Java",
+     "This Minecraft version needs a newer Java. Click Apply & start in tab 3 and MC Hoster gets the right one."),
+    (r"Unable to access jarfile|Invalid or corrupt jarfile|Error opening zip file|ZipException",
+     "server.jar is missing or broken. Click Apply & start in tab 3 to download it again."),
+    (r"session\.lock|already in use by another|The world is already being used|DirectoryLock",
+     "The world is still open in another server (an older MC Hoster may still be running it). "
+     "Close the other MC Hoster, or restart your PC, then start again."),
+    (r"OutOfMemoryError|Could not reserve enough space|Could not create the Java Virtual Machine",
+     "Not enough memory for the server. Close other programs, or lower Max players in tab 3."),
+    (r"agree to the EULA|eula\.txt",
+     "The Minecraft EULA isn't accepted. Tick it in tab 3 and click Apply & start."),
+    (r"Failed to load properties|Failed to load level|Exception reading .*level\.dat|Failed to read level",
+     "The world or server.properties couldn't be read (maybe from a crash). A backup is in the world folder "
+     "(level.dat_old), or Dark Backup's backups folder."),
+    (r"Encountered an unexpected exception|Exception in server tick loop|This crash report has been saved",
+     "The server crashed. The crash report is in the crash-reports folder of the server."),
+]
+
+
+def explain_exit(lines: list[str], folder: str = "") -> str | None:
+    """What went wrong when a server stopped by itself, from its last lines (None if nothing known)."""
+    text = "\n".join(lines[-300:])
+    if folder and bad_path(folder):
+        return f"The server folder has one of {BAD_PATH_CHARS} in its path, and Java can't start a server there. " \
+               "Open the server again (My servers…) and MC Hoster renames the folder."
+    for pat, why in EXIT_REASONS:
+        if re.search(pat, text, re.I):
+            return why
+    return None
+
+
 class ServerProcess:
     DONE = re.compile(r"INFO\]: Done \(\d+[.,]\d+s\)! For help|Server started\.")  # not a plugin's own "Done (...)"
 
@@ -1386,6 +1422,8 @@ class ServerProcess:
         self.on_exit = on_exit or (lambda code: None)
         self.proc: subprocess.Popen | None = None
         self.ready = False
+        self.stopping = False  # True when MC Hoster (or the user) asked it to stop
+        self.tail: list[str] = []  # the last lines, to explain why it stopped
 
     @property
     def running(self) -> bool:
@@ -1394,6 +1432,8 @@ class ServerProcess:
     def start(self):
         write_start_script(self.cfg)
         self.ready = False
+        self.stopping = False
+        self.tail = []
         env = dict(os.environ)
         if self.cfg.prov.bedrock and not WINDOWS:
             env["LD_LIBRARY_PATH"] = "."
@@ -1412,6 +1452,9 @@ class ServerProcess:
         p = self.proc
         for line in p.stdout:
             line = line.rstrip("\r\n")
+            self.tail.append(line)
+            if len(self.tail) > 300:
+                del self.tail[:100]
             self.on_line(line)
             if not self.ready and self.DONE.search(line):
                 self.ready = True
@@ -1439,6 +1482,7 @@ class ServerProcess:
     def stop(self, wait: float = 30):
         if not self.running:
             return
+        self.stopping = True
         self.send("stop")
         try:
             self.proc.wait(wait)

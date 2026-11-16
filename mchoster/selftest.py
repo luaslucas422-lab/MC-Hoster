@@ -126,6 +126,9 @@ def run(args: list[str]) -> int:
         assert core.rename_server_folder(t, print) and Path(t.folder).name == "Renamed Server"
         assert not core.rename_server_folder(t, print), "renamed again for nothing"
         assert core.ServerConfig.load(Path(t.folder)).name == "Renamed Server"
+        assert "port" in core.explain_exit(["[Server thread/WARN]: **** FAILED TO BIND TO PORT!"]).lower()
+        assert "Java" in core.explain_exit(["java.lang.UnsupportedClassVersionError: has been compiled by a more recent version of the Java Runtime"])
+        assert core.explain_exit(["Done (3.1s)! For help"]) is None and "!" in core.explain_exit([], "C:/x/My SMP!")
         cfg.nether, cfg.end = True, True
         core.write_server_files(cfg)
         assert core.read_properties(d / "server.properties")["allow-nether"] == "true"
