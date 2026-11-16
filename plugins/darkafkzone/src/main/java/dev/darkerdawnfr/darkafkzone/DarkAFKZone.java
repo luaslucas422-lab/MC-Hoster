@@ -40,6 +40,7 @@ public class DarkAFKZone extends JavaPlugin implements Listener, TabCompleter {
     public void onEnable() {
         saveDefaultConfig();
         areas = new Areas(this, "&b&lAFK Zone Wand");
+        areas.onBoth = this::autoCreate;
         tp = new Tp(this);
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand pc = getCommand("afkzone");
@@ -50,6 +51,22 @@ public class DarkAFKZone extends JavaPlugin implements Listener, TabCompleter {
         Bukkit.getScheduler().runTaskTimer(this, this::second, 20, 20);
         if (Bukkit.getPluginManager().getPlugin("DarkShards") == null)
             getLogger().warning("Dark Shards isn't installed: the AFK zone has no shards to give (tick Dark Shards in MC Hoster).");
+    }
+
+    private final Map<UUID, String> lastMade = new ConcurrentHashMap<>();
+
+    /** Both corners set: the zone is made right away (afk1...; /afkzone create <name> renames it). */
+    public void autoCreate(Player p) {
+        String[] why = {""};
+        Areas.Area z = areas.create(p, areas.nextName("afk"), why);
+        areas.clearPicks(p.getUniqueId());
+        if (z == null) {
+            say(p, "&c" + why[0]);
+            return;
+        }
+        lastMade.put(p.getUniqueId(), z.name);
+        say(p, "&aAFK zone &f" + z.name + " &amade (" + z.box() + "): &d✦ " + shards() + " &aevery " + time(every()) + " in it.");
+        say(p, "&7Name it: &f/afkzone create <name>&7. Where /afkzone sends players: stand there, &f/afkzone setspawn&7.");
     }
 
     private String prefix() {
@@ -192,6 +209,7 @@ public class DarkAFKZone extends JavaPlugin implements Listener, TabCompleter {
                 if (!n.equals("1") && !n.equals("2")) return say(p, "&7Usage: /afkzone set 1  then  /afkzone set 2  &8(the block you look at)");
                 Location l = areas.pick(p, Integer.parseInt(n));
                 say(p, "&7Corner &f" + n + " &7set: &f" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ());
+                if (areas.bothSet(p.getUniqueId())) autoCreate(p);
             }
             case "wand" -> {
                 if (!(s instanceof Player p)) return true;
@@ -200,6 +218,12 @@ public class DarkAFKZone extends JavaPlugin implements Listener, TabCompleter {
             }
             case "create", "save" -> {
                 if (!(s instanceof Player p)) return true;
+                String last = lastMade.get(p.getUniqueId());
+                if (!areas.bothSet(p.getUniqueId()) && last != null && areas.get(last) != null && a.length > 1) {
+                    if (!areas.rename(last, a[1])) return say(p, "&cCan't use that name.");
+                    lastMade.put(p.getUniqueId(), a[1].toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", ""));
+                    return say(p, "&a" + last + " is now called &f" + a[1] + "&a.");
+                }
                 String[] why = {""};
                 Areas.Area z = areas.create(p, a.length > 1 ? a[1] : areas.nextName("afk"), why);
                 if (z == null) return say(p, "&c" + why[0]);

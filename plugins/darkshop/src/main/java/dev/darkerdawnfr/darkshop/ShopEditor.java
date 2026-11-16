@@ -7,6 +7,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 
 /**
@@ -50,22 +51,19 @@ public class ShopEditor {
             if (c == null) continue;
             Material icon = Util.material(c.getString("icon", "CHEST"));
             int items = c.getConfigurationSection("items") == null ? 0 : c.getConfigurationSection("items").getKeys(false).size();
-            int slot = Math.max(9, Math.min(26, c.getInt("slot", 10)));
+            int slot = Math.max(0, Math.min(26, c.getInt("slot", 10)));
             m.set(slot, Util.item(icon == null ? Material.CHEST : icon, 1, c.getString("name", id),
                     List.of("&7Id: &f" + id, "&7Items: &f" + items, "", "&eClick to edit")), e -> category(p, id).open(p));
         }
-        m.set(30, Util.item(Material.LIME_DYE, "&aAdd a category", "&7You'll type its name"), e -> ask.ask(p, "the new category's name (e.g. &bOres)", t -> {
-            String id = org.bukkit.ChatColor.stripColor(Util.color(t)).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
-            if (id.isEmpty() || plugin.getConfig().isSet(root + "." + id)) {
-                p.sendMessage(Util.color("&cPick another name."));
-                return;
-            }
-            plugin.getConfig().set(root + "." + id + ".name", t);
-            plugin.getConfig().set(root + "." + id + ".icon", "CHEST");
-            plugin.getConfig().set(root + "." + id + ".slot", freeSlot());
-            plugin.getConfig().set(root + "." + id + ".lore", "&7Things for sale.");
-            save();
-        }, () -> main(p).open(p)));
+        m.set(30, Util.item(Material.LIME_DYE, "&aAdd a category", "&7Pick where it goes in /shop,", "&7then type its name"), e ->
+                slotPicker(p, null, slot -> ask.ask(p, "the new category's name (e.g. &bOres)", t -> {
+                    String id = org.bukkit.ChatColor.stripColor(Util.color(t)).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+                    if (id.isEmpty() || plugin.getConfig().isSet(root + "." + id)) {
+                        p.sendMessage(Util.color("&cPick another name."));
+                        return;
+                    }
+                    addCategory(id, t, slot);
+                }, () -> main(p).open(p)), () -> main(p).open(p)).open(p));
         ItemStack hand = p.getInventory().getItemInMainHand();
         boolean holding = hand.getType() != Material.AIR;
         m.set(32, Util.item(Material.SUNFLOWER, "&fSell price of what you hold",
@@ -83,6 +81,45 @@ public class ShopEditor {
             }, () -> main(p).open(p));
         });
         m.fill();
+        return m;
+    }
+
+    public void addCategory(String id, String name, int slot) {
+        plugin.getConfig().set(root + "." + id + ".name", name);
+        plugin.getConfig().set(root + "." + id + ".icon", "CHEST");
+        plugin.getConfig().set(root + "." + id + ".slot", slot < 0 ? freeSlot() : slot);
+        plugin.getConfig().set(root + "." + id + ".lore", "&7Things for sale.");
+        save();
+    }
+
+    /** Which /shop slots are taken: category id -> slot (and the premium discount star). */
+    public Map<Integer, String> usedSlots() {
+        Map<Integer, String> used = new java.util.HashMap<>();
+        ConfigurationSection cs = plugin.getConfig().getConfigurationSection(root);
+        if (cs != null) for (String id : cs.getKeys(false)) used.put(Math.max(0, Math.min(26, cs.getInt(id + ".slot", 10))), id);
+        if (root.startsWith("premium")) used.put(22, "(your discount)");
+        return used;
+    }
+
+    /** The /shop layout: click an empty spot. moving = the category being moved (its own spot counts as free). */
+    public Menu slotPicker(Player p, String moving, java.util.function.IntConsumer then, Runnable back) {
+        Menu m = new Menu(4, "&8" + Util.small("Pick a slot in /shop"));
+        Map<Integer, String> used = usedSlots();
+        ConfigurationSection cs = plugin.getConfig().getConfigurationSection(root);
+        for (int s = 0; s < 27; s++) {
+            int slot = s;
+            String who = used.get(s);
+            if (who != null && !who.equals(moving)) {
+                Material icon = cs != null && cs.isSet(who) ? Util.material(cs.getString(who + ".icon", "CHEST")) : Material.NETHER_STAR;
+                m.set(s, Util.item(icon == null ? Material.CHEST : icon, 1, cs != null && cs.isSet(who) ? cs.getString(who + ".name", who) : "&6Discount",
+                        List.of("&cTaken")));
+            } else {
+                m.set(s, Util.item(who != null ? Material.LIME_STAINED_GLASS_PANE : Material.LIGHT_GRAY_STAINED_GLASS_PANE, 1,
+                        who != null ? "&aIt's here now (slot " + s + ")" : "&aPut it here", List.of("&7Slot " + s, "", "&eClick")), e -> then.accept(slot));
+            }
+        }
+        for (int s = 27; s < 36; s++) m.set(s, Util.glass());
+        m.set(31, Util.item(Material.ARROW, "&fBack"), e -> back.run());
         return m;
     }
 
@@ -142,15 +179,12 @@ public class ShopEditor {
             save();
             category(p, id).open(p);
         });
-        m.set(50, Util.item(Material.COMPASS, "&fSlot in /shop: &e" + plugin.getConfig().getInt(path + ".slot"), "&70-26"),
-                e -> ask.ask(p, "the slot (0-26)", t -> {
-                    try {
-                        plugin.getConfig().set(path + ".slot", Math.max(0, Math.min(26, Integer.parseInt(t.trim()))));
-                        save();
-                    } catch (NumberFormatException ex) {
-                        p.sendMessage(Util.color("&cThat isn't a number."));
-                    }
-                }, () -> category(p, id).open(p)));
+        m.set(50, Util.item(Material.COMPASS, "&fSlot in /shop: &e" + plugin.getConfig().getInt(path + ".slot"), "&eClick to move it"),
+                e -> slotPicker(p, id, slot -> {
+                    plugin.getConfig().set(path + ".slot", slot);
+                    save();
+                    category(p, id).open(p);
+                }, () -> category(p, id).open(p)).open(p));
         m.set(51, Util.item(Material.WRITABLE_BOOK, "&fDescription", "&7Now: " + plugin.getConfig().getString(path + ".lore", "")),
                 e -> ask.ask(p, "the description", t -> {
                     plugin.getConfig().set(path + ".lore", t);

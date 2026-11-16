@@ -820,7 +820,7 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
         Menu m = new Menu(6, "&8" + Util.small("Edit") + " " + org.bukkit.ChatColor.stripColor(Util.color(c.name())));
         int slot = 0;
         for (Reward rw : c.rewards()) {
-            if (slot >= 45) break;
+            if (slot >= 44) break;
             ItemStack show = icon(c, rw, true);
             ItemMeta meta = show.getItemMeta();
             if (meta != null) {
@@ -864,8 +864,10 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
                     if (v < 0) say(p, "&cThat isn't a number.");
                     else setCfg(id, "shard-price", (long) v);
                 }, () -> crateEditor(p, id).open(p)));
-        m.set(49, Util.item(Material.BOOK, "&fAdd loot", "&7Click any item in &fyour inventory", "&7to add it (name, enchants and all).",
+        m.set(44, Util.item(Material.BOOK, "&fAdd loot", "&7Click any item in &fyour inventory", "&7to add it (name, enchants and all).",
                 "&7Or use the buttons for money / shards."));
+        m.set(49, Util.item(Material.MAGENTA_DYE, "&d&lC&b&lo&e&ll&a&lo&c&lu&6&lr", "&7The colour of the crate's name,", "&7its key and its hologram", "", "&eClick to pick"),
+                e -> colors(p, id).open(p));
         m.set(50, Util.item(Material.SUNFLOWER, "&aAdd money", "&7Needs Dark Shop"), e ->
                 ask.ask(p, "the amount of money (like 5000 or 2.5k)", t -> {
                     double v = number(t);
@@ -895,6 +897,64 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
             editor(p).open(p);
         });
         for (int i = 45; i < 54; i++) if (m.getInventory().getItem(i) == null) m.set(i, Util.glass());
+        return m;
+    }
+
+    // colour presets: name -> &code, &#RRGGBB, or "from>to" for a gradient
+    static final String[][] COLORS = {
+            {"White", "&f"}, {"Gray", "&7"}, {"Dark Gray", "&8"}, {"Black", "&0"}, {"Red", "&c"}, {"Dark Red", "&4"}, {"Gold", "&6"}, {"Yellow", "&e"},
+            {"Green", "&a"}, {"Dark Green", "&2"}, {"Aqua", "&b"}, {"Dark Aqua", "&3"}, {"Blue", "&9"}, {"Dark Blue", "&1"}, {"Pink", "&d"}, {"Purple", "&5"},
+            {"Orange", "&#FF8C00"}, {"Hot Pink", "&#FF69B4"}, {"Mint", "&#3EB489"}, {"Sky", "&#87CEEB"}, {"Lavender", "&#B57EDC"}, {"Crimson", "&#DC143C"},
+            {"Sunset", "#FF512F>#F09819"}, {"Ocean", "#00C6FF>#0072FF"}, {"Toxic", "#B4FF00>#00C853"}, {"Candy", "#FF6EC7>#7873F5"}, {"Galaxy", "#7F00FF>#00D4FF"}};
+    static final Material[] COLOR_ICONS = {Material.WHITE_WOOL, Material.LIGHT_GRAY_WOOL, Material.GRAY_WOOL, Material.BLACK_WOOL, Material.RED_WOOL,
+            Material.RED_CONCRETE, Material.ORANGE_WOOL, Material.YELLOW_WOOL, Material.LIME_WOOL, Material.GREEN_WOOL, Material.LIGHT_BLUE_WOOL,
+            Material.CYAN_WOOL, Material.BLUE_WOOL, Material.BLUE_CONCRETE, Material.MAGENTA_WOOL, Material.PURPLE_WOOL, Material.ORANGE_CONCRETE,
+            Material.PINK_WOOL, Material.LIME_CONCRETE, Material.LIGHT_BLUE_CONCRETE, Material.PURPLE_CONCRETE, Material.RED_TERRACOTTA,
+            Material.ORANGE_GLAZED_TERRACOTTA, Material.LIGHT_BLUE_GLAZED_TERRACOTTA, Material.LIME_GLAZED_TERRACOTTA, Material.PINK_GLAZED_TERRACOTTA,
+            Material.PURPLE_GLAZED_TERRACOTTA};
+
+    /** Colours a crate's name, key name (and hologram). bold = the crate name in bold. */
+    public void recolor(String id, String color, boolean bold) {
+        Crate c = crates.get(id);
+        if (c == null) return;
+        String name = Util.plain(c.name()).trim(), key = Util.plain(c.keyName()).trim();
+        if (color.contains(">")) {
+            String[] g = color.split(">");
+            setCfg(id, "name", Util.gradient(name, g[0], g[1], bold));
+            setCfg(id, "key-name", Util.gradient(key, g[0], g[1], false));
+        } else {
+            setCfg(id, "name", color + (bold ? "&l" : "") + name);
+            setCfg(id, "key-name", color + key);
+        }
+    }
+
+    public Menu colors(Player p, String id) {
+        Crate c = crates.get(id);
+        if (c == null) return editor(p);
+        boolean bold = getConfig().getString("crates." + id + ".name", "").contains("&l");
+        Menu m = new Menu(5, "&8" + Util.small("Crate colour"));
+        int slot = 0;
+        for (int i = 0; i < COLORS.length; i++) {
+            String[] col = COLORS[i];
+            String plainName = Util.plain(c.name());
+            String shown = col[1].contains(">") ? Util.gradient(plainName, col[1].split(">")[0], col[1].split(">")[1], bold)
+                    : col[1] + (bold ? "&l" : "") + plainName;
+            String label = col[1].contains(">") ? Util.gradient(col[0], col[1].split(">")[0], col[1].split(">")[1], false) : col[1] + col[0];
+            m.set(slot++, Util.item(COLOR_ICONS[i], 1, label, List.of("&7" + (col[1].contains(">") ? "Gradient" : "Colour"), shown, "", "&eClick to use")), e -> {
+                recolor(id, col[1], bold);
+                say(p, "&7The crate is now " + crates.get(id).name() + "&7.");
+                crateEditor(p, id).open(p);
+            });
+        }
+        m.set(38, Util.item(bold ? Material.LIME_DYE : Material.GRAY_DYE, "&fBold: " + (bold ? "&aON" : "&7OFF"), "&eClick to switch"), e -> {
+            String n = getConfig().getString("crates." + id + ".name", "");
+            setCfg(id, "name", bold ? n.replace("&l", "") : (n.contains("&#") ? n.replaceAll("(&#[0-9A-Fa-f]{6})", "$1&l") : n.replaceFirst("^((?:&[0-9a-fA-F])?)", "$1&l")));
+            colors(p, id).open(p);
+        });
+        m.set(40, Util.item(Material.NAME_TAG, "&fType your own", "&7Like &f&&b&&lMy Crate &7or &f&&#FF8800Mine", "&7(the key: in the editor)"), e ->
+                ask.ask(p, "the crate's name with colours", t -> setCfg(id, "name", t.trim()), () -> crateEditor(p, id).open(p)));
+        m.set(42, Util.item(Material.ARROW, "&fBack"), e -> crateEditor(p, id).open(p));
+        m.fill();
         return m;
     }
 
@@ -1076,6 +1136,12 @@ public class DarkCrates extends JavaPlugin implements Listener, TabCompleter {
                     t = crates.get(nid);
                     if (t.rewards().size() != 2 || t.rewards().get(0).weight() != 99) fails.add("change / remove loot");
                 }
+                recolor(nid, "&b", true);
+                if (!getConfig().getString("crates." + nid + ".name", "").equals("&b&lTest Mythic Crate") || !crates.get(nid).keyName().equals("&bTest Mythic Key"))
+                    fails.add("colour " + getConfig().getString("crates." + nid + ".name"));
+                recolor(nid, "#FF0000>#0000FF", false);
+                String gname = Util.color(crates.get(nid).name());
+                if (!Util.plain(crates.get(nid).name()).equals("Test Mythic Crate") || !gname.contains("\u00A7x")) fails.add("gradient colour " + crates.get(nid).name());
                 deleteCrate(nid);
                 if (crates.containsKey(nid) || getConfig().isSet("crates." + nid)) fails.add("crate delete");
             }

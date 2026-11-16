@@ -19,8 +19,44 @@ public final class Util {
     private static final String NORMAL = "abcdefghijklmnopqrstuvwxyz";
     private static final String SMALL = "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀѕᴛᴜᴠᴡxʏᴢ";
 
+    private static final java.util.regex.Pattern HEX = java.util.regex.Pattern.compile("(?i)&#([0-9a-f]{6})");
+
+    /** &a codes and &#RRGGBB colours. */
     public static String color(String s) {
-        return ChatColor.translateAlternateColorCodes('&', s == null ? "" : s);
+        if (s == null) return "";
+        java.util.regex.Matcher m = HEX.matcher(s);
+        StringBuilder b = new StringBuilder();
+        while (m.find()) {
+            StringBuilder h = new StringBuilder("\u00A7x");
+            for (char c : m.group(1).toCharArray()) h.append('\u00A7').append(c);
+            m.appendReplacement(b, java.util.regex.Matcher.quoteReplacement(h.toString()));
+        }
+        m.appendTail(b);
+        return ChatColor.translateAlternateColorCodes('&', b.toString());
+    }
+
+    /** "Rare Crate" in a gradient, as &#RRGGBB codes per letter. */
+    public static String gradient(String text, String from, String to, boolean bold) {
+        java.awt.Color a = java.awt.Color.decode(from), z = java.awt.Color.decode(to);
+        StringBuilder b = new StringBuilder();
+        int n = Math.max(1, text.length() - 1);
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == ' ') {
+                b.append(ch);
+                continue;
+            }
+            double t = (double) i / n;
+            int r = (int) Math.round(a.getRed() + (z.getRed() - a.getRed()) * t), g = (int) Math.round(a.getGreen() + (z.getGreen() - a.getGreen()) * t),
+                    bl = (int) Math.round(a.getBlue() + (z.getBlue() - a.getBlue()) * t);
+            b.append(String.format("&#%02X%02X%02X", r, g, bl)).append(bold ? "&l" : "").append(ch);
+        }
+        return b.toString();
+    }
+
+    /** The text without any colour codes (&a, &#RRGGBB or already coloured). */
+    public static String plain(String s) {
+        return ChatColor.stripColor(color(s));
     }
 
     /** "Shop - End" -> "ѕʜᴏᴘ - ᴇɴᴅ", the DonutSMP title look. */

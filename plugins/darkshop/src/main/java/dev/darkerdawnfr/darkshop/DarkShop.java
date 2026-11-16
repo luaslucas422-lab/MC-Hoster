@@ -424,6 +424,13 @@ public class DarkShop extends JavaPlugin implements TabCompleter, org.bukkit.eve
                 }
             }
             if (sell.worth(new ItemStack(Material.DIAMOND)) <= 0) fails.add("diamond has no worth");
+            // the editor puts a new category where you pick
+            editor.addCategory("zzslottest", "&bSlot Test", 4);
+            if (!"zzslottest".equals(editor.usedSlots().get(4))) fails.add("category not in the picked slot");
+            editor.slotPicker(null, "zzslottest", x -> { }, () -> { });
+            getConfig().set("categories.zzslottest", null);
+            saveConfig();
+            shop.reload();
             UUID pt = UUID.randomUUID();
             if (playtime.amount(0) != 1000 || playtime.amount(10) != 1200 || playtime.amount(100000) != 5000) fails.add("playtime amounts " + playtime.amount(10));
             double got = 0;

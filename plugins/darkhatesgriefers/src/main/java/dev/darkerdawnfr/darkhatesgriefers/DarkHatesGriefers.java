@@ -61,12 +61,30 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
     public void onEnable() {
         saveDefaultConfig();
         areas = new Areas(this, "&c&lGriefer Wand");
+        areas.onBoth = this::autoProtect;
         getServer().getPluginManager().registerEvents(this, this);
         PluginCommand pc = getCommand("darkhatesgriefers");
         if (pc != null) {
             pc.setExecutor(this);
             pc.setTabCompleter(this);
         }
+    }
+
+    private final Map<UUID, String> lastMade = new HashMap<>();
+
+    /** Both corners set: the area is protected right away (named area1, area2...; /dhg create <name> renames it). */
+    public void autoProtect(Player p) {
+        String[] why = {""};
+        Areas.Area ar = areas.create(p, areas.nextName("area"), why);
+        areas.clearPicks(p.getUniqueId());
+        if (ar == null) {
+            say(p, "&c" + why[0]);
+            return;
+        }
+        lastMade.put(p.getUniqueId(), ar.name);
+        say(p, "&aProtected! &f" + ar.name + " &a(" + ar.box() + " blocks): nobody can break or place blocks there now, you too.");
+        say(p, "&7Name it: &f/dhg create <name>&7. Let someone build: &f/dhg allow <player> " + ar.name + "&7. Undo: &f/dhg delete " + ar.name);
+        p.playSound(p.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_LAND, 0.4f, 1.6f);
     }
 
     public Areas areas() {
@@ -344,7 +362,8 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
                 if (!n.equals("1") && !n.equals("2")) return say(p, "&7Usage: /dhg set 1  then  /dhg set 2  &8(the block you look at)");
                 Location l = areas.pick(p, Integer.parseInt(n));
                 say(p, "&7Corner &f" + n + " &7set: &f" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ()
-                        + (areas.picks(p.getUniqueId())[n.equals("1") ? 1 : 0] != null ? "&7. Now: &f/dhg create <name>" : "&7. Now: &f/dhg set " + (n.equals("1") ? 2 : 1)));
+                        + (areas.bothSet(p.getUniqueId()) ? "" : "&7. Now: &f/dhg set " + (n.equals("1") ? 2 : 1)));
+                if (areas.bothSet(p.getUniqueId())) autoProtect(p);
             }
             case "wand" -> {
                 if (!(s instanceof Player p)) return true;
@@ -354,6 +373,12 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
             case "create", "save", "protect" -> {
                 if (!(s instanceof Player p)) return true;
                 String name = a.length > 1 ? a[1] : areas.nextName("area");
+                String last = lastMade.get(p.getUniqueId());
+                if (!areas.bothSet(p.getUniqueId()) && last != null && areas.get(last) != null && a.length > 1) {
+                    if (!areas.rename(last, name)) return say(p, "&cCan't use that name (taken or no letters).");
+                    lastMade.put(p.getUniqueId(), name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", ""));
+                    return say(p, "&a" + last + " is now called &f" + name + "&a.");
+                }
                 String[] why = {""};
                 Areas.Area ar = areas.create(p, name, why);
                 if (ar == null) return say(p, "&c" + why[0]);
@@ -480,6 +505,9 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
             back.on = false;
             if (protectedAt(in) != null || !canBuild(griefer, in, false)) fails.add("turning it off");
             if (areas.create(name, c1, c2, why) != null) fails.add("same name twice");
+            if (!areas.rename(name, "dhgtest2") || areas.get("dhgtest2") == null || areas.get(name) != null) fails.add("rename");
+            areas.rename("dhgtest2", name);
+            back = areas.get(name);
             // a real block that breaking can't remove: the event is cancelled
             back.on = true;
             Block b = w.getBlockAt(995, 70, 1005);

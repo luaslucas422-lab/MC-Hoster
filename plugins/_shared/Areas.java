@@ -83,6 +83,8 @@ public final class Areas implements Listener {
     private final String wandName;
     private final Map<String, Area> areas = new LinkedHashMap<>();
     private final Map<UUID, Location[]> picks = new HashMap<>();
+    /** Runs when a player has set both corners (by command or wand). */
+    public java.util.function.Consumer<Player> onBoth;
 
     public Areas(JavaPlugin plugin, String wandName) {
         this.plugin = plugin;
@@ -143,8 +145,32 @@ public final class Areas implements Listener {
         int n = e.getAction() == Action.LEFT_CLICK_BLOCK ? 1 : 2;
         Location l = e.getClickedBlock().getLocation();
         picks(e.getPlayer().getUniqueId())[n - 1] = l;
-        e.getPlayer().sendMessage(Util.color("&7Corner &f" + n + " &7set: &f" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ()
-                + (picks(e.getPlayer().getUniqueId())[2 - n] != null ? " &8(both set: now name it)" : "")));
+        e.getPlayer().sendMessage(Util.color("&7Corner &f" + n + " &7set: &f" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ()));
+        if (bothSet(e.getPlayer().getUniqueId()) && onBoth != null) onBoth.accept(e.getPlayer());
+    }
+
+    public boolean bothSet(UUID id) {
+        Location[] c = picks(id);
+        return c[0] != null && c[1] != null;
+    }
+
+    public void clearPicks(UUID id) {
+        picks.remove(id);
+    }
+
+    /** Gives an area another name. */
+    public boolean rename(String old, String name) {
+        Area a = get(old);
+        String id = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", "");
+        if (a == null || id.isEmpty() || areas.containsKey(id)) return false;
+        Area n = new Area(id, a.world, a.x1, a.y1, a.z1, a.x2, a.y2, a.z2);
+        n.on = a.on;
+        n.allowed.addAll(a.allowed);
+        n.extra.putAll(a.extra);
+        areas.remove(a.name);
+        areas.put(id, n);
+        save();
+        return true;
     }
 
     /** Makes an area from the player's two corners. Returns null and says why if it can't. */
