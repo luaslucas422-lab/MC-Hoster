@@ -488,11 +488,13 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
         try {
             areas.delete(name);
             org.bukkit.World w = Bukkit.getWorlds().get(0);
-            Location c1 = new Location(w, 1000, 60, 1000), c2 = new Location(w, 990, 80, 1010);
+            Location sp = w.getSpawnLocation();
+            int bx = sp.getBlockX(), by = sp.getBlockY(), bz = sp.getBlockZ(); // near spawn: those chunks are loaded already
+            Location c1 = new Location(w, bx + 10, by - 10, bz + 5), c2 = new Location(w, bx, by + 10, bz + 15);
             String[] why = {""};
             Areas.Area ar = areas.create(name, c1, c2, why);
             if (ar == null) throw new IllegalStateException(why[0]);
-            Location in = new Location(w, 995, 70, 1005), out = new Location(w, 1001, 70, 1005);
+            Location in = new Location(w, bx + 5, by, bz + 10), out = new Location(w, bx + 11, by, bz + 10);
             if (protectedAt(in) == null || protectedAt(out) != null) fails.add("area box");
             if (!ar.box().equals("11x21x11")) fails.add("box " + ar.box());
             if (canBuild(griefer, in, false) || !canBuild(griefer, out, false) || !canBuild(griefer, in, true)) fails.add("build rules");
@@ -500,7 +502,7 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
             areas.save();
             areas.load();
             Areas.Area back = areas.get(name);
-            if (back == null || !back.allowed.contains(builder) || back.x1 != 990 || back.y2 != 80) fails.add("not saved");
+            if (back == null || !back.allowed.contains(builder) || back.x1 != bx || back.y2 != by + 10) fails.add("not saved");
             if (!canBuild(builder, in, false) || canBuild(griefer, in, false)) fails.add("allowed player");
             back.on = false;
             if (protectedAt(in) != null || !canBuild(griefer, in, false)) fails.add("turning it off");
@@ -510,12 +512,12 @@ public class DarkHatesGriefers extends JavaPlugin implements Listener, TabComple
             back = areas.get(name);
             // a real block that breaking can't remove: the event is cancelled
             back.on = true;
-            Block b = w.getBlockAt(995, 70, 1005);
+            Block b = w.getBlockAt(bx + 5, by, bz + 10);
             Material was = b.getType();
             b.setType(Material.STONE);
-            List<Block> boom = new ArrayList<>(List.of(b, w.getBlockAt(1001, 70, 1005)));
+            List<Block> boom = new ArrayList<>(List.of(b, w.getBlockAt(bx + 11, by, bz + 10)));
             keepProtected(boom);
-            if (boom.size() != 1 || boom.get(0).getX() != 1001) fails.add("explosion not stopped");
+            if (boom.size() != 1 || boom.get(0).getX() != bx + 11) fails.add("explosion not stopped");
             b.setType(was);
         } catch (Throwable t) {
             fails.add(t.toString());

@@ -35,6 +35,39 @@ public class NoEnchantLimits extends JavaPlugin implements TabCompleter {
                 pc.setTabCompleter(this);
             }
         }
+        // EssentialsX and others have /enchant too: once every plugin is loaded, /enchant is ours
+        Bukkit.getScheduler().runTask(this, this::takeOver);
+    }
+
+    /** The command map's "/enchant" (and /minecraft:enchant's short name) point at this plugin. */
+    public boolean takeOver() {
+        try {
+            Object map = Bukkit.getServer().getClass().getMethod("getCommandMap").invoke(Bukkit.getServer());
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Command> known = (java.util.Map<String, Command>) map.getClass().getMethod("getKnownCommands").invoke(map);
+            PluginCommand mine = getCommand("enchant");
+            if (mine == null) return false;
+            known.put("enchant", mine);
+            try { // Paper / Spigot: tell players' clients about the change
+                Bukkit.getServer().getClass().getMethod("syncCommands").invoke(Bukkit.getServer());
+            } catch (Throwable ignored) {
+            }
+            return true;
+        } catch (Throwable t) {
+            getLogger().warning("Couldn't take /enchant from another plugin (use /nel instead): " + t);
+            return false;
+        }
+    }
+
+    /** Who /enchant goes to now. */
+    public static String owner() {
+        try {
+            Object map = Bukkit.getServer().getClass().getMethod("getCommandMap").invoke(Bukkit.getServer());
+            Object c = ((java.util.Map<?, ?>) map.getClass().getMethod("getKnownCommands").invoke(map)).get("enchant");
+            return c instanceof PluginCommand pc ? pc.getPlugin().getName() : String.valueOf(c == null ? null : c.getClass().getSimpleName());
+        } catch (Throwable t) {
+            return "?";
+        }
     }
 
     private static String color(String s) {
@@ -153,14 +186,13 @@ public class NoEnchantLimits extends JavaPlugin implements TabCompleter {
             Enchantment wind = find("windburst");
             if (wind != null) { // 1.21+
                 ItemStack mace = new ItemStack(Material.valueOf("MACE"));
-                if (apply(mace, wind, 64) != null || mace.getEnchantmentLevel(wind) != 64) fails.add("mace wind burst 64");
+                apply(mace, wind, 64); // 1.20.6 only has the mace as an experiment, so no "it works" check there
+                if (mace.getEnchantmentLevel(wind) != 64) fails.add("mace wind burst 64");
             }
             ItemStack big = new ItemStack(Material.DIAMOND_PICKAXE);
             apply(big, find("efficiency"), MAX);
             if (big.getEnchantmentLevel(find("efficiency")) != MAX) fails.add("level " + MAX);
-            PluginCommand enchant = getCommand("enchant");
-            if (enchant == null || Bukkit.getPluginCommand("enchant") == null || !(Bukkit.getPluginCommand("enchant").getPlugin() instanceof NoEnchantLimits))
-                fails.add("/enchant isn't ours");
+            if (!getName().equals(owner())) fails.add("/enchant goes to " + owner());
         } catch (Throwable t) {
             fails.add(t.toString());
         }
