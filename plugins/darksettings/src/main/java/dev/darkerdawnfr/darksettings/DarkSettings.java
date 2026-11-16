@@ -42,6 +42,7 @@ public class DarkSettings extends JavaPlugin implements Listener, TabCompleter {
 
     public static final List<Setting> ALL = List.of(
             new Setting("nightvision", "Night Vision", Material.ENDER_EYE, "See in the dark.", "", false),
+            new Setting("randomcoords", "Random Coords", Material.COMPASS, "Show random coordinates instead of your real ones (for streaming).", "", false),
             new Setting("mobspawns", "Mob Spawns", Material.ZOMBIE_HEAD, "Monsters spawn around you.", "", true),
             new Setting("scoreboard", "Scoreboard", Material.OAK_SIGN, "The scoreboard on the right.", "DarkScoreboard", true),
             new Setting("bossbar", "Boss Bar", Material.DRAGON_HEAD, "The bar at the top of the screen.", "DarkBossbar", true),

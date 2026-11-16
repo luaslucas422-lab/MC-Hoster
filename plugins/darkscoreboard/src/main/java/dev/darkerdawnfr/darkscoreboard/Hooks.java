@@ -175,6 +175,12 @@ public class Hooks {
                     case THE_END -> "End";
                     default -> "Overworld";
                 });
+                if (Settings.on(id, "randomcoords", false)) {
+                    // streamer mode: random numbers that change every 30 seconds
+                    java.util.Random r = new java.util.Random(id.hashCode() * 31L + System.currentTimeMillis() / 30000);
+                    text = rep(rep(rep(text, "x", String.valueOf(r.nextInt(20000) - 10000)), "y", String.valueOf(r.nextInt(200) - 10)),
+                            "z", String.valueOf(r.nextInt(20000) - 10000));
+                }
                 text = rep(text, "x", String.valueOf(online.getLocation().getBlockX()));
                 text = rep(text, "y", String.valueOf(online.getLocation().getBlockY()));
                 text = rep(text, "z", String.valueOf(online.getLocation().getBlockZ()));

@@ -4,7 +4,7 @@ main: dev.darkerdawnfr.darkhomes.DarkHomes
 api-version: "1.20"
 author: DarkerDawnFR
 description: The modern DonutSMP /home menu. Made for MC Hoster.
-softdepend: [DarkCombat]
+softdepend: [DarkCombat, DarkSettings]
 commands:
   home:
     description: Open your homes, or /home <number> to go there.

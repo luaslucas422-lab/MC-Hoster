@@ -57,6 +57,13 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        if (getConfig().getInt("config-version", 1) < 2) {
+            var defs = getConfig().getDefaults();
+            if (defs != null) for (String k : List.of("starter-gear.tier-order", "starter-gear.tiers"))
+                if (!getConfig().isSet(k) && defs.isSet(k)) getConfig().set(k, defs.get(k));
+            getConfig().set("config-version", 2);
+            saveConfig();
+        }
         tp = new Tp(this);
         dataFile = new File(getDataFolder(), "data.yml");
         data = YamlConfiguration.loadConfiguration(dataFile);
@@ -234,9 +241,25 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
 
     /** Gray bold "Starter ..." gear for anyone who spawns with nothing. It can't be sold or put on /ah. */
     public List<ItemStack> starterGear() {
+        return starterGear((Player) null);
+    }
+
+    /** The best kit this player's rank gets (darkessentials.starter.<tier>), or the normal one. */
+    public String tier(Player p) {
+        if (p != null) for (String t : getConfig().getStringList("starter-gear.tier-order"))
+            if (p.hasPermission("darkessentials.starter." + t) && getConfig().isSet("starter-gear.tiers." + t)) return t;
+        return "";
+    }
+
+    public List<ItemStack> starterGear(Player p) {
+        String t = tier(p);
+        return starterGear(t.isEmpty() ? getConfig().getStringList("starter-gear.items") : getConfig().getStringList("starter-gear.tiers." + t));
+    }
+
+    public List<ItemStack> starterGear(List<String> list) {
         List<ItemStack> out = new ArrayList<>();
         org.bukkit.NamespacedKey key = new org.bukkit.NamespacedKey(this, "starter");
-        for (String s : getConfig().getStringList("starter-gear.items")) {
+        for (String s : list) {
             String[] p = s.split(":");
             Material m = Util.material(p[0]);
             if (m == null || !m.isItem()) continue;
@@ -266,7 +289,7 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
     /** Gives the starter gear (armour goes straight on). */
     public void giveStarter(Player p) {
         var inv = p.getInventory();
-        for (ItemStack it : starterGear()) {
+        for (ItemStack it : starterGear(p)) {
             String n = it.getType().name();
             if (n.endsWith("_HELMET") && inv.getHelmet() == null) inv.setHelmet(it);
             else if (n.endsWith("_CHESTPLATE") && inv.getChestplate() == null) inv.setChestplate(it);
@@ -456,6 +479,8 @@ public class DarkEssentials extends JavaPlugin implements Listener, TabCompleter
             if (kitWait(id, "starter") != -1) fails.add("starter can be claimed twice");
             rememberBack(id, new Location(w, 1, 64, 1));
             List<ItemStack> gear = starterGear();
+            List<ItemStack> legend = starterGear(getConfig().getStringList("starter-gear.tiers.legend"));
+            if (legend.stream().noneMatch(i -> i.getType() == Material.DIAMOND_CHESTPLATE)) fails.add("legend respawn kit");
             if (gear.size() < 9) fails.add("starter gear has " + gear.size() + " items");
             for (ItemStack it : gear) {
                 String n = org.bukkit.ChatColor.stripColor(it.getItemMeta().getDisplayName());

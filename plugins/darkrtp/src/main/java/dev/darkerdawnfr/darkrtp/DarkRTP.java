@@ -205,10 +205,13 @@ public class DarkRTP extends JavaPlugin implements Listener, TabCompleter {
         to.setPitch(p.getLocation().getPitch());
         p.setFallDistance(0);
         p.teleport(to);
-        p.sendTitle(Util.color("&dTeleported"), Util.color("&f" + to.getBlockX() + ", " + to.getBlockY() + ", " + to.getBlockZ()), 0, 40, 10);
+        boolean hide = Settings.on(p.getUniqueId(), "randomcoords", false);
+        java.util.Random rnd = new java.util.Random();
+        String shown = hide ? (rnd.nextInt(20000) - 10000) + ", " + (rnd.nextInt(120) + 60) + ", " + (rnd.nextInt(20000) - 10000)
+                : to.getBlockX() + ", " + to.getBlockY() + ", " + to.getBlockZ();
+        p.sendTitle(Util.color("&dTeleported"), Util.color("&f" + shown), 0, 40, 10);
         p.playSound(to, Sound.ENTITY_ENDERMAN_TELEPORT, 0.6f, 1f);
-        say(p, "&7Teleported to &f" + to.getBlockX() + ", " + to.getBlockY() + ", " + to.getBlockZ()
-                + " &7in the &f" + Finder.key(to.getWorld().getEnvironment()) + "&7.");
+        say(p, "&7Teleported to &f" + shown + " &7in the &f" + Finder.key(to.getWorld().getEnvironment()) + "&7.");
     }
 
     // ------------------------------------------------------------------ /rtpqueue

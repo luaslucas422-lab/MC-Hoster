@@ -4,6 +4,7 @@
 # What new players start with.
 defaults:
   nightvision: false
+  randomcoords: false
   mobspawns: true
   scoreboard: true
   bossbar: true

@@ -1,3 +1,5 @@
+config-version: 2
+
 # Dark Essentials by DarkerDawnFR: /spawn, /back, kits, join messages, AFK and /rules.
 
 # Seconds to stand still before /spawn and /back teleport you.
@@ -33,6 +35,20 @@ starter-gear:
   name: "&7&lStarter {item}"
   items: ["CHAINMAIL_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "CHAINMAIL_BOOTS", "COOKED_BEEF:16",
           "STONE_SWORD", "STONE_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
+  # Better ranks respawn with better kits (permission darkessentials.starter.<tier>, given by Dark Ranks).
+  # The first tier in this list that a player has is the one they get.
+  tier-order: [legend, mvpplus, mvp, vipplus, vip]
+  tiers:
+    vip: ["IRON_HELMET", "CHAINMAIL_CHESTPLATE", "CHAINMAIL_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:24",
+          "IRON_SWORD", "STONE_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
+    vipplus: ["IRON_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:32",
+              "IRON_SWORD", "IRON_PICKAXE", "STONE_AXE", "STONE_SHOVEL"]
+    mvp: ["IRON_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "IRON_BOOTS", "COOKED_BEEF:32", "GOLDEN_CARROT:8",
+          "IRON_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
+    mvpplus: ["DIAMOND_HELMET", "IRON_CHESTPLATE", "IRON_LEGGINGS", "DIAMOND_BOOTS", "COOKED_BEEF:48", "GOLDEN_CARROT:16",
+              "DIAMOND_SWORD", "IRON_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
+    legend: ["DIAMOND_HELMET", "DIAMOND_CHESTPLATE", "DIAMOND_LEGGINGS", "DIAMOND_BOOTS", "COOKED_BEEF:64", "GOLDEN_APPLE:2",
+             "DIAMOND_SWORD", "DIAMOND_PICKAXE", "IRON_AXE", "IRON_SHOVEL", "SHIELD"]
 
 kits:
   starter:

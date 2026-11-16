@@ -14,16 +14,22 @@ final class Settings {
     private Settings() {}
 
     static boolean on(UUID id, String key) {
+        return on(id, key, true);
+    }
+
+    /** whenMissing = the answer when Dark Settings isn't installed. */
+    static boolean on(UUID id, String key, boolean whenMissing) {
         Plugin s = Bukkit.getPluginManager().getPlugin("DarkSettings");
-        if (s == null || !s.isEnabled()) return true;
+        if (s == null || !s.isEnabled()) return whenMissing;
         try {
             if (owner != s || method == null) {
                 method = s.getClass().getMethod("enabled", UUID.class, String.class);
                 owner = s;
             }
-            return !Boolean.FALSE.equals(method.invoke(s, id, key));
+            Object r = method.invoke(s, id, key);
+            return r instanceof Boolean b ? b : whenMissing;
         } catch (Throwable t) {
-            return true;
+            return whenMissing;
         }
     }
 }

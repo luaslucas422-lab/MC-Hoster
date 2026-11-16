@@ -84,6 +84,27 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             getConfig().set("config-version", 3);
             saveConfig();
         }
+        if (getConfig().getInt("config-version", 1) < 4) {
+            // more homes and a better respawn kit for better ranks
+            String[][] add = {{"vip", "darkhomes.homes.7", "darkessentials.starter.vip", "&f7 homes", "&fBetter respawn kit (iron sword)"},
+                    {"vip+", "darkhomes.homes.9", "darkessentials.starter.vipplus", "&f9 homes", "&fRespawn kit: iron armour and tools"},
+                    {"mvp", "darkhomes.homes.12", "darkessentials.starter.mvp", "&f12 homes", "&fRespawn kit: + shield, golden carrots"},
+                    {"mvp+", "darkhomes.homes.15", "darkessentials.starter.mvpplus", "&f15 homes", "&fRespawn kit: diamond sword and pieces"},
+                    {"legend", "darkhomes.homes.20", "darkessentials.starter.legend", "&f20 homes", "&fRespawn kit: full diamond"}};
+            for (String[] x : add) {
+                if (!getConfig().isSet("ranks." + x[0])) continue;
+                List<String> l = new ArrayList<>(getConfig().getStringList("ranks." + x[0] + ".permissions"));
+                for (String perm : new String[]{x[1], x[2]}) if (!l.contains(perm)) l.add(perm);
+                getConfig().set("ranks." + x[0] + ".permissions", l);
+                List<String> perks = new ArrayList<>(getConfig().getStringList("ranks." + x[0] + ".perks"));
+                perks.removeIf(pk -> pk.matches(".*\\d+ homes.*"));
+                perks.add(x[3]);
+                perks.add(x[4]);
+                getConfig().set("ranks." + x[0] + ".perks", perks);
+            }
+            getConfig().set("config-version", 4);
+            saveConfig();
+        }
         playersFile = new File(getDataFolder(), "players.yml");
         players = YamlConfiguration.loadConfiguration(playersFile);
         load();
@@ -515,6 +536,7 @@ public class DarkRanks extends JavaPlugin implements Listener, TabCompleter {
             if (!perms.contains("darkperks.craft") || !perms.contains("darkperks.fly") || !perms.contains("darkperks.trail")) fails.add("legend perms " + perms);
             if (permissions(ranks.get("vip")).contains("darkperks.fly")) fails.add("vip shouldn't fly");
             if (!permissions(ranks.get("vip")).contains("darkperks.ec")) fails.add("vip should have /ec");
+            if (!perms.contains("darkhomes.homes.20") || !perms.contains("darkessentials.starter.legend")) fails.add("legend homes/kit");
             if (!perms.contains("darkshop.premium") || !perms.contains("darkshop.discount.legend")) fails.add("legend premium shop");
             if (getConfig().getStringList("media.requirements").size() < 2) fails.add("media requirements");
             if (!ChatColor.stripColor(prefix(id)).isBlank()) fails.add("member prefix should be empty");

@@ -64,8 +64,8 @@ public class DarkHomes extends JavaPlugin implements Listener, TabCompleter {
     /** How many homes a player can have: darkhomes.homes.<n> permissions raise the default. */
     public int max(Player p) {
         int max = getConfig().getInt("default-homes", 5);
-        for (int n = 1; n <= 9; n++) if (p != null && p.hasPermission("darkhomes.homes." + n)) max = Math.max(max, n);
-        return Math.max(1, Math.min(9, max));
+        for (int n = 1; n <= 27; n++) if (p != null && p.hasPermission("darkhomes.homes." + n)) max = Math.max(max, n);
+        return Math.max(1, Math.min(27, max));
     }
 
     public Map<Integer, Location> of(UUID id) {
@@ -88,18 +88,29 @@ public class DarkHomes extends JavaPlugin implements Listener, TabCompleter {
     private static final Material[] BEDS = {Material.LIGHT_BLUE_BED, Material.LIME_BED, Material.YELLOW_BED, Material.ORANGE_BED,
             Material.MAGENTA_BED, Material.PINK_BED, Material.CYAN_BED, Material.PURPLE_BED, Material.RED_BED};
 
+    /** Coordinates as shown to this player: random ones if they turned Random Coords on in /settings. */
+    private static String coords(Player p, Location l) {
+        if (p != null && Settings.on(p.getUniqueId(), "randomcoords", false)) {
+            java.util.Random r = new java.util.Random(l.hashCode());
+            return (r.nextInt(20000) - 10000) + ", " + (r.nextInt(200) - 10) + ", " + (r.nextInt(20000) - 10000);
+        }
+        return l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ();
+    }
+
     public Menu menu(Player p) {
         int max = max(p);
-        Menu m = new Menu(4, "&8" + Util.small("Homes"));
-        int start = (9 - max) / 2;
+        int groups = (max + 8) / 9; // a row of beds and a row of delete buttons for every 9 homes
+        Menu m = new Menu(Math.min(6, Math.max(4, groups * 2 + (groups < 3 ? 2 : 0))), "&8" + Util.small("Homes"));
         Map<Integer, Location> mine = of(p.getUniqueId());
         for (int i = 0; i < max; i++) {
             int n = i + 1;
             Location l = mine.get(n);
-            int bedSlot = 9 + start + i, delSlot = 18 + start + i;
+            int g = i / 9, inRow = Math.min(9, max - g * 9), start = (9 - inRow) / 2;
+            int top = groups < 3 ? 9 + g * 18 : g * 18;
+            int bedSlot = top + start + i % 9, delSlot = bedSlot + 9;
             if (l != null) {
                 m.set(bedSlot, Util.item(BEDS[i % BEDS.length], "&bHome " + n,
-                        "&7" + world(l) + " &f" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ(), "", "&eClick to teleport"), e -> {
+                        "&7" + world(l) + " &f" + coords(p, l), "", "&eClick to teleport"), e -> {
                     p.closeInventory();
                     go(p, n);
                 });
