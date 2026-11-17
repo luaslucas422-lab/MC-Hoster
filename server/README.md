@@ -7,6 +7,6 @@ Feedback, Server sharing and Hosted servers run here. It's one Flask app.
 2. Build command: `pip install -r requirements.txt`
 3. Start command: `gunicorn app:app --timeout 900 --workers 2 --threads 8`
 4. Add a **Disk** mounted at `/data` and set `DB_PATH=/data/data.db`, or everything is lost on every restart.
-5. Environment variables:
-6. Put the service's address in `ONLINE_URL` in `mchoster/online.py` and release a new MC Hoster.
+
+5. Put the service's address in `ONLINE_URL` in `mchoster/online.py` and release a new MC Hoster.
 
