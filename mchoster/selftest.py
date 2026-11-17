@@ -148,16 +148,12 @@ def run(args: list[str]) -> int:
         print("  files:", files)
         addons.sync(cfg, [w for w in wanted if w != "spark"], log=lambda l: print("  " + l))
         assert "spark" not in cfg.addons and not any("spark" in f.lower() for f in os.listdir(d / provider.addon_folder)), "spark not removed"
-    if dark:
+    if dark:  # the Dark plugins are private now (Gh0stAC repo): test whatever jars are in DARK_JARS
         from . import addons
-        wanted = DARK + (["vault"] if "--vault" in args else [])
-        failed = addons.sync(cfg, wanted, log=lambda l: print("  " + l))
-        assert not failed, f"addons failed: {failed}"
-        print("  files:", sorted(p.name for p in (d / provider.addon_folder).iterdir()))
-        # unticking Dark Shop must keep DarkShop.jar, Dark AH still needs it
-        addons.sync(cfg, [w for w in wanted if w != "darkshop"], log=lambda l: print("  " + l))
-        assert (d / provider.addon_folder / "DarkShop.jar").exists(), "DarkShop.jar removed although Dark AH needs it"
-        addons.sync(cfg, wanted, log=lambda l: print("  " + l))
+        jars = [str(x) for x in Path(os.environ.get("DARK_JARS", "")).glob("*.jar")] if os.environ.get("DARK_JARS") else []
+        cfg.custom_jars = jars
+        addons.sync_custom(cfg, log=lambda l: print("  " + l))
+        cfg.addons = [i for i in DARK if any(Path(j).stem.lower() == i for j in jars)]
 
     # tab 6 Config: properties written now, gamerules / whitelist / ops sent when it's ready
     if not provider.bedrock:

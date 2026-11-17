@@ -16,6 +16,8 @@ DB = os.environ.get("DB_PATH", "data.db")
 ADMIN = os.environ.get("ADMIN_KEY", "")
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 3 * 1024 * 1024
+from laura import bp as laura_bp  # noqa: E402
+app.register_blueprint(laura_bp)
 
 
 def db():

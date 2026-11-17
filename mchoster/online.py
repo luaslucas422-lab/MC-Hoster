@@ -21,7 +21,7 @@ def configured() -> bool:
     return bool(ONLINE_URL)
 
 
-def _call(method: str, path: str, body: dict | None = None, key: str = "", timeout: float = 20):
+def _call(method: str, path: str, body: dict | None = None, key: str = "", timeout: float = 20, extra: dict | None = None):
     if not ONLINE_URL:
         raise Offline("The online part of MC Hoster isn't switched on yet.")
     p = profile.load()
@@ -29,6 +29,7 @@ def _call(method: str, path: str, body: dict | None = None, key: str = "", timeo
          "X-Mc": p.get("mc", "")[:16], "X-Version": core.VERSION}
     if key:
         h["X-Admin-Key"] = key
+    h.update(extra or {})
     req = urllib.request.Request(ONLINE_URL.rstrip("/") + path, method=method, headers=h,
                                  data=json.dumps(body).encode() if body is not None else None)
     try:
@@ -40,6 +41,8 @@ def _call(method: str, path: str, body: dict | None = None, key: str = "", timeo
         except Exception:
             msg = None
         raise Offline(msg or f"The service said {e.code}.")
+    except Offline:
+        raise
     except Exception as e:
         raise Offline(f"Couldn't reach the MC Hoster service ({e}).")
 

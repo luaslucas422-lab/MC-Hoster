@@ -33,6 +33,9 @@ def main():
     if args[:1] == ["--hold-server"]:  # used by --orphan-test: start a server, then die without stopping it
         from mchoster.selftest import hold_server
         sys.exit(hold_server(args[1]))
+    if args[:1] == ["--pay"] and len(args) > 1:  # Laura's payment window (its own process, see mchoster/laura.py)
+        from mchoster.laura import payment_window
+        sys.exit(payment_window(args[1]))
     if args[:1] == ["--tour"]:
         from mchoster.tour import run
         sys.exit(run(args[1] if len(args) > 1 else "screenshots"))

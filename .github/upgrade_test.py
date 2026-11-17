@@ -44,7 +44,7 @@ if phase == "old":
     cfg = core.ServerConfig(name="Upgrade Test", provider=ptype, version=version, players=20, eula=True, add_to_list=False)
     cfg.folder = str(folder)
     core.setup_server(cfg, log=lambda l: print("  old setup: " + l))
-    wanted = [a.id for a in addons.addons_for(prov) if a.id.startswith("dark") and a.id != "darkrsaddon"]
+    wanted = [a for a in ("vault", "essentials") if a in addons.ADDON_BY_ID]
     failed = addons.sync(cfg, wanted, log=lambda l: print("  old addons: " + l))
     print("old version:", getattr(core, "VERSION", "?"), "addons:", sorted(cfg.addons), "failed:", failed)
     cfg.save()
@@ -60,9 +60,8 @@ if not cfg.prov.bedrock and (not cfg.java or not Path(cfg.java).exists()):
     assert found, "the Java this server used is gone and no other was found"
     cfg.java = str(found[0])
     cfg.save()
-changed = addons.refresh_bundled(cfg)  # what the window does before every start
-print("Dark plugins updated on start:", changed)
-assert changed, "the old server kept the old Dark plugins"
+changed = addons.sync_custom(cfg) if hasattr(addons, "sync_custom") else []  # what the window does before every start
+print("your plugins updated on start:", changed)
 ok1, bad1 = run(cfg, 60, "opened")
 # then Apply & restart (setup again + the new bundled plugins)
 core.setup_server(cfg, log=lambda l: print("  new setup: " + l))

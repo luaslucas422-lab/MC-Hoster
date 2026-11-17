@@ -34,7 +34,6 @@ class Addon:
     # kind ("bukkit"/"fabric") -> list of files to install; each file is a list of places to try, in order:
     # "mr:<modrinth slug>", "hangar:<hangar slug>", "geysermc:<project>:<platform>" (download.geysermc.org)
     # "jenkins:<job url>:<file regex>" (newest build on a Jenkins server)
-    # or "bundled:<file>" (one of the Dark plugins that come inside MC Hoster, in darkplugins/)
     sources: dict
     ports: list = field(default_factory=list)  # (port, "TCP"/"UDP", what for)
     note: str = ""
@@ -56,82 +55,13 @@ ADDONS = [
           {"bukkit": [["mr:essentialsx", "hangar:EssentialsX"]]}),
     Addon("vault", "Vault", "Economy and permissions link that shop, money and rank plugins need (VaultUnlocked).",
           {"bukkit": [["mr:vaultunlocked", "hangar:VaultUnlocked", "hangar:Vault"]]}),
-    Addon("darkshop", "Dark Shop", "The old DonutSMP /shop (End, Nether, Gear, Food), /sell, /bal, /pay, /baltop menu, /bounty.",
-          {"bukkit": [["bundled:DarkShop.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkah", "Dark AH", "DonutSMP-style auction house: /ah, /ah sell <price>, sort, filter, search.",
-          {"bukkit": [["bundled:DarkAH.jar"], ["bundled:DarkShop.jar"]]},
-          note="Comes with Dark Shop for the money"),
-    Addon("darkdiscord", "Dark Discord", "/discord and /dc send your Discord link; /dcedit (ops) sets it, Text or GUI mode.",
-          {"bukkit": [["bundled:DarkDiscord.jar"]]}, note="Set your link in game: /dcedit link https://discord.gg/..."),
-    Addon("darkrtp", "Dark RTP", "/rtp: random teleport to the Overworld, Nether or End. /rtpq: go with another player.",
-          {"bukkit": [["bundled:DarkRTP.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkscoreboard", "Dark Scoreboard", "The old DonutSMP scoreboard + tab list: money, kills, deaths, bounty, playtime. Edit with /dsb edit.",
-          {"bukkit": [["bundled:DarkScoreboard.jar"]]}, note="Shows money and bounty from Dark Shop; titled Test SMP until you change it"),
-    Addon("darkhomes", "Dark Homes", "The modern DonutSMP /home menu: a bed per home, delete buttons, /sethome, /delhome.",
-          {"bukkit": [["bundled:DarkHomes.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darktpa", "Dark TPA", "/tpa, /tpahere, /tpaccept, /tpdeny, /tpauto, and /tp, /tphere for ops.",
-          {"bukkit": [["bundled:DarkTPA.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkhub", "Dark Hub", "/hub: a bed per hub (100 players each) and a Random Hub button. Ops: /hubset <number>.",
-          {"bukkit": [["bundled:DarkHub.jar"]]}, note="Set your hubs in game: /hubset 1 [name]"),
-    Addon("darkcombat", "Dark Combat", "DonutSMP combat tag: 20 seconds, no teleports, logging out kills you. /combat time <s>.",
-          {"bukkit": [["bundled:DarkCombat.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkshards", "Dark Shards", "Shards from playing and kills; /shards shop with 24-hour shard tools (amethyst Shard Pickaxe).",
-          {"bukkit": [["bundled:DarkShards.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkrifts", "Dark Rifts", "Original: rifts open around the world. Hold one alone through mob waves for money, shards and loot.",
-          {"bukkit": [["bundled:DarkRifts.jar"]]}, note="Made by DarkerDawnFR, not a DonutSMP copy. Best with Dark Shop + Dark Shards"),
-    Addon("darkessentials", "Dark Essentials", "/spawn, /setspawn, /back, kits (starter + daily), welcome messages, AFK, /rules.",
-          {"bukkit": [["bundled:DarkEssentials.jar"]]}, note="Set spawn in game: /setspawn"),
-    Addon("darkchat", "Dark Chat", "Rank prefixes, @mentions with a ping, [item] in chat, anti-spam and caps, /msg /r /ignore /mute.",
-          {"bukkit": [["bundled:DarkChat.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkperformance", "Dark Performance", "Less lag on a home PC: /tps, clears ground items, mob limits, view distance drops when lagging.",
-          {"bukkit": [["bundled:DarkPerformance.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkbackup", "Dark Backup", "Backs up the world every 6 hours while it runs, keeps the newest 10. /backup now.",
-          {"bukkit": [["bundled:DarkBackup.jar"]]}, note="Backups go in the server's backups folder"),
-    Addon("darkcrates", "Dark Crates", "Crates on chests at your hubs, keys, a spinning roll, a Keys page in /shards, Key All every hour.",
-          {"bukkit": [["bundled:DarkCrates.jar"]]}, note="Place them: look at a chest and type /crate look set <crate>"),
-    Addon("darktips", "Dark Tips", "A tip in chat every few minutes and a login announcement, changed with /tips.",
-          {"bukkit": [["bundled:DarkTips.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkbossbar", "Dark Bossbar", "A boss bar with your server's IP (filled in by MC Hoster), any colour, flashing. /bar.",
-          {"bukkit": [["bundled:DarkBossbar.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkannounce", "Dark Announce", "/announce for big announcements, /donor <player> <package> to thank supporters.",
-          {"bukkit": [["bundled:DarkAnnounce.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkspawners", "Dark Spawners", "DonutSMP-style spawners: they fill with loot and XP instead of mobs, stack, sell all. In /shards.",
-          {"bukkit": [["bundled:DarkSpawners.jar"]]}, note="Bought on the Spawners page of /shards (needs Dark Shards)"),
-    Addon("darksettings", "Dark Settings", "/settings like DonutSMP: night vision, mob spawns, scoreboard, chat, messages, TPA, payments.",
-          {"bukkit": [["bundled:DarkSettings.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster"),
-    Addon("darkduels", "Dark Duels", "/duel <player> [bet]: fight in an arena, nobody loses their items, win the bet. Stats.",
-          {"bukkit": [["bundled:DarkDuels.jar"]]}, note="Make an arena: /duel arena set <name> 1 and 2"),
-    Addon("darkranks", "Dark Ranks", "Ranks with permissions and a custom tag (♛ OWNER, ▶ MEDIA). /rank shop sells 5 ranks for money.",
-          {"bukkit": [["bundled:DarkRanks.jar"], ["bundled:DarkPerks.jar"]]}, note="Comes with Dark Perks. Give one: /rank add <player> <rank>. Edit: /rank edit"),
-    Addon("darkperks", "Dark Perks", "Rank-only commands: /fly, /ec, /craft, /hat, /feed, /heal, /repair, /nick, /glow, /trail.",
-          {"bukkit": [["bundled:DarkPerks.jar"]]}, note="Only players with the right rank can use them"),
-    Addon("darkvcaddon", "Dark VC Add-on", "Voice chat only after accepting the rules: /voicechat agree opens a DonutSMP-style pop-up.",
-          {"bukkit": [["bundled:DarkVCAddon.jar"], ["mr:simple-voice-chat"]]},
-          ports=[(24454, "UDP", "Voice chat")], note="Installs Simple Voice Chat too (players still need the mod)"),
-    Addon("darkteams", "Dark Teams", "DonutSMP-style /team: invite friends, team home, team chat (/tc), no friendly fire, top teams.",
-          {"bukkit": [["bundled:DarkTeams.jar"]]}, note="Made by DarkerDawnFR, comes with MC Hoster. {team} on the scoreboard"),
-    Addon("darkhatesgriefers", "Dark Hates Griefers", "Protected areas: nobody breaks or places blocks there. /dhg set 1, /dhg set 2 (or /dhg wand), /dhg create.",
-          {"bukkit": [["bundled:DarkHatesGriefers.jar"]]}, note="Made by DarkerDawnFR. Let someone build: /dhg allow <player>"),
-    Addon("darkafkzone", "Dark AFK Zone", "An AFK zone: 10 shards every minute you stand in it. /afkzone to go there.",
-          {"bukkit": [["bundled:DarkAFKZone.jar"], ["bundled:DarkShards.jar"]]}, note="Comes with Dark Shards. Make it: /afkzone set 1, set 2, create"),
-    Addon("darknames", "Dark Names", "Rename what you hold in any colour: 18 colours, 9 gradients, 6 animations, bold/italic... /dn",
-          {"bukkit": [["bundled:DarkNames.jar"]]}, note="Made by DarkerDawnFR. /dn rename, /dn reset"),
-    Addon("darkfishing", "Dark Fishing", "Custom fish (rarity, weight, price), money and shard vouchers, crate keys, and lava and void fishing. /fish",
-          {"bukkit": [["bundled:DarkFishing.jar"]]}, note="Made by DarkerDawnFR. Lava/void fishing: the Lava Line and Void Line books"),
-    Addon("darknpcs", "Dark NPCs", "NPCs with a player's skin that run a command when clicked (\"CLICK ME\"). /npc create",
-          {"bukkit": [["bundled:DarkNPCs.jar"]]}, note="Made by DarkerDawnFR. Real player skins on 1.21.9+, heads on older versions"),
-    Addon("noenchantlimits", "No Enchant Limits", "/enchant anything on anything, up to level 255 (/enchant mace wind_burst 64).",
-          {"bukkit": [["bundled:NoEnchantLimits.jar"]]}, note="Made by DarkerDawnFR. Ops only"),
-    Addon("darkrsaddon", "Dark RS Add-on", "Players turn RoseStacker stacking on/off in /settings; the first player in a chunk decides.",
-          {"bukkit": [["bundled:DarkRSAddon.jar"], ["mr:rosestacker", "hangar:RoseStacker"]]}, note="Installs RoseStacker too"),
-    # ---- more from Modrinth (Hangar if Modrinth has no build)
     Addon("tab", "TAB", "A better tab list and name tags: headers, footers, sorting by rank, animations.",
-          {"bukkit": [["mr:tab-was-taken", "hangar:TAB"]]}, note="Turn off Dark Scoreboard's tab list if you use this one"),
+          {"bukkit": [["mr:tab-was-taken", "hangar:TAB"]]}, note="Don't run another plugin that changes the tab list next to it"),
     Addon("decentholograms", "DecentHolograms", "Floating text and items: /dh create <name> <text>.",
           {"bukkit": [["mr:decentholograms", "hangar:DecentHolograms"]]}),
     Addon("multiverse", "Multiverse-Core", "More worlds: /mv create <name> normal, /mv tp <world>.",
           {"bukkit": [["mr:multiverse-core", "hangar:Multiverse-Core"]]}),
-    Addon("placeholderapi", "PlaceholderAPI", "%placeholders% for other plugins (Dark Scoreboard reads them too).",
+    Addon("placeholderapi", "PlaceholderAPI", "%placeholders% for other plugins .",
           {"bukkit": [["hangar:PlaceholderAPI", "mr:placeholderapi"]]}),
     Addon("grimac", "GrimAC", "A strong free anticheat (movement, combat, blocks).",
           {"bukkit": [["mr:grimac", "hangar:GrimAC"]]}, note="Works next to Gh0st AC"),
@@ -140,7 +70,7 @@ ADDONS = [
     Addon("skinsrestorer", "SkinsRestorer", "/skin <name> to change your skin, and skins for cracked players.",
           {"bukkit": [["mr:skinsrestorer", "hangar:SkinsRestorer"]]}),
     Addon("quickshop", "QuickShop-Hikari", "Player shops: put a chest down, hit it with an item, set a price.",
-          {"bukkit": [["mr:quickshop-hikari", "hangar:QuickShop-Hikari"]]}, note="Needs Vault and a money plugin (Dark Shop is one)"),
+          {"bukkit": [["mr:quickshop-hikari", "hangar:QuickShop-Hikari"]]}, note="Needs Vault and a money plugin "),
     Addon("fawe", "FastAsyncWorldEdit", "WorldEdit, but much faster for big edits (//set on millions of blocks).",
           {"bukkit": [["mr:fastasyncworldedit", "hangar:FastAsyncWorldEdit"]]}, note="Don't tick WorldEdit with it"),
     Addon("viabackwards", "ViaBackwards", "Older Minecraft versions can join (with ViaVersion).",
@@ -178,23 +108,21 @@ ADDON_BY_ID = {a.id: a for a in ADDONS}
 
 
 # The folders in tab 5, in this order.
-CATEGORIES = ["Dark plugins (by DarkerDawnFR)", "Admin & permissions", "Protection & anticheat", "Chat, voice & looks",
+CATEGORIES = ["Admin & permissions", "Protection & anticheat", "Chat, voice & looks",
               "World & building", "Maps", "Performance", "Cross-play & versions", "Economy", "Other"]
 _CATEGORY = {
-    "luckperms": 1, "vanish": 1, "essentials": 1, "placeholderapi": 1,
-    "coreprotect": 2, "ledger": 2, "grimac": 2, "worldguard": 2,
-    "voicechat": 3, "tab": 3, "decentholograms": 3, "skinsrestorer": 3,
-    "worldedit": 4, "fawe": 4, "multiverse": 4, "chunky": 4, "chunkyborder": 4,
-    "bluemap": 5, "squaremap": 5,
-    "spark": 6, "lithium": 6, "ferritecore": 6, "rosestacker": 6,
-    "geyser": 7, "viaversion": 7, "viabackwards": 7,
-    "vault": 8, "quickshop": 8,
+    "luckperms": 0, "vanish": 0, "essentials": 0, "placeholderapi": 0,
+    "coreprotect": 1, "ledger": 1, "grimac": 1, "worldguard": 1,
+    "voicechat": 2, "tab": 2, "decentholograms": 2, "skinsrestorer": 2,
+    "worldedit": 3, "fawe": 3, "multiverse": 3, "chunky": 3, "chunkyborder": 3,
+    "bluemap": 4, "squaremap": 4,
+    "spark": 5, "lithium": 5, "ferritecore": 5, "rosestacker": 5,
+    "geyser": 6, "viaversion": 6, "viabackwards": 6,
+    "vault": 7, "quickshop": 7,
 }
 
 
 def category(a: Addon) -> str:
-    if a.id.startswith("dark"):
-        return CATEGORIES[0]
     return CATEGORIES[_CATEGORY.get(a.id, len(CATEGORIES) - 1)]
 
 
@@ -273,61 +201,119 @@ def _jenkins(job: str, pattern: str):
     raise NotFound("no matching file in the newest build")
 
 
-def bundled_jar(name: str) -> Path:
-    """A Dark plugin that ships inside MC Hoster."""
-    import sys
-    for p in (core.resource("darkplugins", name), Path(sys.argv[0]).resolve().parent / "darkplugins" / name):
-        if p.exists():
-            return p
-    raise NotFound(f"{name} is missing from MC Hoster")
+# --------------------------------------------------------------------------- your own plugins (tab 5)
+# Plugins and mods you keep in folders on this PC. Tick them in tab 5 and MC Hoster copies them to the server,
+# and copies them again before every start if the file in your folder changed. That is how updates arrive:
+# replace the file in your folder.
+
+def default_plugin_folder() -> Path:
+    docs = Path.home() / "Documents"
+    d = (docs if docs.is_dir() else Path.home()) / "MC Hoster Plugins"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return d
 
 
-def _bundled_outdated(addon: Addon, cfg: core.ServerConfig) -> bool:
-    """True if this MC Hoster has a different copy of a bundled jar than the server (MC Hoster was updated)."""
-    folder = Path(cfg.folder) / cfg.prov.addon_folder
-    for candidates in addon.files_for(cfg.prov.kind):
-        for c in candidates:
-            if c.startswith("bundled:"):
-                name = c.split(":", 1)[1]
-                try:
-                    if bundled_jar(name).read_bytes() != (folder / name).read_bytes():
-                        return True
-                except Exception:
-                    return True
-    return False
+def _folders_file() -> Path:
+    return core.app_dir() / "plugin-folders.json"
 
 
-def refresh_bundled(cfg: core.ServerConfig, log=print) -> list[str]:
-    """Before every start: the Dark plugins on the server become the ones inside this MC Hoster
-    (after updating MC Hoster, servers get the new plugins without pressing Apply). Returns the files changed."""
-    import shutil
-    changed = []
-    if cfg.prov.kind != "bukkit":
-        return changed
-    folder = Path(cfg.folder) / cfg.prov.addon_folder
-    names = set()
-    for a in ADDONS:
-        if a.id in cfg.addons:
-            for candidates in a.files_for(cfg.prov.kind):
-                for c in candidates:
-                    if c.startswith("bundled:"):
-                        names.add(c.split(":", 1)[1])
-    for name in sorted(names):
+def plugin_folders() -> list[Path]:
+    """The default folder, then the folders added with "Add folder…"."""
+    out = [default_plugin_folder()]
+    try:
+        for f in json.loads(_folders_file().read_text(encoding="utf-8")):
+            p = Path(f)
+            if p not in out:
+                out.append(p)
+    except Exception:
+        pass
+    return out
+
+
+def add_plugin_folder(path: str) -> None:
+    try:
+        cur = json.loads(_folders_file().read_text(encoding="utf-8"))
+    except Exception:
+        cur = []
+    if path not in cur and Path(path) != default_plugin_folder():
+        cur.append(path)
+        _folders_file().write_text(json.dumps(cur), encoding="utf-8")
+
+
+def remove_plugin_folder(path: str) -> None:
+    try:
+        cur = [f for f in json.loads(_folders_file().read_text(encoding="utf-8")) if f != path]
+        _folders_file().write_text(json.dumps(cur), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def jar_kind(jar: Path) -> str:
+    """"bukkit" (plugin.yml), "fabric" (fabric.mod.json) or "" if it can't be told."""
+    import zipfile
+    try:
+        with zipfile.ZipFile(jar) as z:
+            names = set(z.namelist())
+    except Exception:
+        return ""
+    if "fabric.mod.json" in names:
+        return "fabric"
+    if "plugin.yml" in names or "paper-plugin.yml" in names:
+        return "bukkit"
+    return ""
+
+
+def scan_plugins(kind: str) -> list[Path]:
+    """Jars in your folders (two levels deep) that fit this server type, newest names first by folder order."""
+    seen, out = set(), []
+    for folder in plugin_folders():
         try:
-            src = bundled_jar(name)
-        except NotFound:
+            jars = sorted(list(folder.glob("*.jar")) + list(folder.glob("*/*.jar")), key=lambda p: p.name.lower())
+        except OSError:
             continue
-        dst = folder / name
+        for j in jars:
+            k = jar_kind(j)
+            if k and k != kind:
+                continue  # a Paper plugin on a Fabric server (or the other way round) can't work
+            if str(j) not in seen:
+                seen.add(str(j))
+                out.append(j)
+    return out
+
+
+def sync_custom(cfg: core.ServerConfig, log=print) -> list[str]:
+    """Copies the ticked jars (cfg.custom_jars) to the server if they are new or changed, and removes the ones that
+    were unticked. Runs on Apply and before every start. Returns the file names that changed."""
+    import shutil
+    folder = Path(cfg.folder) / cfg.prov.addon_folder
+    installed = list(cfg.addon_files.get("_custom", []))
+    changed, now = [], []
+    for path in cfg.custom_jars or []:
+        src = Path(path)
+        if not src.is_file():
+            if (folder / src.name).exists():
+                now.append(src.name)  # the file left your folder: the copy on the server stays as it is
+            continue
+        dst = folder / src.name
+        now.append(src.name)
         try:
-            if dst.exists() and dst.read_bytes() == src.read_bytes():
+            if dst.exists() and dst.stat().st_size == src.stat().st_size and dst.read_bytes() == src.read_bytes():
                 continue
             folder.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, dst)
-            changed.append(name)
+            changed.append(src.name)
         except OSError as e:
-            log(f"! Couldn't update {name}: {e}")
+            log(f"! Couldn't copy {src.name}: {e}")
+    for name in installed:
+        if name not in now:
+            (folder / name).unlink(missing_ok=True)
+            log(f"Removed {name}")
+    cfg.addon_files["_custom"] = now
     if changed:
-        log("Updated the Dark plugins: " + ", ".join(n.removesuffix(".jar") for n in changed))
+        log("Updated your plugins: " + ", ".join(n.removesuffix(".jar") for n in changed))
     return changed
 
 
@@ -342,9 +328,7 @@ def resolve(addon: Addon, cfg: core.ServerConfig) -> list[tuple[str, str, list, 
         for c in candidates:
             kind, _, slug = c.partition(":")
             try:
-                if kind == "bundled":
-                    r = (str(bundled_jar(slug)), slug, [], "")
-                elif kind == "mr":
+                if kind == "mr":
                     r = _modrinth(slug, loaders, cfg.version, exact)
                 elif kind == "geysermc":
                     r = _geysermc(*slug.split(":", 1))
@@ -376,11 +360,7 @@ def install(addon: Addon, cfg: core.ServerConfig, log=print) -> list[str]:
         if source in skip:
             log(f"  = {name} not needed (already there)")
             continue
-        if source.startswith("bundled:"):
-            import shutil
-            shutil.copyfile(url, folder / name)
-        else:
-            core.download(url, folder / name)
+        core.download(url, folder / name)
         files.append(name)
         log(f"  + {name}{note}")
         pending += deps
@@ -433,7 +413,8 @@ def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
     cfg._wanted = wanted  # install() skips files a ticked preset already gives
     folder = Path(cfg.folder) / cfg.prov.addon_folder
     failed = []
-    for aid in [a for a in cfg.addons if a not in wanted]:
+    # (ids from older versions, like the Dark plugins that used to come inside MC Hoster, are left alone)
+    for aid in [a for a in cfg.addons if a not in wanted and a in ADDON_BY_ID]:
         others = {f for k, fs in cfg.addon_files.items() if k != aid and k in wanted for f in fs}
         for name in cfg.addon_files.get(aid, []):
             if name not in others:
@@ -446,8 +427,7 @@ def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
         a = ADDON_BY_ID.get(aid)
         if not a or not a.files_for(cfg.prov.kind):
             continue
-        if aid in cfg.addons and not version_changed and all((folder / f).exists() for f in cfg.addon_files.get(aid, [])) \
-                and not _bundled_outdated(a, cfg):
+        if aid in cfg.addons and not version_changed and all((folder / f).exists() for f in cfg.addon_files.get(aid, [])):
             continue
         log(f"Installing {a.name}...")
         try:
@@ -463,6 +443,7 @@ def sync(cfg: core.ServerConfig, wanted: list[str], log=print) -> list[str]:
             failed.append(a.name)
             log(f"  ! {a.name} is not available for {cfg.prov.name} {cfg.version} ({e})")
     cfg.addon_files["_version"] = [cfg.version]
+    sync_custom(cfg, log)
     ensure_java_for_addons(cfg, log)
     return failed
 

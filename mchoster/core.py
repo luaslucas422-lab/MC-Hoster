@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "3.1.0"
+VERSION = "3.5.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -845,6 +845,7 @@ class ServerConfig:
     auto_restart: dict = field(default_factory=dict)  # every_hours (0 = off), on_crash
     experimental: dict = field(default_factory=dict)  # tab 7: startup commands {"enabled": bool, "commands": [...]}
     storage: dict = field(default_factory=dict)       # tab 9: {"enabled": bool, "max_gb": number}
+    custom_jars: list = field(default_factory=list)   # tab 5 "My plugins": full paths of the jars that are ticked
     # filled in by setup
     folder: str = ""
     java: str = ""

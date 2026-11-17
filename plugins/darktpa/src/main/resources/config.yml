@@ -1,9 +1,0 @@
-# Dark TPA by DarkerDawnFR: /tpa, /tpahere, /tpaccept, /tpdeny, /tpacancel, /tpauto, /tp and /tphere (ops).
-
-# Seconds to stand still before every teleport (also /tp and /tphere).
-countdown-seconds: 5
-# Requests run out after this many seconds.
-expire-seconds: 60
-# /tphere: if true, the player being brought can cancel it by moving.
-tphere-cancel-on-move: false
-prefix: "&8[&dTPA&8] "

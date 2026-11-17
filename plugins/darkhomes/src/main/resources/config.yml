@@ -1,9 +1,0 @@
-# Dark Homes by DarkerDawnFR: the modern DonutSMP /home menu.
-
-# Homes everyone gets (1-27). Ranks give more with darkhomes.homes.<number>, e.g. darkhomes.homes.12
-default-homes: 5
-# Seconds to stand still before teleporting home.
-countdown-seconds: 5
-# Worlds where /sethome doesn't work, e.g. [world_the_end]
-blocked-worlds: []
-prefix: "&8[&bHomes&8] "
