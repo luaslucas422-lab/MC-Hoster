@@ -157,7 +157,7 @@ class Wizard:
                 if t in s.theme_names():
                     s.theme_use(t)
                     break
-        size = 10 if pal else 9
+        size = 9
         base = ("Segoe UI", size) if core.WINDOWS else ("Helvetica", size + 1)
         self.root.option_add("*Font", base)
         from tkinter import font as tkfont
@@ -182,17 +182,17 @@ class Wizard:
             s.configure(".", background=c["bg"], foreground=c["fg"], fieldbackground=c["field"], bordercolor=c["line"],
                         lightcolor=c["bg"], darkcolor=c["bg"], troughcolor=c["tab"], selectbackground=c["accent"],
                         selectforeground=c["accent_fg"], insertcolor=c["fg"], focuscolor=c["accent"])
-            s.configure("TButton", padding=(12, 6), background=c["panel"], borderwidth=1, relief="flat")
+            s.configure("TButton", padding=(8, 4), background=c["panel"], borderwidth=1, relief="flat")
             s.map("TButton", background=[("pressed", c["tab"]), ("active", c["tab"]), ("disabled", c["bg"])],
                   foreground=[("disabled", c["muted"])])
             s.configure("Accent.TButton", background=c["accent"], foreground=c["accent_fg"], bordercolor=c["accent"])
             s.map("Accent.TButton", background=[("pressed", c["accent"]), ("active", c["accent"]), ("disabled", c["line"])],
                   foreground=[("disabled", c["muted"])])
-            s.configure("Toolbutton", padding=(10, 5), background=c["bg"])
+            s.configure("Toolbutton", padding=(8, 4), background=c["bg"])
             s.map("Toolbutton", background=[("selected", c["accent"]), ("active", c["tab"])],
                   foreground=[("selected", c["accent_fg"])])
             s.configure("TNotebook", background=c["bg"], borderwidth=0, tabmargins=(0, 4, 0, 0))
-            s.configure("TNotebook.Tab", padding=(10, 6), background=c["tab"], foreground=c["muted"], borderwidth=0)
+            s.configure("TNotebook.Tab", padding=(2, 5), background=c["tab"], foreground=c["muted"], borderwidth=0)
             s.map("TNotebook.Tab", background=[("selected", c["panel"])], foreground=[("selected", c["fg"])])
             s.configure("TFrame", background=c["bg"])
             s.configure("TLabelframe", background=c["bg"], bordercolor=c["line"])
@@ -777,10 +777,10 @@ class Wizard:
         if need <= self.confirmed:
             return True
         modded = self.provider().kind == "fabric"
-        need = core.ram_needed_mb(n, modded) / 1024
+        ram_need = core.ram_needed_mb(n, modded) / 1024
         given = core.ram_for_players(n, modded) / 1024
         ramtxt = "" if self.provider().bedrock else (
-            f" and needs about {need:.1f} GB of RAM" + (f" (this PC can only give {given:.1f} GB)" if need > given * 1.05 else ""))
+            f" and needs about {ram_need:.1f} GB of RAM" + (f" (this PC can only give {given:.1f} GB)" if ram_need > given * 1.05 else ""))
         titles = ["More than 100 players?", "Are you sure?", "Really sure?", "Think about it...",
                   "Your PC may struggle", "Are you REALLY sure?", "Last chance"]
         texts = [
