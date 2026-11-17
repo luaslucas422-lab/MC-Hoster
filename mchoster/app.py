@@ -64,7 +64,9 @@ class Wizard:
         self.sched: dict = {}
         self.domain: dict = {}
 
-        root.title(f"{core.APP_NAME} {core.VERSION}" + (" · Paid" if paid.is_paid() else ""))
+        self.premium = paid.premium()  # Premium's own code, downloaded with a key (None in the free version)
+        paid.update_in_background()
+        root.title(f"{core.APP_NAME} {core.VERSION}" + (" · Premium" if self.premium else ""))
         root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.prefs = profile.load()
         self._loaded_players = 0
@@ -136,18 +138,14 @@ class Wizard:
         "modern": ("Modern", False, {"bg": "#f3f5fa", "panel": "#ffffff", "fg": "#1c2333", "muted": "#7a8396",
                                      "field": "#ffffff", "line": "#d5dbe7", "accent": "#2f6fed", "accent_fg": "#ffffff",
                                      "tab": "#e6eaf3"}),
-        "midnight": ("Midnight", True, {"bg": "#141925", "panel": "#1b2231", "fg": "#e6e9f2", "muted": "#8a93a8",
-                                        "field": "#232c3f", "line": "#323c55", "accent": "#5b8cff", "accent_fg": "#0b1020",
-                                        "tab": "#1f2738"}),
-        "ocean": ("Ocean", True, {"bg": "#e7f3f6", "panel": "#f7fcfd", "fg": "#123139", "muted": "#5d7d86",
-                                  "field": "#ffffff", "line": "#bcdbe2", "accent": "#0e7c90", "accent_fg": "#ffffff",
-                                  "tab": "#d6ecf1"}),
     }
 
     def _style(self):
         s = ttk.Style(self.root)
+        self.THEMES = dict(Wizard.THEMES)
+        self.THEMES.update(self.hook("THEMES", default={}) or {})  # Premium adds its own themes
         theme = self.prefs.get("theme", "classic")
-        if theme not in self.THEMES or (self.THEMES[theme][1] and not paid.is_paid()):
+        if theme not in self.THEMES:
             theme = "classic"
         pal = self.THEMES[theme][2]
         if pal:
@@ -215,45 +213,34 @@ class Wizard:
                              ("*Listbox.foreground", c["fg"]), ("*Toplevel.background", c["bg"]),
                              ("*TCombobox*Listbox.background", c["field"]), ("*TCombobox*Listbox.foreground", c["fg"])):
                 self.root.option_add(opt, val)
-            if theme == "midnight":
-                s.configure("Link.TLabel", foreground="#8fb7ff")
-                s.configure("Ok.TLabel", foreground="#6ccf5a")
-                s.configure("Bad.TLabel", foreground="#ff7b72")
-                s.configure("Warn.TLabel", foreground="#ffb23f")
+            for name, val in (c.get("styles") or {}).items():  # dark themes recolour the status labels
+                s.configure(name, foreground=val)
         self.base_font = base
 
-    def _background(self):
-        """Paid: your own picture behind the window (it shows around the edges)."""
-        self._bg_margin = 0
-        path = self.prefs.get("background", "")
-        if not (paid.is_paid() and path and Path(path).is_file()):
-            return
+    def hook(self, name, *args, default=None):
+        """Calls a Premium feature if Premium is loaded (a constant is returned as is). Never lets Premium crash the app."""
+        m = self.premium
+        if m is None or not hasattr(m, name):
+            return default
+        v = getattr(m, name)
+        if not callable(v):
+            return v
         try:
-            from PIL import Image, ImageTk
-            self._bg_src = Image.open(path).convert("RGB")
-        except Exception:
-            return
-        self._bg_margin = 14
-        self.bg_label = tk.Label(self.root, bd=0)
-        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-        self._bg_size = None
+            return v(self, *args)
+        except Exception as e:
+            try:
+                self.log(f"! Premium: {name} failed: {e}")
+            except Exception:
+                pass
+            return default
 
-        def fit(_e=None):
-            w, h = max(1, self.root.winfo_width()), max(1, self.root.winfo_height())
-            if self._bg_size == (w, h):
-                return
-            self._bg_size = (w, h)
-            im = self._bg_src
-            k = max(w / im.width, h / im.height)
-            im = im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))))
-            left, top = (im.width - w) // 2, (im.height - h) // 2
-            self._bg_photo = ImageTk.PhotoImage(im.crop((left, top, left + w, top + h)))
-            self.bg_label.config(image=self._bg_photo)
-        self.root.bind("<Configure>", lambda e: e.widget is self.root and self.root.after_idle(fit), add="+")
-        self.root.after(100, fit)
+    def _background(self):
+        """Premium: your own picture behind the window."""
+        self._bg_margin = 0
+        self.hook("background")
 
     def player_limit(self) -> int:
-        """Free: 100 players, Paid: 1500. A server that already had more keeps its number."""
+        """Free: 1500 players (as always), Premium: 3000. A server that already had more keeps its number."""
         return max(paid.max_players(), getattr(self, "_loaded_players", 0) or 0)
 
     def _update_player_limit(self):
@@ -268,7 +255,7 @@ class Wizard:
         top, f = self.dialog("Settings")
         ttk.Label(f, text="Settings", style="Title.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
         ttk.Label(f, text="Theme").grid(row=1, column=0, sticky="w", pady=4)
-        names = [(k, v[0]) for k, v in self.THEMES.items() if not v[1] or paid.is_paid()]
+        names = [(k, v[0]) for k, v in self.THEMES.items()]
         theme = tk.StringVar(value=dict(names).get(self.prefs.get("theme", "classic"), "Classic"))
         ttk.Combobox(f, textvariable=theme, values=[n for _, n in names], state="readonly", width=24).grid(row=1, column=1, sticky="w")
         ttk.Label(f, text="Classic looks like the Fabric installer.", style="Hint.TLabel").grid(row=1, column=2, sticky="w", padx=8)
@@ -276,34 +263,22 @@ class Wizard:
         lang = tk.StringVar(value=dict(i18n.LANGS).get(self.prefs.get("lang", "en"), "English"))
         ttk.Combobox(f, textvariable=lang, values=[n for _, n in i18n.LANGS], state="readonly", width=24).grid(row=2, column=1, sticky="w")
         ttk.Label(f, text="Tabs and buttons are translated.", style="Hint.TLabel").grid(row=2, column=2, sticky="w", padx=8)
-        bg = tk.StringVar(value=self.prefs.get("background", ""))
-        if paid.is_paid():
-            ttk.Label(f, text="Background picture").grid(row=3, column=0, sticky="w", pady=4)
-            row = ttk.Frame(f)
-            row.grid(row=3, column=1, columnspan=2, sticky="w")
-            lbl = ttk.Label(row, text=Path(bg.get()).name if bg.get() else "None", width=26)
-            lbl.pack(side="left")
-
-            def pick():
-                p = filedialog.askopenfilename(parent=top, title="Background picture",
-                                               filetypes=[("Pictures", "*.png *.jpg *.jpeg *.gif *.bmp *.webp")])
-                if p:
-                    bg.set(p)
-                    lbl.config(text=Path(p).name)
-            ttk.Button(row, text="Choose…", command=pick).pack(side="left", padx=6)
-            ttk.Button(row, text="Remove", command=lambda: (bg.set(""), lbl.config(text="None"))).pack(side="left")
-        ttk.Label(f, text="Changes apply when MC Hoster opens again.", style="Hint.TLabel").grid(row=4, column=0, columnspan=3,
-                                                                                                sticky="w", pady=(10, 0))
+        prem_save = self.hook("settings_section", top, f, 3)  # Premium's own settings (background, Discord…)
+        ttk.Label(f, text="Theme and language change when MC Hoster opens again.", style="Hint.TLabel").grid(
+            row=20, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
         def save(restart):
             t = next((k for k, n in names if n == theme.get()), "classic")
             l = next((k for k, n in i18n.LANGS if n == lang.get()), "en")
-            self.prefs = profile.save(theme=t, lang=l, background=bg.get())
+            self.prefs = profile.save(theme=t, lang=l)
+            if callable(prem_save):
+                prem_save()
+                self.prefs = profile.load()
             top.destroy()
             if restart:
                 self.restart_app()
         btns = ttk.Frame(f)
-        btns.grid(row=5, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        btns.grid(row=21, column=0, columnspan=3, sticky="e", pady=(10, 0))
         ttk.Button(btns, text="Save & reopen", style="Accent.TButton", command=lambda: save(True)).pack(side="right")
         ttk.Button(btns, text="Save", command=lambda: save(False)).pack(side="right", padx=6)
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right")
@@ -326,21 +301,24 @@ class Wizard:
 
     # ------------------------------------------------------------------ Paid version
     def paid_dialog(self):
-        top, f = self.dialog("Paid version")
-        if paid.is_paid():
-            ttk.Label(f, text="You have MC Hoster Paid", style="Title.TLabel").pack(anchor="w")
-            ttk.Label(f, text="Thank you for supporting MC Hoster! Everything below is unlocked.", style="Hint.TLabel").pack(anchor="w")
+        top, f = self.dialog("Premium")
+        if self.premium or paid.is_paid():
+            ttk.Label(f, text="You have MC Hoster Premium", style="Title.TLabel").pack(anchor="w")
+            ttk.Label(f, text="Thank you for supporting MC Hoster!" + ("" if self.premium else
+                      " Premium is downloading; reopen MC Hoster in a minute to use it."), style="Hint.TLabel",
+                      wraplength=470, justify="left").pack(anchor="w")
         else:
-            ttk.Label(f, text="Free and Paid", style="Title.TLabel").pack(anchor="w")
-            ttk.Label(f, text=f"MC Hoster stays free. Paid is {paid.PRICE} once, yours for life, if you'd like a bit more "
-                              "and want to help it grow.", style="Hint.TLabel", wraplength=470, justify="left").pack(anchor="w")
+            ttk.Label(f, text="Free and Premium", style="Title.TLabel").pack(anchor="w")
+            ttk.Label(f, text=f"Everything MC Hoster has stays free. Premium is {paid.PRICE} once, yours for life, and adds "
+                              "the extras below. It also helps MC Hoster keep growing.", style="Hint.TLabel", wraplength=470,
+                      justify="left").pack(anchor="w")
         table = ttk.Frame(f)
         table.pack(fill="x", pady=10)
         bold = (self.base_font[0], self.base_font[1], "bold")
-        for col, head in enumerate(("", "Free", "Paid")):
+        for col, head in enumerate(("", "Free", "Premium")):
             ttk.Label(table, text=head, font=bold).grid(row=0, column=col, sticky="w", padx=(0, 18), pady=(0, 4))
         for r, (feat, free, pd) in enumerate(paid.COMPARE, start=1):
-            ttk.Label(table, text=feat, wraplength=260, justify="left").grid(row=r, column=0, sticky="w", padx=(0, 18), pady=2)
+            ttk.Label(table, text=feat, wraplength=280, justify="left").grid(row=r, column=0, sticky="w", padx=(0, 18), pady=2)
             ttk.Label(table, text=free, style="Hint.TLabel").grid(row=r, column=1, sticky="w", padx=(0, 18))
             ttk.Label(table, text=pd, style="Ok.TLabel").grid(row=r, column=2, sticky="w")
         status = ttk.Label(f, text="", style="Hint.TLabel", wraplength=470, justify="left")
@@ -349,6 +327,8 @@ class Wizard:
         btns.pack(fill="x", pady=(8, 0))
         ttk.Button(btns, text="Close", command=top.destroy).pack(side="right")
         if paid.is_paid():
+            if not self.premium:
+                ttk.Button(btns, text="Download Premium", command=lambda: self._premium_download(status)).pack(side="left")
             return
 
         def buy():
@@ -365,7 +345,7 @@ class Wizard:
                         self.q.put(("paid_done", key, None))
                     else:
                         self.q.put(("paid_status", None, "No payment came through. If you paid, use \"I have a key\" with "
-                                                          "the key from the thank-you page."))
+                                                          "the key from the thank-you page (or My license on the website)."))
                 except Exception as e:
                     self.q.put(("paid_status", None, str(e)))
             self._paid_status = (status, buy_btn)
@@ -373,7 +353,7 @@ class Wizard:
 
         def have_key():
             from tkinter import simpledialog
-            k = simpledialog.askstring("Paid version", "Paste your key (it starts with MCH1-):", parent=top)
+            k = simpledialog.askstring("Premium", "Paste your key (it starts with MCH1-):", parent=top)
             if not k:
                 return
             if paid.activate(k):
@@ -381,15 +361,25 @@ class Wizard:
                 self._paid_unlocked()
             else:
                 status.config(text="That key doesn't work. Check you copied all of it.", style="Bad.TLabel")
-        buy_btn = ttk.Button(btns, text=f"Get Paid ({paid.PRICE}, once)", command=buy)
+        buy_btn = ttk.Button(btns, text=f"Get Premium ({paid.PRICE}, once)", command=buy)
         buy_btn.pack(side="left")
         ttk.Button(btns, text="I have a key", command=have_key).pack(side="left", padx=6)
+        ttk.Button(btns, text="My license", command=lambda: webbrowser.open(paid.PAY_URL + "/account")).pack(side="left")
+
+    def _premium_download(self, status=None):
+        if status is not None:
+            status.config(text="Downloading Premium…", style="Hint.TLabel")
+
+        def work():
+            ok = paid.download_premium(lambda l: self.q.put(("log", l)))
+            got = ok or paid._bundle().exists()
+            self.q.put(("premium_ready", got, None))
+        threading.Thread(target=work, daemon=True).start()
 
     def _paid_unlocked(self):
-        self.root.title(f"{core.APP_NAME} {core.VERSION} · Paid")
-        self._update_player_limit()
-        messagebox.showinfo("Paid version", "Thank you! MC Hoster Paid is unlocked.\n\nMore players work right away. "
-                            "The new themes and your own background are in Settings (bottom-right corner).")
+        self._premium_download()
+        messagebox.showinfo("Premium", "Thank you! Your key works.\n\nMC Hoster is downloading Premium now. When it says "
+                            "it's ready, reopen MC Hoster to use everything.")
 
     def _icon(self):
         try:
@@ -452,7 +442,7 @@ class Wizard:
         bottom2 = ttk.Frame(f)
         bottom2.grid(row=8, column=0, columnspan=3, sticky="we", pady=(8, 0))
         ttk.Button(bottom2, text="Server Recovery…", command=self.recovery_dialog).pack(side="left")
-        ttk.Button(bottom2, text="Paid version", command=self.paid_dialog).pack(side="left", padx=(8, 0))
+        ttk.Button(bottom2, text="Premium", command=self.paid_dialog).pack(side="left", padx=(8, 0))
         self.inbox_btn = ttk.Button(bottom, text="Received feedback", command=self.inbox_dialog)
         if profile.load().get("inbox"):
             self.inbox_btn.pack(side="left", padx=(8, 0))
@@ -1205,6 +1195,7 @@ class Wizard:
         ttk.Button(cmd, text="Open folder", command=lambda: self.cfg.folder and open_folder(self.cfg.folder)).grid(row=0, column=3, padx=(6, 0))
         ttk.Button(cmd, text="Backups…", command=self.backups_dialog).grid(row=0, column=4, padx=(6, 0))
         ttk.Button(cmd, text="Plugins & Mods →", command=lambda: self.edit and self.show(self.ADDONS)).grid(row=0, column=5, padx=(6, 0))
+        self.hook("play_buttons", cmd, 6)  # Premium: Player history
 
     def log(self, line: str):
         tag = "err" if ("ERROR" in line or "Exception" in line) else "warn" if ("WARN" in line or line.lstrip().startswith("!")) \
@@ -2246,11 +2237,13 @@ class Wizard:
         if m and m.group(1) not in self.players:
             self.players.append(m.group(1))
             self._show_players()
+            self.hook("on_event", "join", m.group(1))
             return
         m = self._LEAVE.search(line) or self._BLEAVE.search(line)
         if m and m.group(1) in self.players:
             self.players.remove(m.group(1))
             self._show_players()
+            self.hook("on_event", "leave", m.group(1))
 
     def _show_players(self):
         if not getattr(self, "_ready_at", None):
@@ -2279,8 +2272,10 @@ class Wizard:
                     srv.send("save-off")
                     srv.send("save-all flush")
                     time.sleep(4)
-                core.make_backup(cfg, paid.backups_kept(), lambda l: self.q.put(("log", l)))
+                dest = core.make_backup(cfg, paid.backups_kept(), lambda l: self.q.put(("log", l)))
                 recovery.save(cfg)
+                if dest:
+                    self.hook("on_backup", cfg, dest)
             except Exception as e:
                 self.q.put(("log", f"! Backup failed: {e}"))
             finally:
@@ -2938,6 +2933,12 @@ class Wizard:
                     if st and st[0].winfo_exists():
                         st[0].winfo_toplevel().destroy()
                     self._paid_unlocked()
+                elif k == "premium_ready":
+                    if ev[1] and messagebox.askyesno("Premium", "Premium is ready. Reopen MC Hoster now to use it?"):
+                        self.restart_app()
+                    elif not ev[1]:
+                        messagebox.showwarning("Premium", "Premium couldn't be downloaded right now. Check your internet; "
+                                               "MC Hoster tries again every time it opens.")
                 elif k == "recovery_done":
                     self._recovery_finished(ev[1], ev[2])
                 elif k == "posts":
@@ -3049,6 +3050,7 @@ class Wizard:
                     self._warned = set()
                     self.players = []
                     self._show_players()
+                    self.hook("on_event", "online", self.cfg.name)
                     last = core.list_backups(self.cfg)
                     if not last or time.time() - last[0].stat().st_mtime > paid.backup_every_hours() * 3600:
                         self.root.after(60_000, lambda srv=self.server: srv is self.server and self.backup_now(auto=True))
@@ -3074,12 +3076,15 @@ class Wizard:
                     self._close_ports()
                     self.play_title.config(text=f"{self.cfg.name} is offline")
                     self.step_label.config(text=f"The server stopped (exit code {ev[1]}).")
+                    for gone in list(self.players):
+                        self.hook("on_event", "leave", gone)
                     self.players = []
                     self.players_label.config(text="")
                     cfg_now = self.cfg
                     threading.Thread(target=lambda: recovery.save(cfg_now), daemon=True).start()
                     srv = ev[2] if len(ev) > 2 else None
                     by_itself = srv is not None and not srv.stopping and not getattr(self, "_closing", False)
+                    self.hook("on_event", "crash" if by_itself and ev[1] not in (0, None) else "offline", self.cfg.name)
                     self._ready_at = None
                     if by_itself and not any("FAILED TO BIND" in l or "Address already in use" in l for l in srv.tail):
                         # it stopped by itself: say why, if we can tell (a plain "stop" typed in the console ends with 0)

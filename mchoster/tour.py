@@ -29,8 +29,6 @@ def run(outdir: str) -> int:
          "text": "The server won't start on my laptop, here is a photo.", "images": [online.encode_photo(str(out / "_icon.png"))]},
         {"name": "Mia", "mc": "MiaMines", "kind": "idea", "version": "3.0.0", "ts": time.time() - 7200,
          "text": "Please add a plugin for pets!", "images": []}]
-    paid.is_paid = lambda: True  # the tour shows everything (1200 players needs Paid)
-    paid.max_players = lambda: core.MAX_PLAYERS
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
@@ -228,9 +226,9 @@ def run(outdir: str) -> int:
         w.settings_dialog,
         lambda: grab("16-settings", last_top()),
         lambda: last_top().destroy(),
-        lambda: (setattr(paid, "is_paid", lambda: False), w.paid_dialog()),
-        lambda: grab("17-paid-version", last_top()),
-        lambda: (last_top().destroy(), setattr(paid, "is_paid", lambda: True)),
+        w.paid_dialog,
+        lambda: grab("17-premium", last_top()),
+        lambda: last_top().destroy(),
         w.recovery_dialog,
         lambda: grab("18-server-recovery", last_top()),
         lambda: last_top().destroy(),
@@ -252,14 +250,14 @@ def run(outdir: str) -> int:
 
     # the other themes and a language, each in a fresh window (they apply when MC Hoster opens)
     before = profile.load()
-    for theme, lang in (("modern", "en"), ("midnight", "fr")):
+    for theme, lang in (("modern", "en"), ("modern", "fr")):
         profile.save(theme=theme, lang=lang)
         root = tk.Tk()
         w = Wizard(root)
         root.update_idletasks()
         root.minsize(max(660, root.winfo_reqwidth()), max(560, root.winfo_reqheight()))
         root.geometry("+40+40")
-        root.after(1200, lambda t=theme: grab(f"19-theme-{t}"))
+        root.after(1200, lambda t=theme, l=lang: grab(f"19-theme-{t}-{l}"))
         root.after(1700, root.destroy)
         root.mainloop()
     profile.save(theme=before.get("theme", "classic"), lang=before.get("lang", "en"))
