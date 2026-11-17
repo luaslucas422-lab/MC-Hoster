@@ -103,3 +103,10 @@ footer .row{justify-content:space-between}
 footer nav a{font-weight:500}
 .legal{font-size:13.5px;margin-top:14px;max-width:60em}
 @media (max-width:860px){.hero,.tour,.tools{grid-template-columns:1fr}.hero{padding-bottom:90px}.tabs{flex-direction:row;flex-wrap:wrap}}
+
+.gold{color:var(--torch);font-weight:700;text-decoration:underline}
+.gold-btn{display:inline-block;background:var(--torch);color:#2a1700;font-weight:700;text-decoration:none;padding:10px 16px;box-shadow:inset -3px -3px 0 rgba(0,0,0,.2)}
+.gold-btn:hover{filter:brightness(1.07)}
+.doc ol li{margin:6px 0}
+.doc code{background:var(--stone-2);padding:1px 6px}
+#out h3{margin-top:18px}

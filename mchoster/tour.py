@@ -9,7 +9,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 
-from . import core, online, profile, updater
+from . import core, online, paid, profile, recovery, updater
 from .app import Wizard
 
 
@@ -29,6 +29,8 @@ def run(outdir: str) -> int:
          "text": "The server won't start on my laptop, here is a photo.", "images": [online.encode_photo(str(out / "_icon.png"))]},
         {"name": "Mia", "mc": "MiaMines", "kind": "idea", "version": "3.0.0", "ts": time.time() - 7200,
          "text": "Please add a plugin for pets!", "images": []}]
+    paid.is_paid = lambda: True  # the tour shows everything (1200 players needs Paid)
+    paid.max_players = lambda: core.MAX_PLAYERS
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
@@ -124,6 +126,8 @@ def run(outdir: str) -> int:
         wd.mkdir()
         (wd / "level.dat").write_bytes(b"x" * 2000)
         core.make_backup(w.cfg, log=lambda l: None)
+        w.cfg.save()
+        recovery.save(w.cfg)
         w.progress.config(value=100)
         w.step_label.config(text="Open Minecraft → Multiplayer → Add Server, and paste the IP.")
         for l in ["[18:02:11 INFO]: Starting minecraft server version 1.21.11",
@@ -221,6 +225,15 @@ def run(outdir: str) -> int:
         w.first_run,
         lambda: grab("12-welcome", w._first),
         lambda: w._first.destroy(),
+        w.settings_dialog,
+        lambda: grab("16-settings", last_top()),
+        lambda: last_top().destroy(),
+        lambda: (setattr(paid, "is_paid", lambda: False), w.paid_dialog()),
+        lambda: grab("17-paid-version", last_top()),
+        lambda: (last_top().destroy(), setattr(paid, "is_paid", lambda: True)),
+        w.recovery_dialog,
+        lambda: grab("18-server-recovery", last_top()),
+        lambda: last_top().destroy(),
     ]
 
     def go(i=0):
@@ -236,6 +249,20 @@ def run(outdir: str) -> int:
             root.destroy()
     root.after(800, go)
     root.mainloop()
+
+    # the other themes and a language, each in a fresh window (they apply when MC Hoster opens)
+    before = profile.load()
+    for theme, lang in (("modern", "en"), ("midnight", "fr")):
+        profile.save(theme=theme, lang=lang)
+        root = tk.Tk()
+        w = Wizard(root)
+        root.update_idletasks()
+        root.minsize(max(660, root.winfo_reqwidth()), max(560, root.winfo_reqheight()))
+        root.geometry("+40+40")
+        root.after(1200, lambda t=theme: grab(f"19-theme-{t}"))
+        root.after(1700, root.destroy)
+        root.mainloop()
+    profile.save(theme=before.get("theme", "classic"), lang=before.get("lang", "en"))
     print("screenshots:", ", ".join(shots))
-    want = 22
+    want = 27
     return 0 if len(shots) == want else 1

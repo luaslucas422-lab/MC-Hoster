@@ -37,6 +37,9 @@ def main():
         from mchoster.tour import run
         sys.exit(run(args[1] if len(args) > 1 else "screenshots"))
     from mchoster.app import main as gui
+    if args and args[0].lower().endswith(".mh"):  # a Server Recovery file was double-clicked
+        gui(None, recover=args[0])
+        return
     gui(args[1] if args[:1] == ["--start"] and len(args) > 1 else None)
 
 

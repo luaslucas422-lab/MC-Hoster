@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pyinstaller pillow
+      - run: pip install pyinstaller pillow cryptography
       - name: Click through every tab (from source)
         run: python MC-Hoster.py --tour screenshots
       - name: Build MC-Hoster.exe

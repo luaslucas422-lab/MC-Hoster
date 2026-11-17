@@ -19,7 +19,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import addons, core, domain, icondraw, online, profile, respack, schedule, updater
+from . import addons, core, domain, i18n, icondraw, online, paid, profile, recovery, respack, schedule, updater
 from .core import PROVIDERS, PROVIDER_BY_NAME, ServerConfig
 
 GREEN, YELLOW, ORANGE, RED = "#2e9e44", "#c9a400", "#e07b00", "#cc2b2b"
@@ -64,13 +64,18 @@ class Wizard:
         self.sched: dict = {}
         self.domain: dict = {}
 
-        root.title(f"{core.APP_NAME} {core.VERSION}")
+        root.title(f"{core.APP_NAME} {core.VERSION}" + (" · Paid" if paid.is_paid() else ""))
         root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.prefs = profile.load()
+        self._loaded_players = 0
+        i18n.set_language(self.prefs.get("lang", "en"))
         self._style()
+        self._background()
         self._icon()
 
+        m = self._bg_margin
         self.header = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
-        self.header.pack(fill="x")
+        self.header.pack(fill="x", padx=m, pady=(m, 0))
         ttk.Label(self.header, text=core.APP_NAME, style="Title.TLabel").pack(side="left")
         by = ttk.Label(self.header, text=f" {core.VERSION} · by {core.AUTHOR}", style="Hint.TLabel")
         by.pack(side="left", pady=(6, 0))
@@ -83,7 +88,7 @@ class Wizard:
             ttk.Radiobutton(self.header, text=text, value=val, variable=self.side_var, style="Toolbutton",
                             command=self.show_side).pack(side="right", padx=(6, 0))
         self.outer = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
-        self.outer.pack(fill="both", expand=True)
+        self.outer.pack(fill="both", expand=True, padx=m)
         self.share_frame = None
         self.nb = ttk.Notebook(self.outer)
         self.nb.pack(fill="both", expand=True)
@@ -94,8 +99,8 @@ class Wizard:
             self.pages.append(f)
         self.nb.bind("<<NotebookTabChanged>>", self._tab_clicked)
 
-        self.bar = ttk.Frame(root, padding=PAD)
-        self.bar.pack(fill="x")
+        self.bar = ttk.Frame(root, padding=(PAD, PAD, PAD + 70, PAD))  # room for the Settings button in the corner
+        self.bar.pack(fill="x", padx=m, pady=(0, m))
         self.next_btn = ttk.Button(self.bar, text="Next", command=self.next, style="Accent.TButton", width=15)
         self.next_btn.pack(side="right")
         self.back_btn = ttk.Button(self.bar, text="Back", command=self.back, width=10)
@@ -112,18 +117,48 @@ class Wizard:
         self._page_storage(self.pages[8])
         if profile.load().get("mc") and not self.owner_var.get():
             self.owner_var.set(profile.load()["mc"])  # you are made operator on every server you set up
+        # the Settings button: small and quiet, in the bottom-right corner of every tab
+        self.gear = tk.Label(root, text="⚙ Settings", cursor="hand2", bd=0, padx=6, pady=3,
+                             fg=self.colors["muted"], bg=self.colors["bg"], font=(self.base_font[0], self.base_font[1]))
+        self.gear.place(relx=1.0, rely=1.0, anchor="se", x=-8 - self._bg_margin, y=-8 - self._bg_margin)
+        self.gear.bind("<Button-1>", lambda e: self.settings_dialog())
+        self.gear.bind("<Enter>", lambda e: self.gear.config(fg=self.colors["fg"]))
+        self.gear.bind("<Leave>", lambda e: self.gear.config(fg=self.colors["muted"]))
+        i18n.apply(self.root)
+        self.gear.config(text="⚙ " + i18n.tr("Settings"))
         self.show(0)
         self.root.after(60, self._drain)
         self.root.after(1000, self._restart_tick)
 
     # ------------------------------------------------------------------ look
+    THEMES = {  # name: (label, paid only, colors)
+        "classic": ("Classic", False, None),
+        "modern": ("Modern", False, {"bg": "#f3f5fa", "panel": "#ffffff", "fg": "#1c2333", "muted": "#7a8396",
+                                     "field": "#ffffff", "line": "#d5dbe7", "accent": "#2f6fed", "accent_fg": "#ffffff",
+                                     "tab": "#e6eaf3"}),
+        "midnight": ("Midnight", True, {"bg": "#141925", "panel": "#1b2231", "fg": "#e6e9f2", "muted": "#8a93a8",
+                                        "field": "#232c3f", "line": "#323c55", "accent": "#5b8cff", "accent_fg": "#0b1020",
+                                        "tab": "#1f2738"}),
+        "ocean": ("Ocean", True, {"bg": "#e7f3f6", "panel": "#f7fcfd", "fg": "#123139", "muted": "#5d7d86",
+                                  "field": "#ffffff", "line": "#bcdbe2", "accent": "#0e7c90", "accent_fg": "#ffffff",
+                                  "tab": "#d6ecf1"}),
+    }
+
     def _style(self):
         s = ttk.Style(self.root)
-        for theme in ("vista", "winnative", "aqua", "clam"):
-            if theme in s.theme_names():
-                s.theme_use(theme)
-                break
-        base = ("Segoe UI", 9) if core.WINDOWS else ("Helvetica", 10)
+        theme = self.prefs.get("theme", "classic")
+        if theme not in self.THEMES or (self.THEMES[theme][1] and not paid.is_paid()):
+            theme = "classic"
+        pal = self.THEMES[theme][2]
+        if pal:
+            s.theme_use("clam")
+        else:
+            for t in ("vista", "winnative", "aqua", "clam"):
+                if t in s.theme_names():
+                    s.theme_use(t)
+                    break
+        size = 10 if pal else 9
+        base = ("Segoe UI", size) if core.WINDOWS else ("Helvetica", size + 1)
         self.root.option_add("*Font", base)
         from tkinter import font as tkfont
         for n in ("TkDefaultFont", "TkTextFont", "TkMenuFont"):
@@ -131,6 +166,8 @@ class Wizard:
                 tkfont.nametofont(n).configure(family=base[0], size=base[1])
             except tk.TclError:
                 pass
+        bg = s.lookup("TFrame", "background") or "#f0f0f0"
+        self.colors = {"bg": bg, "fg": "#000000", "muted": "#8a8a8a"}
         s.configure("Hint.TLabel", foreground="#6b6b6b")
         s.configure("Title.TLabel", font=(base[0], base[1] + 5, "bold"))
         s.configure("Bold.TCheckbutton", font=(base[0], base[1], "bold"))
@@ -139,7 +176,220 @@ class Wizard:
         s.configure("Warn.TLabel", foreground=ORANGE)
         s.configure("Link.TLabel", foreground="#1a5fb4", font=(base[0], base[1], "underline"))
         s.configure("Accent.TButton", font=(base[0], base[1], "bold"))
+        if pal:
+            c = pal
+            self.colors = {"bg": c["bg"], "fg": c["fg"], "muted": c["muted"]}
+            s.configure(".", background=c["bg"], foreground=c["fg"], fieldbackground=c["field"], bordercolor=c["line"],
+                        lightcolor=c["bg"], darkcolor=c["bg"], troughcolor=c["tab"], selectbackground=c["accent"],
+                        selectforeground=c["accent_fg"], insertcolor=c["fg"], focuscolor=c["accent"])
+            s.configure("TButton", padding=(12, 6), background=c["panel"], borderwidth=1, relief="flat")
+            s.map("TButton", background=[("pressed", c["tab"]), ("active", c["tab"]), ("disabled", c["bg"])],
+                  foreground=[("disabled", c["muted"])])
+            s.configure("Accent.TButton", background=c["accent"], foreground=c["accent_fg"], bordercolor=c["accent"])
+            s.map("Accent.TButton", background=[("pressed", c["accent"]), ("active", c["accent"]), ("disabled", c["line"])],
+                  foreground=[("disabled", c["muted"])])
+            s.configure("Toolbutton", padding=(10, 5), background=c["bg"])
+            s.map("Toolbutton", background=[("selected", c["accent"]), ("active", c["tab"])],
+                  foreground=[("selected", c["accent_fg"])])
+            s.configure("TNotebook", background=c["bg"], borderwidth=0, tabmargins=(0, 4, 0, 0))
+            s.configure("TNotebook.Tab", padding=(10, 6), background=c["tab"], foreground=c["muted"], borderwidth=0)
+            s.map("TNotebook.Tab", background=[("selected", c["panel"])], foreground=[("selected", c["fg"])])
+            s.configure("TFrame", background=c["bg"])
+            s.configure("TLabelframe", background=c["bg"], bordercolor=c["line"])
+            s.configure("TLabelframe.Label", background=c["bg"], foreground=c["fg"])
+            for w in ("TLabel", "TCheckbutton", "TRadiobutton"):
+                s.configure(w, background=c["bg"], foreground=c["fg"])
+            s.map("TCheckbutton", background=[("active", c["bg"])], indicatorcolor=[("selected", c["accent"])])
+            s.map("TRadiobutton", background=[("active", c["bg"])], indicatorcolor=[("selected", c["accent"])])
+            s.configure("Hint.TLabel", foreground=c["muted"])
+            s.configure("TEntry", fieldbackground=c["field"], foreground=c["fg"])
+            s.configure("TCombobox", fieldbackground=c["field"], foreground=c["fg"], arrowcolor=c["fg"])
+            s.map("TCombobox", fieldbackground=[("readonly", c["field"])], foreground=[("readonly", c["fg"])])
+            s.configure("TSpinbox", fieldbackground=c["field"], foreground=c["fg"], arrowcolor=c["fg"])
+            s.configure("Treeview", background=c["field"], fieldbackground=c["field"], foreground=c["fg"])
+            s.configure("Treeview.Heading", background=c["tab"], foreground=c["fg"])
+            s.configure("Horizontal.TProgressbar", background=c["accent"], troughcolor=c["tab"])
+            self.root.configure(bg=c["bg"])
+            for opt, val in (("*Text.background", c["field"]), ("*Text.foreground", c["fg"]),
+                             ("*Text.insertBackground", c["fg"]), ("*Listbox.background", c["field"]),
+                             ("*Listbox.foreground", c["fg"]), ("*Toplevel.background", c["bg"]),
+                             ("*TCombobox*Listbox.background", c["field"]), ("*TCombobox*Listbox.foreground", c["fg"])):
+                self.root.option_add(opt, val)
+            if theme == "midnight":
+                s.configure("Link.TLabel", foreground="#8fb7ff")
+                s.configure("Ok.TLabel", foreground="#6ccf5a")
+                s.configure("Bad.TLabel", foreground="#ff7b72")
+                s.configure("Warn.TLabel", foreground="#ffb23f")
         self.base_font = base
+
+    def _background(self):
+        """Paid: your own picture behind the window (it shows around the edges)."""
+        self._bg_margin = 0
+        path = self.prefs.get("background", "")
+        if not (paid.is_paid() and path and Path(path).is_file()):
+            return
+        try:
+            from PIL import Image, ImageTk
+            self._bg_src = Image.open(path).convert("RGB")
+        except Exception:
+            return
+        self._bg_margin = 14
+        self.bg_label = tk.Label(self.root, bd=0)
+        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        self._bg_size = None
+
+        def fit(_e=None):
+            w, h = max(1, self.root.winfo_width()), max(1, self.root.winfo_height())
+            if self._bg_size == (w, h):
+                return
+            self._bg_size = (w, h)
+            im = self._bg_src
+            k = max(w / im.width, h / im.height)
+            im = im.resize((max(1, int(im.width * k)), max(1, int(im.height * k))))
+            left, top = (im.width - w) // 2, (im.height - h) // 2
+            self._bg_photo = ImageTk.PhotoImage(im.crop((left, top, left + w, top + h)))
+            self.bg_label.config(image=self._bg_photo)
+        self.root.bind("<Configure>", lambda e: e.widget is self.root and self.root.after_idle(fit), add="+")
+        self.root.after(100, fit)
+
+    def player_limit(self) -> int:
+        """Free: 100 players, Paid: 1500. A server that already had more keeps its number."""
+        return max(paid.max_players(), getattr(self, "_loaded_players", 0) or 0)
+
+    def _update_player_limit(self):
+        lim = self.player_limit()
+        self.players_scale.config(to=lim)
+        self.players_spin.config(to=lim)
+        if self.players_hint is not None:
+            self.players_hint.config(text=f"up to {lim}")
+
+    # ------------------------------------------------------------------ Settings (bottom-right button)
+    def settings_dialog(self):
+        top, f = self.dialog("Settings")
+        ttk.Label(f, text="Settings", style="Title.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        ttk.Label(f, text="Theme").grid(row=1, column=0, sticky="w", pady=4)
+        names = [(k, v[0]) for k, v in self.THEMES.items() if not v[1] or paid.is_paid()]
+        theme = tk.StringVar(value=dict(names).get(self.prefs.get("theme", "classic"), "Classic"))
+        ttk.Combobox(f, textvariable=theme, values=[n for _, n in names], state="readonly", width=24).grid(row=1, column=1, sticky="w")
+        ttk.Label(f, text="Classic looks like the Fabric installer.", style="Hint.TLabel").grid(row=1, column=2, sticky="w", padx=8)
+        ttk.Label(f, text="Language").grid(row=2, column=0, sticky="w", pady=4)
+        lang = tk.StringVar(value=dict(i18n.LANGS).get(self.prefs.get("lang", "en"), "English"))
+        ttk.Combobox(f, textvariable=lang, values=[n for _, n in i18n.LANGS], state="readonly", width=24).grid(row=2, column=1, sticky="w")
+        ttk.Label(f, text="Tabs and buttons are translated.", style="Hint.TLabel").grid(row=2, column=2, sticky="w", padx=8)
+        bg = tk.StringVar(value=self.prefs.get("background", ""))
+        if paid.is_paid():
+            ttk.Label(f, text="Background picture").grid(row=3, column=0, sticky="w", pady=4)
+            row = ttk.Frame(f)
+            row.grid(row=3, column=1, columnspan=2, sticky="w")
+            lbl = ttk.Label(row, text=Path(bg.get()).name if bg.get() else "None", width=26)
+            lbl.pack(side="left")
+
+            def pick():
+                p = filedialog.askopenfilename(parent=top, title="Background picture",
+                                               filetypes=[("Pictures", "*.png *.jpg *.jpeg *.gif *.bmp *.webp")])
+                if p:
+                    bg.set(p)
+                    lbl.config(text=Path(p).name)
+            ttk.Button(row, text="Choose…", command=pick).pack(side="left", padx=6)
+            ttk.Button(row, text="Remove", command=lambda: (bg.set(""), lbl.config(text="None"))).pack(side="left")
+        ttk.Label(f, text="Changes apply when MC Hoster opens again.", style="Hint.TLabel").grid(row=4, column=0, columnspan=3,
+                                                                                                sticky="w", pady=(10, 0))
+
+        def save(restart):
+            t = next((k for k, n in names if n == theme.get()), "classic")
+            l = next((k for k, n in i18n.LANGS if n == lang.get()), "en")
+            self.prefs = profile.save(theme=t, lang=l, background=bg.get())
+            top.destroy()
+            if restart:
+                self.restart_app()
+        btns = ttk.Frame(f)
+        btns.grid(row=5, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        ttk.Button(btns, text="Save & reopen", style="Accent.TButton", command=lambda: save(True)).pack(side="right")
+        ttk.Button(btns, text="Save", command=lambda: save(False)).pack(side="right", padx=6)
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right")
+
+    def restart_app(self):
+        if self.server and self.server.running and not messagebox.askyesno(
+                "Reopen MC Hoster", "Your server is running. MC Hoster saves and stops it, then reopens. Continue?"):
+            return
+        args = [sys.executable] + ([] if getattr(sys, "frozen", False) else [str(Path(sys.argv[0]).resolve())])
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("_PYI", "_MEI"))}
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+        self._closing = True
+        try:
+            if self.server and self.server.running:
+                self.server.stop(60)
+        except Exception:
+            pass
+        subprocess.Popen(args, env=env, close_fds=True)
+        self.root.destroy()
+
+    # ------------------------------------------------------------------ Paid version
+    def paid_dialog(self):
+        top, f = self.dialog("Paid version")
+        if paid.is_paid():
+            ttk.Label(f, text="You have MC Hoster Paid", style="Title.TLabel").pack(anchor="w")
+            ttk.Label(f, text="Thank you for supporting MC Hoster! Everything below is unlocked.", style="Hint.TLabel").pack(anchor="w")
+        else:
+            ttk.Label(f, text="Free and Paid", style="Title.TLabel").pack(anchor="w")
+            ttk.Label(f, text=f"MC Hoster stays free. Paid is {paid.PRICE} once, yours for life, if you'd like a bit more "
+                              "and want to help it grow.", style="Hint.TLabel", wraplength=470, justify="left").pack(anchor="w")
+        table = ttk.Frame(f)
+        table.pack(fill="x", pady=10)
+        bold = (self.base_font[0], self.base_font[1], "bold")
+        for col, head in enumerate(("", "Free", "Paid")):
+            ttk.Label(table, text=head, font=bold).grid(row=0, column=col, sticky="w", padx=(0, 18), pady=(0, 4))
+        for r, (feat, free, pd) in enumerate(paid.COMPARE, start=1):
+            ttk.Label(table, text=feat, wraplength=260, justify="left").grid(row=r, column=0, sticky="w", padx=(0, 18), pady=2)
+            ttk.Label(table, text=free, style="Hint.TLabel").grid(row=r, column=1, sticky="w", padx=(0, 18))
+            ttk.Label(table, text=pd, style="Ok.TLabel").grid(row=r, column=2, sticky="w")
+        status = ttk.Label(f, text="", style="Hint.TLabel", wraplength=470, justify="left")
+        status.pack(anchor="w")
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(8, 0))
+        ttk.Button(btns, text="Close", command=top.destroy).pack(side="right")
+        if paid.is_paid():
+            return
+
+        def buy():
+            status.config(text="Opening Stripe in your browser… (the first time can take a minute)")
+            buy_btn.state(["disabled"])
+
+            def work():
+                try:
+                    r = paid.start_checkout()
+                    webbrowser.open(r["url"])
+                    self.q.put(("paid_status", "Finish paying in your browser. This window unlocks by itself.", None))
+                    key = paid.wait_for_key(r["session"])
+                    if key and paid.activate(key):
+                        self.q.put(("paid_done", key, None))
+                    else:
+                        self.q.put(("paid_status", None, "No payment came through. If you paid, use \"I have a key\" with "
+                                                          "the key from the thank-you page."))
+                except Exception as e:
+                    self.q.put(("paid_status", None, str(e)))
+            self._paid_status = (status, buy_btn)
+            threading.Thread(target=work, daemon=True).start()
+
+        def have_key():
+            from tkinter import simpledialog
+            k = simpledialog.askstring("Paid version", "Paste your key (it starts with MCH1-):", parent=top)
+            if not k:
+                return
+            if paid.activate(k):
+                top.destroy()
+                self._paid_unlocked()
+            else:
+                status.config(text="That key doesn't work. Check you copied all of it.", style="Bad.TLabel")
+        buy_btn = ttk.Button(btns, text=f"Get Paid ({paid.PRICE}, once)", command=buy)
+        buy_btn.pack(side="left")
+        ttk.Button(btns, text="I have a key", command=have_key).pack(side="left", padx=6)
+
+    def _paid_unlocked(self):
+        self.root.title(f"{core.APP_NAME} {core.VERSION} · Paid")
+        self._update_player_limit()
+        messagebox.showinfo("Paid version", "Thank you! MC Hoster Paid is unlocked.\n\nMore players work right away. "
+                            "The new themes and your own background are in Settings (bottom-right corner).")
 
     def _icon(self):
         try:
@@ -167,6 +417,7 @@ class Wizard:
         top.resizable(False, False)
         f = ttk.Frame(top, padding=PAD + 4)
         f.pack(fill="both", expand=True)
+        top.after_idle(lambda: top.winfo_exists() and i18n.apply(top))
         return top, f
 
     # ------------------------------------------------------------------ 1. Server
@@ -198,6 +449,10 @@ class Wizard:
         ttk.Button(bottom, text="Check for updates", command=lambda: self.check_updates(False)).pack(side="left", padx=(8, 0))
         ttk.Button(bottom, text="Update logs", command=self.update_logs).pack(side="left", padx=(8, 0))
         ttk.Button(bottom, text="Send feedback", command=self.feedback_dialog).pack(side="left", padx=(8, 0))
+        bottom2 = ttk.Frame(f)
+        bottom2.grid(row=8, column=0, columnspan=3, sticky="we", pady=(8, 0))
+        ttk.Button(bottom2, text="Server Recovery…", command=self.recovery_dialog).pack(side="left")
+        ttk.Button(bottom2, text="Paid version", command=self.paid_dialog).pack(side="left", padx=(8, 0))
         self.inbox_btn = ttk.Button(bottom, text="Received feedback", command=self.inbox_dialog)
         if profile.load().get("inbox"):
             self.inbox_btn.pack(side="left", padx=(8, 0))
@@ -355,17 +610,17 @@ class Wizard:
 
         pl = ttk.Frame(f)
         self.players_var = tk.IntVar(value=10)
-        self.players_scale = ttk.Scale(pl, from_=1, to=core.MAX_PLAYERS, orient="horizontal", length=250,
+        self.players_scale = ttk.Scale(pl, from_=1, to=self.player_limit(), orient="horizontal", length=250,
                                        command=lambda v: self.players_changed(int(float(v))))
         self.players_scale.pack(side="left")
         self.players_scale.bind("<ButtonRelease-1>", lambda e: self.check_over_100())
-        self.players_spin = ttk.Spinbox(pl, from_=1, to=core.MAX_PLAYERS, width=5, textvariable=self.players_var,
+        self.players_spin = ttk.Spinbox(pl, from_=1, to=self.player_limit(), width=5, textvariable=self.players_var,
                                         command=self._spin_arrow)
         self.players_spin.bind("<Return>", lambda e: self._spin_typed(True))
         self.players_spin.bind("<FocusOut>", lambda e: self._spin_typed(True))
         self.players_spin.bind("<KeyRelease>", lambda e: self._spin_typed(False))
         self.players_spin.pack(side="left", padx=8)
-        self.row(f, 4, "Max players:", pl, f"up to {core.MAX_PLAYERS}")
+        _, self.players_hint = self.row(f, 4, "Max players:", pl, f"up to {self.player_limit()}")
         lag = ttk.Frame(f)
         self.lag_canvas = tk.Canvas(lag, width=120, height=12, highlightthickness=0, bg="#e4e4e4")
         self.lag_canvas.pack(side="left")
@@ -420,6 +675,9 @@ class Wizard:
         self.gh0st_var = tk.BooleanVar(value=True)
         self.gh0st_cb = ttk.Checkbutton(f, text="Install Gh0st AC anticheat on the server (free version)", variable=self.gh0st_var)
         self.gh0st_cb.grid(row=14, column=0, columnspan=3, sticky="w")
+        self.recovery_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(f, text="Keep a Server Recovery file (recommended)", variable=self.recovery_var).grid(
+            row=15, column=0, columnspan=3, sticky="w")
         self.eula_row = ttk.Frame(f)
         self.eula_var = tk.BooleanVar(value=False)
         self.eula_cb = ttk.Checkbutton(self.eula_row, text="I agree to the", variable=self.eula_var, command=self.update_buttons)
@@ -428,7 +686,7 @@ class Wizard:
         link.pack(side="left")
         link.bind("<Button-1>", lambda e: webbrowser.open("https://aka.ms/MinecraftEULA"))
         ttk.Label(self.eula_row, text="(needed to run any server)", style="Hint.TLabel").pack(side="left", padx=6)
-        self.eula_row.grid(row=15, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self.eula_row.grid(row=16, column=0, columnspan=3, sticky="w", pady=(4, 0))
         self.players_changed(10)
 
     def settings_for_provider(self):
@@ -478,12 +736,12 @@ class Wizard:
             return
         self.players_changed(n, from_spin=True)
         if commit:
-            if n > core.MAX_PLAYERS:
-                self.players_var.set(core.MAX_PLAYERS)
+            if n > self.player_limit():
+                self.players_var.set(self.player_limit())
             self.check_over_100()
 
     def players_changed(self, n, from_spin=False):
-        n = max(1, min(core.MAX_PLAYERS, int(n)))
+        n = max(1, min(self.player_limit(), int(n)))
         if not hasattr(self, "lag_canvas"):
             return
         if not from_spin:
@@ -507,7 +765,7 @@ class Wizard:
 
     def players_value(self) -> int:
         try:
-            return max(1, min(core.MAX_PLAYERS, int(self.players_spin.get())))
+            return max(1, min(self.player_limit(), int(self.players_spin.get())))
         except ValueError:
             return self.players_var.get()
 
@@ -1426,6 +1684,7 @@ class Wizard:
         c.nether = self.nether_var.get() or c.prov.bedrock
         c.end = self.end_var.get() or c.prov.bedrock or c.prov.kind == "fabric"
         c.gh0stac = self.gh0st_var.get()
+        c.recovery = self.recovery_var.get()
         c.owner = self.owner_var.get().strip()
         c.resource_pack = dict(self.rp or {})
         self.collect_config()
@@ -1502,6 +1761,7 @@ class Wizard:
                 if self.cfg.schedule.get("enabled") or self.cfg.schedule.get("task"):
                     schedule.apply(self.cfg, log)
                 self.cfg.save()
+                recovery.save(self.cfg, log)
                 self.q.put(("setup_done",))
             except Exception as e:
                 self.q.put(("setup_failed", f"{e.__class__.__name__}: {e}"))
@@ -1535,6 +1795,8 @@ class Wizard:
         else:
             self.clear_icon()
         self.confirmed = core.confirmations_needed(c.players)
+        self._loaded_players = c.players if c.players > paid.max_players() else 0
+        self._update_player_limit()
         self.players_var.set(c.players)
         self.players_changed(c.players, from_spin=True)
         self.gamemode_var.set(c.gamemode)
@@ -1543,6 +1805,8 @@ class Wizard:
         self.nether_var.set(c.nether)
         self.end_var.set(c.end)
         self.gh0st_var.set(c.gh0stac)
+        self.recovery_var.set(getattr(c, "recovery", True))
+
         self.owner_var.set(c.owner or "")
         st = c.storage or {}
         self.st_on.set(bool(st.get("enabled")))
@@ -1865,6 +2129,112 @@ class Wizard:
 
 
 
+
+    # ------------------------------------------------------------------ Server Recovery (.mh)
+    def recovery_dialog(self, path: str | None = None):
+        if self.busy:
+            return
+        top, f = self.dialog("Server Recovery")
+        ttk.Label(f, text="Server Recovery", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="Broken or deleted server? Pick its recovery file (.mh). MC Hoster checks what's wrong and repairs "
+                          "it: settings, player lists, plugins, the server itself, and the world from the newest backup.",
+                  style="Hint.TLabel", wraplength=500, justify="left").pack(anchor="w", pady=(0, 8))
+        files = [str(p) for p in recovery.saved_files()]
+        if path and path not in files:
+            files.insert(0, path)
+        lb = tk.Listbox(f, width=64, height=6, activestyle="none", exportselection=False)
+        lb.pack(fill="x")
+        info = ttk.Label(f, text="", wraplength=500, justify="left")
+        info.pack(anchor="w", pady=(8, 0))
+        state = {"data": None, "folder": None}
+
+        def fill():
+            lb.delete(0, "end")
+            for p in files:
+                try:
+                    d = recovery.load(p)
+                    when = time.strftime("%d %b %Y %H:%M", time.localtime(d.get("saved", 0)))
+                    lb.insert("end", f"{d.get('name')}   ·   {d.get('type')} {d.get('minecraft')}   ·   saved {when}")
+                except Exception:
+                    lb.insert("end", f"{Path(p).name}   (can't be read)")
+            if not files:
+                lb.insert("end", "No recovery files on this PC yet. Use \"Open a .mh file…\".")
+
+        def show(_=None):
+            sel = lb.curselection()
+            if not sel or not files:
+                return
+            try:
+                d = recovery.load(files[sel[0]])
+            except Exception as e:
+                info.config(text=f"Can't read this file: {e}", style="Bad.TLabel")
+                state["data"] = None
+                return
+            folder = recovery.target_folder(d)
+            probs = recovery.diagnose(d, folder)
+            state.update(data=d, folder=folder)
+            head = f"{d.get('name')}: {len(d.get('plugins', []))} plugins/mods, {len(d.get('worlds', []))} world(s), " \
+                   f"{len(d.get('backups', []))} backup(s)."
+            if probs:
+                info.config(text=head + "\n\nFound:\n• " + "\n• ".join(probs), style="Warn.TLabel")
+            else:
+                info.config(text=head + "\n\nNothing looks broken. Repairing anyway re-checks every file and the server.",
+                            style="Ok.TLabel")
+        lb.bind("<<ListboxSelect>>", show)
+
+        def open_file():
+            p = filedialog.askopenfilename(parent=top, title="Server Recovery file",
+                                           filetypes=[("MC Hoster recovery", "*.mh"), ("All files", "*.*")])
+            if p:
+                files.insert(0, p)
+                fill()
+                lb.selection_set(0)
+                show()
+
+        def repair():
+            if not state["data"]:
+                return
+            if self.server and self.server.running:
+                messagebox.showinfo("Server Recovery", "Stop the running server first.", parent=top)
+                return
+            d, folder = state["data"], state["folder"]
+            top.destroy()
+            self.busy = True
+            self.show(self.PLAY)
+            self.play_title.config(text=f"Repairing {d.get('name')}…")
+            self.log(f"» Server Recovery: {d.get('name')} in {folder}")
+
+            def work():
+                log = lambda l: self.q.put(("log", l))
+                try:
+                    cfg = recovery.repair(d, folder, log)
+                    self.q.put(("recovery_done", cfg, None))
+                except Exception as e:
+                    self.q.put(("recovery_done", None, f"{e.__class__.__name__}: {e}"))
+            threading.Thread(target=work, daemon=True).start()
+        fill()
+        if files:
+            lb.selection_set(0)
+            show()
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(10, 0))
+        ttk.Button(btns, text="Repair", style="Accent.TButton", command=repair).pack(side="right")
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(side="right", padx=6)
+        ttk.Button(btns, text="Open a .mh file…", command=open_file).pack(side="left")
+
+    def _recovery_finished(self, cfg, err):
+        if err:
+            self.busy = False
+            self.play_title.config(text="Server Recovery didn't finish")
+            self.log("ERROR " + err)
+            messagebox.showerror("Server Recovery", f"Something went wrong: {err}")
+            return
+        self.cfg = cfg
+        self.edit = True
+        self.log("» Files repaired. Now checking the server, Java and plugins (it downloads what's missing).")
+        wanted = list(cfg.addons)
+        self._work(lambda: wanted)
+
     # ------------------------------------------------------------------ Play tab: who's online, backups
     _JOIN = re.compile(r"(?:\]: |INFO\] )(?:\[[^\]]*\] )?([A-Za-z0-9_.]{2,16}) joined the game")
     _LEAVE = re.compile(r"(?:\]: |INFO\] )(?:\[[^\]]*\] )?([A-Za-z0-9_.]{2,16}) left the game")
@@ -1909,7 +2279,8 @@ class Wizard:
                     srv.send("save-off")
                     srv.send("save-all flush")
                     time.sleep(4)
-                core.make_backup(cfg, 5, lambda l: self.q.put(("log", l)))
+                core.make_backup(cfg, paid.backups_kept(), lambda l: self.q.put(("log", l)))
+                recovery.save(cfg)
             except Exception as e:
                 self.q.put(("log", f"! Backup failed: {e}"))
             finally:
@@ -1924,7 +2295,8 @@ class Wizard:
             return
         top, f = self.dialog("Backups")
         ttk.Label(f, text=f"Backups of {self.cfg.name}", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(f, text="MC Hoster backs up the world once a day while the server runs, and keeps the newest 5.",
+        ttk.Label(f, text=f"MC Hoster backs up the world every {paid.backup_every_hours()} hours while the server runs, "
+                          f"and keeps the newest {paid.backups_kept()}.",
                   style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
         lb = tk.Listbox(f, width=56, height=8, activestyle="none")
         lb.pack(fill="x")
@@ -1979,16 +2351,20 @@ class Wizard:
         side = self.side_var.get()
         if self.share_frame is not None:
             self.share_frame.pack_forget()
+        m = self._bg_margin
         if side == "hosting":
-            self.outer.pack(fill="both", expand=True)
-            self.bar.pack(fill="x")
+            self.outer.pack(fill="both", expand=True, padx=m)
+            self.bar.pack(fill="x", padx=m, pady=(0, m))
+            self.gear.lift()
             return
         self.outer.pack_forget()
         self.bar.pack_forget()
         if self.share_frame is None:
-            self.share_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD))
+            self.share_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD + 24))
             self._build_sharing(self.share_frame)
-        self.share_frame.pack(fill="both", expand=True)
+            i18n.apply(self.share_frame)
+        self.share_frame.pack(fill="both", expand=True, padx=m, pady=(0, m))
+        self.gear.lift()
         self.refresh_posts()
 
     def _offline_text(self, e) -> str:
@@ -2451,6 +2827,7 @@ class Wizard:
         ttk.Button(btns, text="Continue", style="Accent.TButton", command=go).pack(side="right")
         ttk.Button(btns, text="Close MC Hoster", command=lambda: (top.destroy(), self.root.destroy())).pack(side="right", padx=6)
         top.protocol("WM_DELETE_WINDOW", lambda: (top.destroy(), self.root.destroy()))
+        i18n.apply(top)
         self._first = top
 
     # ------------------------------------------------------------------ updates
@@ -2550,6 +2927,19 @@ class Wizard:
                     messagebox.showwarning("Max storage usage", f"The server stopped because it used {core.fmt_bytes(ev[1])}, "
                                            f"and the limit is {core.fmt_bytes(ev[2])}.\n\nFree some space (old backups, logs, "
                                            "worlds) or raise the limit in tab 9, then start it again.")
+                elif k == "paid_status":
+                    st = getattr(self, "_paid_status", None)
+                    if st and st[0].winfo_exists():
+                        st[0].config(text=ev[2] or ev[1], style="Bad.TLabel" if ev[2] else "Hint.TLabel")
+                        if ev[2]:
+                            st[1].state(["!disabled"])
+                elif k == "paid_done":
+                    st = getattr(self, "_paid_status", None)
+                    if st and st[0].winfo_exists():
+                        st[0].winfo_toplevel().destroy()
+                    self._paid_unlocked()
+                elif k == "recovery_done":
+                    self._recovery_finished(ev[1], ev[2])
                 elif k == "posts":
                     if self.share_frame is not None and self.posts_text.winfo_exists():
                         self._set_posts_text(ev[2] or "No posts yet. Be the first!", ev[1])
@@ -2660,7 +3050,7 @@ class Wizard:
                     self.players = []
                     self._show_players()
                     last = core.list_backups(self.cfg)
-                    if not last or time.time() - last[0].stat().st_mtime > 24 * 3600:
+                    if not last or time.time() - last[0].stat().st_mtime > paid.backup_every_hours() * 3600:
                         self.root.after(60_000, lambda srv=self.server: srv is self.server and self.backup_now(auto=True))
                     for c in core.ready_commands(self.cfg):  # gamerules, whitelist and ops from tab 6, you as op
                         self.server.send(c)
@@ -2686,6 +3076,8 @@ class Wizard:
                     self.step_label.config(text=f"The server stopped (exit code {ev[1]}).")
                     self.players = []
                     self.players_label.config(text="")
+                    cfg_now = self.cfg
+                    threading.Thread(target=lambda: recovery.save(cfg_now), daemon=True).start()
                     srv = ev[2] if len(ev) > 2 else None
                     by_itself = srv is not None and not srv.stopping and not getattr(self, "_closing", False)
                     self._ready_at = None
@@ -2726,7 +3118,26 @@ class Wizard:
         self.root.destroy()
 
 
-def main(start_folder: str | None = None):
+def register_mh_files():
+    """Double-clicking a .mh file opens it in MC Hoster's Server Recovery (only for this Windows user, no admin)."""
+    if not (core.WINDOWS and getattr(sys, "frozen", False)):
+        return
+    try:
+        import winreg
+        exe = sys.executable
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.mh") as k:
+            winreg.SetValue(k, "", winreg.REG_SZ, "MCHoster.Recovery")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\MCHoster.Recovery") as k:
+            winreg.SetValue(k, "", winreg.REG_SZ, "MC Hoster Server Recovery file")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\MCHoster.Recovery\DefaultIcon") as k:
+            winreg.SetValue(k, "", winreg.REG_SZ, f'"{exe}",0')
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\MCHoster.Recovery\shell\open\command") as k:
+            winreg.SetValue(k, "", winreg.REG_SZ, f'"{exe}" "%1"')
+    except Exception:
+        pass
+
+
+def main(start_folder: str | None = None, recover: str | None = None):
     if core.WINDOWS:
         try:
             import ctypes
@@ -2768,6 +3179,9 @@ def main(start_folder: str | None = None):
         root.after(150, w.first_run)
     if not start_folder:
         root.after(2500, lambda: w.check_updates(True))
+    register_mh_files()
+    if recover:  # a .mh file was double-clicked
+        root.after(500, lambda: w.recovery_dialog(recover))
     if start_folder:  # started by the scheduler
         try:
             w.open_existing(ServerConfig.load(Path(start_folder)))

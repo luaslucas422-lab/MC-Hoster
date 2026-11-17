@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Recovery · MC Hoster</title>
+<meta name="description" content="Host a Minecraft server from your own Windows PC in a few clicks. Free, with Gh0st AC anti-cheat, backups and plugins.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body><div class="wrap"><header><a class="logo" href="/"><i></i>MC Hoster</a><nav aria-label="Pages"><a href="/">Home</a><a href="recovery.html">Server Recovery</a><a href="terms.html">Terms</a><a href="privacy.html">Privacy</a></nav></header>
+<main class="doc">
+<h1>Server Recovery</h1>
+<p class="lead">MC Hoster keeps a small <b>.mh</b> file for each server (unless you turned it off when you set it up). It remembers the server's settings, player lists, plugins and each world's level.dat.</p>
+<h2>Repair a server in MC Hoster</h2>
+<ol>
+<li>Double-click the <b>.mh</b> file, or open MC Hoster and click <b>Server Recovery…</b> on the Server tab.</li>
+<li>MC Hoster shows what's wrong. Click <b>Repair</b>.</li>
+<li>It puts back broken settings and lists, downloads the server and plugins again, fixes a broken level.dat, and brings the world back from the newest backup if it's gone. Broken files are kept in a folder, never deleted.</li>
+</ol>
+<p class="small">Recovery files are in the server folder and in <code>%APPDATA%\MC Hoster\recovery</code>, so they survive even if the server folder is deleted.</p>
+<h2>Read a recovery file here</h2>
+<p>No MC Hoster on this PC? Open a .mh file here to see what's in it and download the server's files. It's read in your browser; nothing is uploaded.</p>
+<label class="btn" for="mh" style="margin-top:6px">Open a .mh file<input type="file" id="mh" accept=".mh" style="display:none"></label>
+<div id="out" aria-live="polite"></div>
+</main>
+<script>
+(function(){
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  function dl(name,data,type){var b=new Blob([data],{type:type||"text/plain"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name.split("/").pop();document.body.appendChild(a);a.click();a.remove()}
+  document.getElementById("mh").addEventListener("change",function(e){
+    var f=e.target.files[0]; if(!f)return; var r=new FileReader();
+    r.onload=function(){
+      var out=document.getElementById("out"), d;
+      try{d=JSON.parse(r.result); if(d.format!=="mchoster-recovery")throw 0}catch(x){out.innerHTML="<p class='note'>That isn't an MC Hoster Server Recovery file.</p>";return}
+      var h="<h2>"+esc(d.name)+"</h2><p>"+esc(d.type)+" "+esc(d.minecraft)+" · saved "+esc(new Date(d.saved*1000).toLocaleString())+" · made with MC Hoster "+esc(d.mchoster)+"</p>";
+      if(d.icon)h+="<p><img alt='Server icon' width='64' height='64' style='image-rendering:pixelated' src='data:image/png;base64,"+d.icon+"'></p>";
+      h+="<h3>Files you can download</h3><div class='row' id='files'></div>";
+      h+="<h3 style='margin-top:20px'>Plugins and mods ("+(d.plugins||[]).length+")</h3><ul>"+(d.plugins||[]).map(function(p){return "<li>"+esc(p.file)+"</li>"}).join("")+"</ul>";
+      h+="<h3>Worlds</h3><ul>"+(d.worlds||[]).map(function(w){return "<li>"+esc(w.name)+(w.level_dat?" (level.dat saved)":"")+"</li>"}).join("")+"</ul>";
+      h+="<h3>Backups it knew about</h3><ul>"+((d.backups||[]).map(function(b){return "<li>"+esc(b)+"</li>"}).join("")||"<li>None</li>")+"</ul>";
+      out.innerHTML=h;
+      var box=document.getElementById("files");
+      Object.keys(d.files||{}).forEach(function(n){var b=document.createElement("button");b.className="btn alt";b.textContent=n;b.onclick=function(){dl(n,d.files[n])};box.appendChild(b)});
+      (d.worlds||[]).forEach(function(w){if(!w.level_dat)return;var b=document.createElement("button");b.className="btn alt";b.textContent=w.name+"/level.dat";b.onclick=function(){var s=atob(w.level_dat),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);dl("level.dat",u,"application/octet-stream")};box.appendChild(b)});
+    };
+    r.readAsText(f);
+  });
+})();
+</script>
+</div><footer><div class="wrap"><p class="legal">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Minecraft is a trademark of Mojang AB.</p></div></footer></body></html>
