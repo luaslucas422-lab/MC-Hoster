@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime as dt
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -892,6 +893,9 @@ class Wizard:
         top.grid(row=0, column=0, sticky="we")
         self.play_title = ttk.Label(top, text="Not set up yet", style="Title.TLabel")
         self.play_title.pack(side="left")
+        self.players_label = ttk.Label(top, text="", style="Hint.TLabel")
+        self.players_label.pack(side="right", pady=(6, 0))
+        self.players: list[str] = []
         self.progress = ttk.Progressbar(f, mode="determinate", maximum=100)
         self.progress.grid(row=1, column=0, sticky="we", pady=(6, 2))
         self.step_label = ttk.Label(f, text="", style="Hint.TLabel")
@@ -941,7 +945,8 @@ class Wizard:
         self.startstop_btn = ttk.Button(cmd, text="Stop server", command=self.start_stop, state="disabled")
         self.startstop_btn.grid(row=0, column=2, padx=(6, 0))
         ttk.Button(cmd, text="Open folder", command=lambda: self.cfg.folder and open_folder(self.cfg.folder)).grid(row=0, column=3, padx=(6, 0))
-        ttk.Button(cmd, text="Plugins & Mods →", command=lambda: self.edit and self.show(self.ADDONS)).grid(row=0, column=4, padx=(6, 0))
+        ttk.Button(cmd, text="Backups…", command=self.backups_dialog).grid(row=0, column=4, padx=(6, 0))
+        ttk.Button(cmd, text="Plugins & Mods →", command=lambda: self.edit and self.show(self.ADDONS)).grid(row=0, column=5, padx=(6, 0))
 
     def log(self, line: str):
         tag = "err" if ("ERROR" in line or "Exception" in line) else "warn" if ("WARN" in line or line.lstrip().startswith("!")) \
@@ -1671,6 +1676,8 @@ class Wizard:
         """Every second: a timed restart (tab 6) with warnings in chat, and every minute the storage check (tab 9)."""
         try:
             self._tick_n = getattr(self, "_tick_n", 0) + 1
+            if self._tick_n % 30 == 0 and getattr(self, "_ready_at", None):
+                self._show_players()
             if self._tick_n % 60 == 0:
                 self._storage_tick()
             hours = int((self.cfg.auto_restart or {}).get("every_hours", 0) or 0)
@@ -1856,6 +1863,116 @@ class Wizard:
                 (w.grid if on else w.grid_remove)()
         self.ip_box.grid(row=3, column=0, sticky="we", pady=(8, 0))
 
+
+
+    # ------------------------------------------------------------------ Play tab: who's online, backups
+    _JOIN = re.compile(r"(?:\]: |INFO\] )(?:\[[^\]]*\] )?([A-Za-z0-9_.]{2,16}) joined the game")
+    _LEAVE = re.compile(r"(?:\]: |INFO\] )(?:\[[^\]]*\] )?([A-Za-z0-9_.]{2,16}) left the game")
+    _BJOIN = re.compile(r"Player connected: ([^,]+),")
+    _BLEAVE = re.compile(r"Player disconnected: ([^,]+),")
+
+    def _track_players(self, line: str):
+        m = self._JOIN.search(line) or self._BJOIN.search(line)
+        if m and m.group(1) not in self.players:
+            self.players.append(m.group(1))
+            self._show_players()
+            return
+        m = self._LEAVE.search(line) or self._BLEAVE.search(line)
+        if m and m.group(1) in self.players:
+            self.players.remove(m.group(1))
+            self._show_players()
+
+    def _show_players(self):
+        if not getattr(self, "_ready_at", None):
+            self.players_label.config(text="")
+            return
+        up = int(time.time() - self._ready_at) // 60
+        uptime = f"{up // 60}h {up % 60:02d}m" if up >= 60 else f"{up}m"
+        n = len(self.players)
+        who = "nobody online" if not n else f"{n} online: " + ", ".join(self.players[:6]) + (" …" if n > 6 else "")
+        self.players_label.config(text=f"{who} · up {uptime}")
+
+    def backup_now(self, auto: bool = False):
+        if not self.edit or not self.cfg.folder or getattr(self, "_backing_up", False):
+            return
+        cfg, srv = self.cfg, self.server if (self.server and self.server.running) else None
+        if not core.world_dirs(cfg):
+            if not auto:
+                messagebox.showinfo("Backups", "There's no world yet. Start the server once first.")
+            return
+        self._backing_up = True
+        self.log("» Backing up the world…" + (" (daily backup)" if auto else ""))
+
+        def work():
+            try:
+                if srv:  # make the server write everything to disk and pause saving while the zip is made
+                    srv.send("save-off")
+                    srv.send("save-all flush")
+                    time.sleep(4)
+                core.make_backup(cfg, 5, lambda l: self.q.put(("log", l)))
+            except Exception as e:
+                self.q.put(("log", f"! Backup failed: {e}"))
+            finally:
+                if srv and srv.running:
+                    srv.send("save-on")
+                self._backing_up = False
+        threading.Thread(target=work, daemon=True).start()
+
+    def backups_dialog(self):
+        if not self.edit or not self.cfg.folder:
+            messagebox.showinfo("Backups", "Set up a server first.")
+            return
+        top, f = self.dialog("Backups")
+        ttk.Label(f, text=f"Backups of {self.cfg.name}", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(f, text="MC Hoster backs up the world once a day while the server runs, and keeps the newest 5.",
+                  style="Hint.TLabel").pack(anchor="w", pady=(0, 6))
+        lb = tk.Listbox(f, width=56, height=8, activestyle="none")
+        lb.pack(fill="x")
+
+        def fill():
+            lb.delete(0, "end")
+            for b in core.list_backups(self.cfg):
+                when = time.strftime("%d %b %Y, %H:%M", time.localtime(b.stat().st_mtime))
+                lb.insert("end", f"{when}   ({core.fmt_bytes(b.stat().st_size)})")
+            if not lb.size():
+                lb.insert("end", "No backups yet.")
+        fill()
+
+        def restore():
+            backups = core.list_backups(self.cfg)
+            if not lb.curselection() or not backups:
+                return
+            if self.server and self.server.running:
+                messagebox.showinfo("Backups", "Stop the server first, then restore.", parent=top)
+                return
+            b = backups[lb.curselection()[0]]
+            if not messagebox.askyesno("Restore backup", f"Put the world back to {lb.get(lb.curselection()[0]).split('   ')[0]}?\n\n"
+                                       "The world as it is now is kept in the server folder, just in case.", parent=top):
+                return
+            try:
+                core.restore_backup(self.cfg, b, self.log)
+                messagebox.showinfo("Backups", "Restored. Start the server to play on it.", parent=top)
+            except Exception as e:
+                messagebox.showerror("Backups", f"Couldn't restore: {e}", parent=top)
+
+        def now():
+            self.backup_now()
+            top.after(1500, lambda: self._wait_backup(top, fill))
+        btns = ttk.Frame(f)
+        btns.pack(fill="x", pady=(8, 0))
+        ttk.Button(btns, text="Back up now", style="Accent.TButton", command=now).pack(side="left")
+        ttk.Button(btns, text="Restore", command=restore).pack(side="left", padx=6)
+        ttk.Button(btns, text="Open folder", command=lambda: (core.backups_dir(self.cfg).mkdir(exist_ok=True),
+                                                             open_folder(str(core.backups_dir(self.cfg))))).pack(side="left")
+        ttk.Button(btns, text="Close", command=top.destroy).pack(side="right")
+
+    def _wait_backup(self, top, fill):
+        if not top.winfo_exists():
+            return
+        if getattr(self, "_backing_up", False):
+            top.after(1000, lambda: self._wait_backup(top, fill))
+        else:
+            fill()
 
     # ------------------------------------------------------------------ the two sides: hosting and sharing
     def show_side(self):
@@ -2500,6 +2617,8 @@ class Wizard:
                     messagebox.showerror("Update", f"The update didn't work: {ev[1]}\nYou can download it from GitHub instead.")
                 elif k == "log":
                     self.log(ev[1])
+                    if len(ev) > 2 and ev[2] is self.server:
+                        self._track_players(ev[1])
                     if len(ev) > 2 and ev[2] is self.server and ("FAILED TO BIND TO PORT" in ev[1] or "Address already in use" in ev[1]):
                         messagebox.showwarning("Port in use", f"Port {self.cfg.port} is already taken, so the server can't start. "
                                                "Another server is probably still running: close it, or start again and "
@@ -2538,6 +2657,11 @@ class Wizard:
                     self.play_title.config(text=f"{self.cfg.name} is online!")
                     self._ready_at = time.time()
                     self._warned = set()
+                    self.players = []
+                    self._show_players()
+                    last = core.list_backups(self.cfg)
+                    if not last or time.time() - last[0].stat().st_mtime > 24 * 3600:
+                        self.root.after(60_000, lambda srv=self.server: srv is self.server and self.backup_now(auto=True))
                     for c in core.ready_commands(self.cfg):  # gamerules, whitelist and ops from tab 6, you as op
                         self.server.send(c)
                     self.step_label.config(text=("Open Minecraft → Play → Servers → Add Server." if self.cfg.prov.bedrock
@@ -2560,6 +2684,8 @@ class Wizard:
                     self._close_ports()
                     self.play_title.config(text=f"{self.cfg.name} is offline")
                     self.step_label.config(text=f"The server stopped (exit code {ev[1]}).")
+                    self.players = []
+                    self.players_label.config(text="")
                     srv = ev[2] if len(ev) > 2 else None
                     by_itself = srv is not None and not srv.stopping and not getattr(self, "_closing", False)
                     self._ready_at = None

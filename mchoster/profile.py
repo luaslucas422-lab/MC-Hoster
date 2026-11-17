@@ -23,6 +23,8 @@ Please read this before you use MC Hoster.
 
 7. Changes. These terms can change in a new version. If you keep using MC Hoster you agree to the new terms.
 
+8. Full terms. The full Terms of Use and the Privacy page are at https://mc-hoster.onrender.com/terms.html and https://mc-hoster.onrender.com/privacy.html and are part of these terms. If you are under 16, ask a parent or guardian before using the online parts.
+
 By ticking the box you say you have read this and agree."""
 
 

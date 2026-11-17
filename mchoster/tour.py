@@ -117,14 +117,23 @@ def run(outdir: str) -> int:
         w.page = w.PLAY
         w.enter_edit_mode()
         w.play_title.config(text=f"{w.cfg.name} is online!")
+        w._ready_at = time.time() - 74 * 60
+        w.players = []
+        # a world and two backups, for the Backups window
+        wd = Path(w.cfg.folder) / "world"
+        wd.mkdir()
+        (wd / "level.dat").write_bytes(b"x" * 2000)
+        core.make_backup(w.cfg, log=lambda l: None)
         w.progress.config(value=100)
         w.step_label.config(text="Open Minecraft → Multiplayer → Add Server, and paste the IP.")
         for l in ["[18:02:11 INFO]: Starting minecraft server version 1.21.11",
                   "[18:02:14 INFO]: [Gh0stAC] Gh0st AC 2.0.0 armed (Lite)",
                   "[18:02:15 INFO]: [voicechat] Voice chat server started at port 24454",
                   "[18:02:19 WARN]: Can't keep up! Is the server overloaded?",
-                  '[18:02:21 INFO]: Done (9.812s)! For help, type "help"']:
+                  '[18:02:21 INFO]: Done (9.812s)! For help, type "help"',
+                  "[18:03:02 INFO]: Geo joined the game", "[18:04:40 INFO]: Sam joined the game"]:
             w.log(l)
+            w._track_players(l)
         for k, v in {"domain": "play.lucassmp.net", "public": "86.45.120.17", "lan": "192.168.1.24", "local": "localhost"}.items():
             w.ip_vars[k].set(v)
         w.port_label.config(text="✔ Namecheap now points play.lucassmp.net at 86.45.120.17.\n"
@@ -177,6 +186,9 @@ def run(outdir: str) -> int:
         lambda: grab("3-custom-ip", dialogs["d"]),
         play,
         lambda: grab("4-play"),
+        w.backups_dialog,
+        lambda: grab("4-backups", last_top()),
+        lambda: last_top().destroy(),
         lambda: w.show(w.ADDONS),
         lambda: grab("5-plugins"),
         lambda: w.show(w.SETTINGS),
@@ -225,5 +237,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 21
+    want = 22
     return 0 if len(shots) == want else 1

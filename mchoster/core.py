@@ -28,7 +28,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 APP_NAME = "MC Hoster"
-VERSION = "3.5.1"
+VERSION = "3.6.0"
 AUTHOR = "DarkerDawnFR"
 UA = f"MC-Hoster/{VERSION} (github.com/luaslucas422-lab/MC-Hoster)"
 PORT = 25565
@@ -528,6 +528,78 @@ def storage_limit_bytes(cfg: "ServerConfig") -> int:
 
 def fmt_bytes(n: float) -> str:
     return f"{n / 1024 ** 3:.2f} GB" if n >= 1024 ** 3 else f"{n / 1024 ** 2:.0f} MB"
+
+
+def world_dirs(cfg: "ServerConfig") -> list[Path]:
+    """The folders that make up the world(s): every folder with a level.dat (Java), or worlds/ (Bedrock)."""
+    d = Path(cfg.folder)
+    if cfg.prov.bedrock:
+        return [d / "worlds"] if (d / "worlds").is_dir() else []
+    out = []
+    try:
+        for x in sorted(d.iterdir()):
+            if x.is_dir() and (x / "level.dat").exists() and "-before-restore-" not in x.name:
+                out.append(x)
+    except OSError:
+        pass
+    return out
+
+
+def backups_dir(cfg: "ServerConfig") -> Path:
+    return Path(cfg.folder) / "backups"
+
+
+def list_backups(cfg: "ServerConfig") -> list[Path]:
+    """Newest first."""
+    try:
+        return sorted(backups_dir(cfg).glob("world-*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+    except OSError:
+        return []
+
+
+def make_backup(cfg: "ServerConfig", keep: int = 5, log=print) -> Path | None:
+    """Zips the world folders into backups/world-<date>.zip and keeps only the newest `keep`."""
+    import zipfile
+    worlds = world_dirs(cfg)
+    if not worlds:
+        return None
+    root = Path(cfg.folder)
+    out = backups_dir(cfg)
+    out.mkdir(exist_ok=True)
+    dest = out / f"world-{time.strftime('%Y-%m-%d_%H-%M-%S')}.zip"
+    tmp = dest.with_suffix(".part")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=5) as z:
+        for w in worlds:
+            for f in w.rglob("*"):
+                if f.is_file() and f.name != "session.lock":
+                    try:
+                        z.write(f, f.relative_to(root).as_posix())
+                    except OSError:
+                        pass  # a file the server is writing right now; the next backup gets it
+    os.replace(tmp, dest)
+    for old in list_backups(cfg)[keep:]:
+        old.unlink(missing_ok=True)
+    log(f"» Backup saved: {dest.name} ({fmt_bytes(dest.stat().st_size)})")
+    return dest
+
+
+def restore_backup(cfg: "ServerConfig", backup: Path, log=print) -> None:
+    """Puts a backup back. The current world is kept next to it as <world>-before-restore-<date>, just in case."""
+    import zipfile
+    root = Path(cfg.folder)
+    stamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    with zipfile.ZipFile(backup) as z:
+        tops = {n.split("/", 1)[0] for n in z.namelist() if "/" in n}
+        for t in tops:
+            cur = root / t
+            if cur.exists():
+                os.replace(cur, root / f"{t}-before-restore-{stamp}")
+        for n in z.namelist():
+            target = (root / n).resolve()
+            if not str(target).startswith(str(root.resolve())):
+                continue
+            z.extract(n, root)
+    log(f"» Restored {backup.name}. The world from before is kept as ...-before-restore-{stamp}.")
 
 
 def total_ram_mb() -> int:
@@ -1612,7 +1684,7 @@ EXIT_REASONS = [
      "The Minecraft EULA isn't accepted. Tick it in tab 3 and click Apply & start."),
     (r"Failed to load properties|Failed to load level|Exception reading .*level\.dat|Failed to read level",
      "The world or server.properties couldn't be read (maybe from a crash). A backup is in the world folder "
-     "(level.dat_old), or Dark Backup's backups folder."),
+     "(level.dat_old), or restore one with the Backups button on the Play tab."),
     (r"Encountered an unexpected exception|Exception in server tick loop|This crash report has been saved",
      "The server crashed. The crash report is in the crash-reports folder of the server."),
 ]
