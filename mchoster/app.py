@@ -18,7 +18,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from . import addons, core, domain, icondraw, laura, online, profile, respack, schedule, updater
+from . import addons, core, domain, icondraw, online, profile, respack, schedule, updater
 from .core import PROVIDERS, PROVIDER_BY_NAME, ServerConfig
 
 GREEN, YELLOW, ORANGE, RED = "#2e9e44", "#c9a400", "#e07b00", "#cc2b2b"
@@ -78,13 +78,12 @@ class Wizard:
         root.bind_all("<Button-1>", lambda e: setattr(self, "_secret", self._secret if e.widget is by else 0), add="+")
         root.bind_all("<Key>", lambda e: setattr(self, "_secret", 0), add="+")
         self.side_var = tk.StringVar(value="hosting")
-        for text, val in (("AI · Laura", "ai"), ("Server sharing", "sharing"), ("Server hosting", "hosting")):
+        for text, val in (("Server sharing", "sharing"), ("Server hosting", "hosting")):
             ttk.Radiobutton(self.header, text=text, value=val, variable=self.side_var, style="Toolbutton",
                             command=self.show_side).pack(side="right", padx=(6, 0))
         self.outer = ttk.Frame(root, padding=(PAD, PAD, PAD, 0))
         self.outer.pack(fill="both", expand=True)
         self.share_frame = None
-        self.ai_frame = None
         self.nb = ttk.Notebook(self.outer)
         self.nb.pack(fill="both", expand=True)
         self.pages = []
@@ -1861,271 +1860,19 @@ class Wizard:
     # ------------------------------------------------------------------ the two sides: hosting and sharing
     def show_side(self):
         side = self.side_var.get()
-        for f in (self.share_frame, self.ai_frame):
-            if f is not None:
-                f.pack_forget()
+        if self.share_frame is not None:
+            self.share_frame.pack_forget()
         if side == "hosting":
             self.outer.pack(fill="both", expand=True)
             self.bar.pack(fill="x")
             return
         self.outer.pack_forget()
         self.bar.pack_forget()
-        if side == "sharing":
-            if self.share_frame is None:
-                self.share_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD))
-                self._build_sharing(self.share_frame)
-            self.share_frame.pack(fill="both", expand=True)
-            self.refresh_posts()
-        else:
-            if self.ai_frame is None:
-                self.ai_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD))
-                self._build_laura(self.ai_frame)
-            self.ai_frame.pack(fill="both", expand=True)
-            self.laura_refresh()
-
-    # ------------------------------------------------------------------ AI · Laura
-    def _build_laura(self, f):
-        f.columnconfigure(0, weight=1)
-        f.rowconfigure(2, weight=1)
-        top = ttk.Frame(f)
-        top.grid(row=0, column=0, sticky="we")
-        ttk.Label(top, text="Laura", style="Title.TLabel").pack(side="left")
-        ttk.Label(top, text="  makes plugins for your server", style="Hint.TLabel").pack(side="left", pady=(6, 0))
-        ttk.Button(top, text="Buy more…", style="Accent.TButton", command=self.laura_buy_dialog).pack(side="right")
-        self.laura_usage = ttk.Label(top, text="", style="Hint.TLabel")
-        self.laura_usage.pack(side="right", padx=8)
-        row = ttk.Frame(f)
-        row.grid(row=1, column=0, sticky="we", pady=(6, 6))
-        ttk.Label(row, text="For server:").pack(side="left")
-        self.laura_server = tk.StringVar()
-        self.laura_server_box = ttk.Combobox(row, textvariable=self.laura_server, state="readonly", width=28)
-        self.laura_server_box.pack(side="left", padx=6)
-        self.laura_server_box.bind("<<ComboboxSelected>>", lambda e: self._laura_server_check())
-        self.laura_server_note = ttk.Label(row, text="", style="Warn.TLabel")
-        self.laura_server_note.pack(side="left")
-        box = ttk.Frame(f)
-        box.grid(row=2, column=0, sticky="nsew")
-        self.laura_chat = tk.Text(box, wrap="word", relief="flat", padx=12, pady=10, height=16, width=82)
-        sb = ttk.Scrollbar(box, command=self.laura_chat.yview)
-        self.laura_chat.config(yscrollcommand=sb.set)
-        bold = (self.base_font[0], self.base_font[1], "bold")
-        self.laura_chat.tag_configure("you", foreground="#2b5797", font=bold)
-        self.laura_chat.tag_configure("laura", foreground="#a3367c", font=bold)
-        self.laura_chat.tag_configure("note", foreground="#6b6b6b")
-        self.laura_chat.tag_configure("bad", foreground="#b3261e")
-        self.laura_chat.tag_configure("good", foreground="#1e7b3a")
-        self.laura_chat.pack(side="left", fill="both", expand=True)
-        sb.pack(side="right", fill="y")
-        self._laura_say("laura", "Hi, I'm Laura! Tell me what plugin you want for your server and I'll make it, build it "
-                                 "and put it on the server. For example: \"A /bounty command where players put money on "
-                                 "someone's head\" or \"Cows drop diamonds 1% of the time\".")
-        self.laura_chat.config(state="disabled")
-        opts = ttk.Frame(f)
-        opts.grid(row=3, column=0, sticky="we", pady=(8, 4))
-        ttk.Label(opts, text="Size:").pack(side="left")
-        self.laura_size = tk.StringVar(value="normal")
-        for key, label, price, why in laura.SIZES:
-            ttk.Radiobutton(opts, text=f"{label} ({price})", value=key, variable=self.laura_size).pack(side="left", padx=(4, 8))
-        ttk.Label(opts, text="   Thinking:").pack(side="left")
-        self.laura_effort = tk.StringVar(value="normal")
-        self.laura_effort_btns = {}
-        for key, label, why in laura.EFFORTS:
-            b = ttk.Radiobutton(opts, text=label, value=key, variable=self.laura_effort)
-            b.pack(side="left", padx=4)
-            self.laura_effort_btns[key] = b
-        self.laura_edit = tk.BooleanVar(value=False)
-        self.laura_edit_btn = ttk.Checkbutton(opts, text="Change the last plugin", variable=self.laura_edit)
-        self.laura_edit_btn.pack(side="right")
-        ask = ttk.Frame(f)
-        ask.grid(row=4, column=0, sticky="we")
-        ask.columnconfigure(0, weight=1)
-        self.laura_input = tk.Text(ask, height=3, wrap="word")
-        self.laura_input.grid(row=0, column=0, sticky="we")
-        self.laura_input.bind("<Control-Return>", lambda e: (self.laura_send(), "break")[1])
-        self.laura_send_btn = ttk.Button(ask, text="Make it", style="Accent.TButton", command=self.laura_send)
-        self.laura_send_btn.grid(row=0, column=1, sticky="ns", padx=(8, 0))
-        ttk.Label(f, text="Free and pay-per-plugin use Laura's normal model; the plan uses the strongest one. Laura can make "
-                          "mistakes: test new plugins before players join. Ctrl+Enter sends.", style="Hint.TLabel",
-                  wraplength=640, justify="left").grid(row=5, column=0, sticky="w", pady=(4, 0))
-        self.laura_last: dict = {}
-        self.laura_state: dict = {}
-        self.laura_servers: list = []
-
-    def _laura_say(self, who, text, tag=None):
-        t = self.laura_chat
-        t.config(state="normal")
-        if who:
-            t.insert("end", ("You" if who == "you" else "Laura") + "\n", who)
-        t.insert("end", text + "\n\n", tag or ())
-        t.config(state="disabled")
-        t.see("end")
-
-    def laura_refresh(self):
-        servers = [s for s in core.my_servers() if not s.prov.bedrock]
-        self.laura_servers = servers
-        names = [f"{s.name} ({s.prov.name} {s.version})" for s in servers]
-        self.laura_server_box.config(values=names)
-        cur = next((i for i, s in enumerate(servers) if self.edit and s.folder == self.cfg.folder), 0)
-        if names:
-            self.laura_server.set(names[cur])
-        else:
-            self.laura_server.set("")
-        self._laura_server_check()
-
-        def work():
-            try:
-                st = laura.status()
-                if not st.get("plan") and st.get("plan_until"):  # the monthly plan ran out: is it still paid?
-                    st = laura.renew()
-                self.q.put(("laura_status", st, None))
-            except laura.LauraError as e:
-                self.q.put(("laura_status", None, str(e)))
-        threading.Thread(target=work, daemon=True).start()
-
-    def _laura_cfg(self):
-        i = self.laura_server_box.current()
-        return self.laura_servers[i] if 0 <= i < len(self.laura_servers) else None
-
-    def _laura_server_check(self):
-        cfg = self._laura_cfg()
-        why = "Set up a server first (Server hosting)." if cfg is None else laura.can_build(cfg)
-        self.laura_server_note.config(text=why)
-
-    def _laura_show_status(self, st):
-        self.laura_state = st or {}
-        if not st:
-            return
-        if st.get("plan"):
-            txt = f"Plan: {st['plan_left']} of {st['plan_per_month']} left this month"
-        else:
-            txt = f"{st['free_left']} of {st['free_per_month']} free left this month"
-        txt += f" · balance €{st['credits_cents'] / 100:.2f}"
-        self.laura_usage.config(text=txt)
-        self.laura_effort_btns["max"].state(["!disabled"] if st.get("plan") else ["disabled"])
-        if not st.get("plan") and self.laura_effort.get() == "max":
-            self.laura_effort.set("high")
-        if not st.get("switched_on"):
-            self.laura_usage.config(text="Laura isn't switched on yet")
-
-    def laura_send(self):
-        text = self.laura_input.get("1.0", "end").strip()
-        cfg = self._laura_cfg()
-        if len(text) < 5 or self.busy_laura():
-            return
-        why = "Set up a server first (Server hosting)." if cfg is None else laura.can_build(cfg)
-        if why:
-            self._laura_say(None, why, "bad")
-            return
-        size, effort = self.laura_size.get(), self.laura_effort.get()
-        previous = self.laura_last.get("files") if self.laura_edit.get() and self.laura_last else None
-        self.laura_input.delete("1.0", "end")
-        self._laura_say("you", text)
-        self._laura_say(None, f"Laura is thinking ({dict((k, l) for k, l, _ in laura.EFFORTS)[effort]})… big plugins can take a "
-                              "few minutes.", "note")
-        self.laura_send_btn.state(["disabled"])
-        log = lambda l: self.q.put(("laura_note", l))
-
-        def work():
-            try:
-                res = laura.make(text, size, effort, cfg, previous)
-                self.q.put(("laura_answer", res, None))
-                if not res.get("files"):
-                    self.q.put(("laura_done", None, None))
-                    return
-                jar, files, errors = laura.build(res, cfg, log)
-                if jar:
-                    laura.add_to_server(jar, cfg, log)
-                self.q.put(("laura_done", {"jar": jar, "files": files, "errors": errors, "cfg": cfg,
-                                           "status": res.get("status")}, None))
-            except laura.LauraError as e:
-                self.q.put(("laura_done", None, str(e)))
-            except Exception as e:
-                self.q.put(("laura_done", None, f"Something went wrong: {e}"))
-        threading.Thread(target=work, daemon=True).start()
-
-    def busy_laura(self) -> bool:
-        return "disabled" in self.laura_send_btn.state()
-
-    def _laura_event(self, ev):
-        k = ev[0]
-        if k == "laura_status":
-            if ev[2]:
-                self.laura_usage.config(text=ev[2])
-            else:
-                self._laura_show_status(ev[1])
-        elif k == "laura_note":
-            self._laura_say(None, ev[1], "note")
-        elif k == "laura_answer":
-            self._laura_say("laura", ev[1].get("message") or "Here it is.")
-            if ev[1].get("status"):
-                self._laura_show_status(ev[1]["status"])
-        elif k == "laura_done":
-            self.laura_send_btn.state(["!disabled"])
-            if ev[2]:
-                self._laura_say(None, ev[2], "bad")
-                if "free plugins" in ev[2] or "Top up" in ev[2]:
-                    self.laura_buy_dialog()
-                return
-            r = ev[1]
-            if not r:
-                return
-            self.laura_last = {"files": r["files"]}
-            if r["jar"]:
-                running = self.server and self.server.running and self.cfg.folder == r["cfg"].folder
-                self._laura_say(None, f"Built {r['jar'].name} and added it to {r['cfg'].name}. "
-                                      + ("Restart the server to load it." if running else "It loads the next time the server starts.")
-                                      + f" (Saved in {r['jar'].parent}, with its source code.)", "good")
-            else:
-                self._laura_say(None, "Laura couldn't get this plugin to build after 3 tries. Try again with more detail, "
-                                      "or a smaller size. Last errors:\n" + r["errors"][-1500:], "bad")
-
-    def laura_buy_dialog(self):
-        top, f = self.dialog("Buy more Laura")
-        st = self.laura_state or {}
-        ttk.Label(f, text="Make more plugins", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(f, text=f"Everyone gets {st.get('free_per_month', 15)} free plugins a month. After that:",
-                  style="Hint.TLabel").pack(anchor="w", pady=(0, 8))
-        plan = ttk.LabelFrame(f, text=" Laura Plan · €10 a month ", padding=10)
-        plan.pack(fill="x")
-        ttk.Label(plan, text=f"• {st.get('plan_per_month', 150)} plugins a month, any size\n• Laura's strongest model\n"
-                             "• Max thinking for the hardest plugins\n• Cancel any time", justify="left").pack(anchor="w")
-        ttk.Button(plan, text="Get the plan", style="Accent.TButton", command=lambda: self.laura_pay("plan", top)).pack(anchor="e")
-        pay = ttk.LabelFrame(f, text=" Or pay per plugin ", padding=10)
-        pay.pack(fill="x", pady=(8, 0))
-        ttk.Label(pay, text="Small €0.25 · Normal €0.50 · Big €1, taken from your balance.\n"
-                            "Stripe can't charge less than €0.50, so you add to your balance first.", justify="left",
-                  style="Hint.TLabel").pack(anchor="w")
-        row = ttk.Frame(pay)
-        row.pack(anchor="w", pady=(6, 0))
-        for what, label in (("eur1", "Add €1"), ("eur5", "Add €5"), ("eur10", "Add €10")):
-            ttk.Button(row, text=label, command=lambda w=what: self.laura_pay(w, top)).pack(side="left", padx=(0, 6))
-        self._laura_pay_status = ttk.Label(f, text="Paying opens a secure Stripe window. MC Hoster never sees your card.",
-                                           style="Hint.TLabel")
-        self._laura_pay_status.pack(anchor="w", pady=(8, 0))
-        ttk.Button(f, text="Close", command=top.destroy).pack(anchor="e", pady=(6, 0))
-
-    def laura_pay(self, what, top=None):
-        st = self._laura_pay_status
-
-        def work():
-            try:
-                r = laura.buy(what)
-                laura.open_payment(r["url"])
-                self.q.put(("laura_paying", "Finish paying in the Stripe window. This updates by itself.", None))
-                for _ in range(300):  # 15 minutes
-                    time.sleep(3)
-                    try:
-                        c = laura.check(r["session"])
-                    except laura.LauraError:
-                        continue
-                    if c.get("paid"):
-                        self.q.put(("laura_paid", c.get("status"), None))
-                        return
-                self.q.put(("laura_paying", "No payment came through. If you paid, close and open the AI tab again.", None))
-            except laura.LauraError as e:
-                self.q.put(("laura_paying", None, str(e)))
-        st.config(text="Opening Stripe…")
-        threading.Thread(target=work, daemon=True).start()
+        if self.share_frame is None:
+            self.share_frame = ttk.Frame(self.root, padding=(PAD, PAD, PAD, PAD))
+            self._build_sharing(self.share_frame)
+        self.share_frame.pack(fill="both", expand=True)
+        self.refresh_posts()
 
     def _offline_text(self, e) -> str:
         return str(e) if str(e) else "Couldn't reach the MC Hoster service."
@@ -2686,18 +2433,6 @@ class Wizard:
                     messagebox.showwarning("Max storage usage", f"The server stopped because it used {core.fmt_bytes(ev[1])}, "
                                            f"and the limit is {core.fmt_bytes(ev[2])}.\n\nFree some space (old backups, logs, "
                                            "worlds) or raise the limit in tab 9, then start it again.")
-                elif k.startswith("laura_") and k not in ("laura_paying", "laura_paid"):
-                    if self.ai_frame is not None:
-                        self._laura_event(ev)
-                elif k == "laura_paying":
-                    st = getattr(self, "_laura_pay_status", None)
-                    if st is not None and st.winfo_exists():
-                        st.config(text=ev[2] or ev[1], style="Bad.TLabel" if ev[2] else "Hint.TLabel")
-                    elif ev[2]:
-                        messagebox.showwarning("Laura", ev[2])
-                elif k == "laura_paid":
-                    self._laura_show_status(ev[1])
-                    messagebox.showinfo("Laura", "Payment received. Thank you!")
                 elif k == "posts":
                     if self.share_frame is not None and self.posts_text.winfo_exists():
                         self._set_posts_text(ev[2] or "No posts yet. Be the first!", ev[1])

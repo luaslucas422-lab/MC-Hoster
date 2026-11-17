@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MC Hoster</title>
-<meta name="description" content="Host a Minecraft server from your own Windows PC in a few clicks. Free, with Gh0st AC anti-cheat and Laura, the AI that makes plugins.">
+<meta name="description" content="Host a Minecraft server from your own Windows PC in a few clicks. Free, with Gh0st AC anti-cheat.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 /* layout idea: a night world drawn in blocks behind the hero, then sections that sit on dark stone */
 :root{
   --night:#0d1220; --stone:#151c2e; --stone-2:#1d2640; --line:#2c3757;
-  --ink:#edf0f7; --muted:#9aa5c0; --torch:#ffb23f; --grass:#6ccf5a; --laura:#ff7ac6;
+  --ink:#edf0f7; --muted:#9aa5c0; --torch:#ffb23f; --grass:#6ccf5a;
   --display:"Pixelify Sans","Courier New",monospace; --body:"Figtree",system-ui,sans-serif;
   color-scheme:dark;
 }
@@ -46,22 +46,6 @@ section{padding:72px 0;border-top:1px solid var(--line)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:26px}
 .card{background:var(--stone);border:1px solid var(--line);padding:20px;box-shadow:inset 0 3px 0 rgba(255,255,255,.04)}
 .card p{margin:0;color:var(--muted);font-size:15.5px}
-.laura{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
-.chat{background:var(--stone);border:1px solid var(--line);padding:18px;display:grid;gap:12px}
-.msg{padding:12px 14px;max-width:92%;font-size:15.5px}
-.msg b{display:block;font:700 13px var(--display);letter-spacing:.04em;margin-bottom:3px}
-.msg.you{background:var(--stone-2);justify-self:end}
-.msg.you b{color:#8fb7ff}
-.msg.her{background:#2a1830;border-left:4px solid var(--laura)}
-.msg.her b{color:var(--laura)}
-.msg.ok{background:#14301c;border-left:4px solid var(--grass);color:#c9f2c0}
-.prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:26px}
-.price{background:var(--stone);border:1px solid var(--line);padding:22px;display:flex;flex-direction:column;gap:6px}
-.price.best{border:2px solid var(--laura)}
-.price .amt{font:700 34px var(--display)}
-.price .amt small{font:500 15px var(--body);color:var(--muted)}
-.price ul{margin:6px 0 0;padding-left:18px;color:var(--muted);font-size:15.5px}
-.tag{align-self:flex-start;background:var(--laura);color:#2a0a1d;font:700 12px var(--display);padding:3px 8px;letter-spacing:.05em}
 .steps{counter-reset:s;list-style:none;padding:0;margin:26px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .steps li{counter-increment:s;background:var(--stone);border:1px solid var(--line);padding:20px}
 .steps li::before{content:counter(s);display:grid;place-items:center;width:38px;height:38px;margin-bottom:10px;background:var(--torch);color:#2a1700;font:700 20px var(--display);box-shadow:inset -3px -3px 0 rgba(0,0,0,.25)}
@@ -69,7 +53,7 @@ section{padding:72px 0;border-top:1px solid var(--line)}
 .gallery figure{margin:0}
 .gallery figcaption{font-size:14.5px;color:var(--muted);margin-top:10px}
 footer{padding:36px 0 52px;color:var(--muted);font-size:15px;border-top:1px solid var(--line)}
-@media (max-width:860px){.hero,.laura{grid-template-columns:1fr}.hero{padding-bottom:90px}}
+@media (max-width:860px){.hero{grid-template-columns:1fr}.hero{padding-bottom:90px}}
 </style>
 </head>
 <body>
@@ -78,13 +62,13 @@ footer{padding:36px 0 52px;color:var(--muted);font-size:15px;border-top:1px soli
   <div class="wrap">
     <header>
       <div class="logo"><i></i>MC Hoster</div>
-      <nav aria-label="Sections"><a href="#laura">Laura</a><a href="#features">Features</a><a href="#how">How it works</a><a href="#screens">Screens</a><a href="#faq">Questions</a></nav>
+      <nav aria-label="Sections"><a href="#features">Features</a><a href="#how">How it works</a><a href="#screens">Screens</a><a href="#faq">Questions</a></nav>
     </header>
     <div class="hero">
       <div>
         <p class="kicker">Free · Windows 10 &amp; 11</p>
         <h1>Your own Minecraft server, on your own PC.</h1>
-        <p class="lead">Pick a version, press Finish, press Start. MC Hoster downloads everything, opens your router, adds anti-cheat and gives you the address for your friends. Need a plugin that doesn't exist? Ask Laura.</p>
+        <p class="lead">Pick a version, press Finish, press Start. MC Hoster downloads everything, opens your router, adds anti-cheat and gives you the address for your friends.</p>
         <div class="row">
           <a class="btn" href="https://github.com/luaslucas422-lab/MC-Hoster/releases/latest/download/MC-Hoster.exe">Download MC Hoster</a>
           <a class="btn alt" href="https://github.com/luaslucas422-lab/MC-Hoster/releases">Update logs</a>
@@ -97,27 +81,6 @@ footer{padding:36px 0 52px;color:var(--muted);font-size:15px;border-top:1px soli
 </div>
 
 <main class="wrap">
-  <section id="laura">
-    <div class="laura">
-      <div>
-        <p class="kicker">New in 3.5</p>
-        <h2>Meet Laura, the AI that makes plugins.</h2>
-        <p class="lead">Describe the plugin you want. Laura writes it, builds it on your PC against your server's own version, fixes it if it doesn't build, and puts it on your server. Choose how big it is and how hard she thinks.</p>
-        <p class="small">Works on Paper, Purpur, Pufferfish and Spigot servers. Every plugin comes with its source code.</p>
-      </div>
-      <div class="chat" aria-label="Example conversation with Laura">
-        <div class="msg you"><b>YOU</b>Cows drop a diamond 1% of the time, and tell the whole server when it happens</div>
-        <div class="msg her"><b>LAURA</b>Here's LuckyCows! Cows have a 1% chance to drop a diamond, and everyone sees who got lucky. Ops can change the chance with /luckycows chance &lt;percent&gt;.</div>
-        <div class="msg ok">Built LuckyCows.jar and added it to your server. Restart the server to load it.</div>
-      </div>
-    </div>
-    <div class="prices">
-      <div class="price"><h3>Free</h3><div class="amt">€0 <small>/ month</small></div><ul><li>15 plugins every month</li><li>Normal and High thinking</li></ul></div>
-      <div class="price"><h3>Pay per plugin</h3><div class="amt">€0.25 <small>and up</small></div><ul><li>Small €0.25 · Normal €0.50 · Big €1</li><li>Top up €1, €5 or €10 with Stripe</li></ul></div>
-      <div class="price best"><span class="tag">BEST</span><h3>Laura Plan</h3><div class="amt">€10 <small>/ month</small></div><ul><li>150 plugins a month</li><li>Laura's strongest model</li><li>Max thinking</li></ul></div>
-    </div>
-  </section>
-
   <section id="features">
     <p class="kicker">Everything a home server needs</p>
     <h2>Set up in minutes, then keep it running.</h2>
@@ -145,7 +108,7 @@ footer{padding:36px 0 52px;color:var(--muted);font-size:15px;border-top:1px soli
     <p class="kicker">A look inside</p>
     <h2>Simple on the outside.</h2>
     <div class="gallery">
-      <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/14-laura.png" alt="Laura making a plugin"><figcaption>Laura: describe it, she builds it</figcaption></figure>
+      <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/8-hosted.png" alt="The Hosted servers tab"><figcaption>Hosted servers: see what others host with MC Hoster</figcaption></figure>
       <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/3-settings-filled.png" alt="The Settings tab"><figcaption>Settings: players, difficulty, custom IP, auto start</figcaption></figure>
       <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/5-plugins.png" alt="The Plugins and Mods tab"><figcaption>Plugins &amp; Mods: presets, search and your own folders</figcaption></figure>
       <figure><img class="shot" loading="lazy" src="https://raw.githubusercontent.com/luaslucas422-lab/MC-Hoster/main/screenshots/9-storage.png" alt="The Max storage usage tab"><figcaption>Max storage usage: a limit that protects your drive</figcaption></figure>
@@ -156,8 +119,8 @@ footer{padding:36px 0 52px;color:var(--muted);font-size:15px;border-top:1px soli
     <p class="kicker">Questions</p>
     <h2>Good to know.</h2>
     <div class="grid">
-      <div class="card"><h3>Is it free?</h3><p>Yes. MC Hoster is free. Laura gives 15 plugins a month for free; more costs a little.</p></div>
-      <div class="card"><h3>Is my card safe?</h3><p>Payments go through Stripe in its own secure window. MC Hoster never sees your card.</p></div>
+      <div class="card"><h3>Is it free?</h3><p>Yes. MC Hoster is free.</p></div>
+      <div class="card"><h3>Can I use my own plugins?</h3><p>Yes. Put them in your plugins folder, tick them in tab 5, and the server gets new versions when you replace the file.</p></div>
       <div class="card"><h3>Windows says it's unknown software.</h3><p>MC Hoster isn't signed yet. Click More info, then Run anyway. Only download it from this page or GitHub.</p></div>
       <div class="card"><h3>Is it made by Mojang?</h3><p>No. It's an independent project and isn't connected to Mojang or Microsoft.</p></div>
     </div>

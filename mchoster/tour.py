@@ -9,7 +9,7 @@ import time
 import tkinter as tk
 from pathlib import Path
 
-from . import core, laura, online, profile, updater
+from . import core, online, profile, updater
 from .app import Wizard
 
 
@@ -29,8 +29,6 @@ def run(outdir: str) -> int:
          "text": "The server won't start on my laptop, here is a photo.", "images": [online.encode_photo(str(out / "_icon.png"))]},
         {"name": "Mia", "mc": "MiaMines", "kind": "idea", "version": "3.0.0", "ts": time.time() - 7200,
          "text": "Please add a plugin for pets!", "images": []}]
-    laura.status = lambda: {"free_left": 12, "free_per_month": 15, "credits_cents": 150, "plan": False, "plan_until": 0,
-                            "plan_per_month": 150, "switched_on": True}
     root = tk.Tk()
     w = Wizard(root)
     root.update_idletasks()
@@ -156,16 +154,6 @@ def run(outdir: str) -> int:
             {"title": "Best plugins for a small server?", "name": "Sam", "mc": "SamBuilds", "server": "", "ts": time.time() - 90000,
              "body": "I only have 4 friends online. What should I add first?"}])
 
-    def ai_side():
-        w.side_var.set("ai")
-        w.show_side()
-        w._laura_show_status({"free_left": 12, "free_per_month": 15, "credits_cents": 150, "plan": False, "plan_until": 0,
-                              "switched_on": True})
-        w._laura_say("you", "A /bounty command where players put money on someone's head")
-        w._laura_say("laura", "Here's Bounty! /bounty <player> <amount> puts money on a player, /bounty list shows the "
-                              "biggest bounties, and whoever kills them gets the money.")
-        w._laura_say(None, "Built Bounty.jar and added it to Lucas's SMP. Restart the server to load it.", "good")
-
     def hosting_side():
         w.side_var.set("hosting")
         w.show_side()
@@ -208,11 +196,6 @@ def run(outdir: str) -> int:
         lambda: grab("8-hosted"),
         sharing_side,
         lambda: grab("9-sharing"),
-        ai_side,
-        lambda: grab("14-laura"),
-        w.laura_buy_dialog,
-        lambda: grab("15-laura-buy", last_top()),
-        lambda: last_top().destroy(),
         hosting_side,
         w.feedback_dialog,
         lambda: grab("10-feedback", last_top()),
@@ -242,5 +225,5 @@ def run(outdir: str) -> int:
     root.after(800, go)
     root.mainloop()
     print("screenshots:", ", ".join(shots))
-    want = 23
+    want = 21
     return 0 if len(shots) == want else 1
