@@ -128,6 +128,8 @@ class Wizard:
         self.gear.bind("<Leave>", lambda e: self.gear.config(fg=self.colors["muted"]))
         i18n.apply(self.root)
         self.gear.config(text="⚙ " + i18n.tr("Settings"))
+        self.root.update_idletasks()
+        self.bar.config(padding=(PAD, PAD, PAD + self.gear.winfo_reqwidth() + 14, PAD))
         self.show(0)
         self.root.after(60, self._drain)
         self.root.after(1000, self._restart_tick)
@@ -1629,24 +1631,24 @@ class Wizard:
         if self.edit:
             self.back_btn.pack_forget()
             if i == self.PLAY:
-                self.next_btn.config(text="Close", state="normal")
+                self.next_btn.config(text=i18n.tr("Close"), state="normal")
             else:
                 running = self.server and self.server.running
-                self.next_btn.config(text="Apply & restart" if running else "Apply & start",
+                self.next_btn.config(text=i18n.tr("Apply & restart") if running else "Apply & start",
                                      state="disabled" if self.busy or not self.name_var.get().strip() else "normal")
             return
         if not self.back_btn.winfo_ismapped():
             self.back_btn.pack(side="right", padx=(0, 6), after=self.next_btn)
         self.back_btn.config(state="normal" if 0 < i < 3 else "disabled")
         if i == self.SERVER:
-            self.next_btn.config(text="Next", state="normal" if self.version_var.get() else "disabled")
+            self.next_btn.config(text=i18n.tr("Next"), state="normal" if self.version_var.get() else "disabled")
         elif i == self.MINECRAFT:
-            self.next_btn.config(text="Next", state="normal")
+            self.next_btn.config(text=i18n.tr("Next"), state="normal")
         elif i == self.SETTINGS:
             ok = self.eula_var.get() and self.name_var.get().strip()
-            self.next_btn.config(text="Finish", state="normal" if ok else "disabled")
+            self.next_btn.config(text=i18n.tr("Finish"), state="normal" if ok else "disabled")
         else:
-            self.next_btn.config(text="Close", state="disabled" if self.busy else "normal")
+            self.next_btn.config(text=i18n.tr("Close"), state="disabled" if self.busy else "normal")
 
     def back(self):
         if not self.edit and 0 < self.page < 3:
